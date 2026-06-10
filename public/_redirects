@@ -1,0 +1,2 @@
+# Cloudflare Pages SPA 回退:任意路径都返回 index.html,由前端路由接管
+/* /index.html 200
