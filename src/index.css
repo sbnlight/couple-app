@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局基础样式 */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-warmbg text-gray-800;
+  /* 移动端点击不出现灰色高亮块 */
+  -webkit-tap-highlight-color: transparent;
+  /* 系统字体栈,不加载 webfont */
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', 'Segoe UI', sans-serif;
+}
+
+/* PWA 全屏模式下禁止 iOS 的橡皮筋滚动穿透到页面整体 */
+html {
+  overscroll-behavior-y: none;
+}
