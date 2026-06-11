@@ -1,5 +1,10 @@
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { RequireAuth, RequireCouple } from './components/Guard'
+import { configMissing } from './lib/supabase'
 import TabBar from './components/TabBar'
+import Login from './pages/Login'
+import Pair from './pages/Pair'
 import Chat from './pages/Chat'
 import Ledger from './pages/Ledger'
 import Us from './pages/Us'
@@ -7,7 +12,6 @@ import Us from './pages/Us'
 /**
  * 主界面布局:内容区 + 底部 Tab。
  * 内容区限宽 max-w-md 并水平居中,手机上铺满、电脑上不至于太宽。
- * M1 会在外层加上 RequireAuth / RequireCouple 路由守卫(见 DESIGN.md 2)。
  */
 function MainLayout() {
   return (
@@ -22,16 +26,41 @@ function MainLayout() {
 }
 
 export default function App() {
+  // 环境变量没配时给出明确提示,而不是白屏
+  if (configMissing) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
+        <span className="text-4xl">🔧</span>
+        <p className="text-sm text-gray-500">
+          尚未配置 Supabase 环境变量。
+          <br />
+          本地开发:复制 .env.example 为 .env.local 并填写;
+          <br />
+          线上部署:在托管平台的环境变量里设置后重新部署。
+        </p>
+      </div>
+    )
+  }
+
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route index element={<Chat />} />
-          <Route path="ledger" element={<Ledger />} />
-          <Route path="us" element={<Us />} />
-        </Route>
-        {/* M1 将新增:/login 登录注册页、/pair 配对页 */}
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          {/* 以下路由要求已登录 */}
+          <Route element={<RequireAuth />}>
+            <Route path="/pair" element={<Pair />} />
+            {/* 以下路由要求已配对 */}
+            <Route element={<RequireCouple />}>
+              <Route element={<MainLayout />}>
+                <Route index element={<Chat />} />
+                <Route path="ledger" element={<Ledger />} />
+                <Route path="us" element={<Us />} />
+              </Route>
+            </Route>
+          </Route>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

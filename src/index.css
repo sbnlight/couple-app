@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 通用表单控件样式 */
+@layer components {
+  .input {
+    @apply rounded-xl border border-rose-100 bg-white px-4 py-3 text-base outline-none transition-colors focus:border-primary;
+  }
+  .btn-primary {
+    @apply rounded-xl bg-primary py-3 text-base font-medium text-white transition-colors active:bg-primary-dark disabled:opacity-50;
+  }
+}
+
 /* 全局基础样式 */
 html,
 body,
