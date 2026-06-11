@@ -178,44 +178,18 @@ export default function Us() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-6">
-        {/* ---- 小屋名片 ---- */}
+        {/* ---- 小屋名片(纯展示,编辑入口在下方选项列表) ---- */}
         <div className="rounded-2xl bg-white p-5">
-          <button
-            type="button"
-            className="mx-auto flex items-center gap-1 text-base font-semibold"
-            onClick={() => setEditing('houseName')}
-          >
-            {couple?.name ?? '双人小屋'}
-            <span className="text-xs text-gray-300">✏️</span>
-          </button>
+          <p className="text-center text-base font-semibold">{couple?.name ?? '双人小屋'}</p>
 
           <div className="mt-4 flex items-center justify-center gap-6">
-            {/* 自己:点头像换图,点昵称改名 */}
             <div className="flex flex-col items-center gap-2">
-              <button
-                type="button"
-                className="relative"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-              >
-                <Avatar profile={profile} />
-                <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs shadow">
-                  {uploading ? '⏳' : '📷'}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-1 text-sm"
-                onClick={() => setEditing('myName')}
-              >
-                {profile?.display_name ?? '我'}
-                <span className="text-xs text-gray-300">✏️</span>
-              </button>
+              <Avatar profile={profile} />
+              <span className="text-sm">{profile?.display_name ?? '我'}</span>
             </div>
 
             <span className="text-2xl text-primary">❤</span>
 
-            {/* 对方:只读展示 */}
             <div className="flex flex-col items-center gap-2">
               <Avatar profile={partner} />
               <span className="text-sm">{partner?.display_name ?? '等待加入'}</span>
@@ -225,6 +199,32 @@ export default function Us() {
           <p className="mt-4 text-center text-sm text-gray-400">
             小屋已建立 <span className="font-semibold text-primary-dark">{days}</span> 天
           </p>
+        </div>
+
+        {/* ---- 编辑选项列表 ---- */}
+        <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
+          <button
+            type="button"
+            onClick={() => setEditing('houseName')}
+            className="w-full px-5 py-4 text-left active:bg-soft"
+          >
+            🏠 修改小屋名字
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing('myName')}
+            className="w-full px-5 py-4 text-left active:bg-soft"
+          >
+            ✏️ 修改我的昵称
+          </button>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="w-full px-5 py-4 text-left active:bg-soft disabled:opacity-50"
+          >
+            {uploading ? '⏳ 头像上传中…' : '📷 更换我的头像'}
+          </button>
         </div>
 
         {/* ---- 本机显示设置(各自手机独立,不影响对方) ---- */}
