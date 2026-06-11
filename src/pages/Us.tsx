@@ -89,6 +89,12 @@ function EditModal({
   )
 }
 
+// 是否已作为 PWA 全屏安装(在浏览器里打开则显示安装引导)
+const isStandalone =
+  window.matchMedia('(display-mode: standalone)').matches ||
+  ('standalone' in navigator && (navigator as { standalone?: boolean }).standalone === true)
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+
 /** 「我们」设置页:双方信息、小屋名、个性化设置、退出登录 */
 export default function Us() {
   const { profile, partner, couple, refresh, signOut } = useAuth()
@@ -172,6 +178,18 @@ export default function Us() {
     if (window.confirm('确定要退出登录吗?')) void signOut()
   }
 
+  /** 手动检查更新:让 service worker 拉取新版本后整页刷新 */
+  const handleCheckUpdate = async () => {
+    showToast('正在获取最新版本…')
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration()
+      if (reg) await reg.update()
+    } catch {
+      // 获取失败也直接刷新,刷新本身就会带回最新页面
+    }
+    setTimeout(() => window.location.reload(), 800)
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-line bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
@@ -202,8 +220,8 @@ export default function Us() {
           </p>
         </div>
 
-        {/* ---- 修改资料入口(具体项在底部弹层里) ---- */}
-        <div className="mt-4 overflow-hidden rounded-2xl bg-white">
+        {/* ---- 修改资料 / 检查更新 ---- */}
+        <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
           <button
             type="button"
             onClick={() => setShowProfileSheet(true)}
@@ -212,7 +230,27 @@ export default function Us() {
             <span>✏️ 修改资料</span>
             <span className="text-gray-300">›</span>
           </button>
+          <button
+            type="button"
+            onClick={() => void handleCheckUpdate()}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>🔄 检查更新</span>
+            <span className="text-gray-300">›</span>
+          </button>
         </div>
+
+        {/* ---- 安装引导(已安装为 PWA 时不显示) ---- */}
+        {!isStandalone && (
+          <div className="mt-4 rounded-2xl bg-white p-5">
+            <p className="text-sm font-medium text-gray-500">📲 安装到主屏幕</p>
+            <p className="mt-2 text-sm leading-relaxed text-gray-400">
+              {isIOS
+                ? '用 Safari 打开本页 → 点底部「分享」按钮 → 选「添加到主屏幕」,以后就能像 App 一样全屏使用。'
+                : '在浏览器菜单中选择「添加到桌面 / 安装应用」,以后就能像 App 一样全屏使用。'}
+            </p>
+          </div>
+        )}
 
         {/* ---- 本机显示设置(各自手机独立,不影响对方) ---- */}
         <div className="mt-4 rounded-2xl bg-white p-5">
