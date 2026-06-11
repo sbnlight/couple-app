@@ -93,6 +93,7 @@ function EditModal({
 export default function Us() {
   const { profile, partner, couple, refresh, signOut } = useAuth()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [showProfileSheet, setShowProfileSheet] = useState(false)
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
   const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState('')
@@ -201,29 +202,15 @@ export default function Us() {
           </p>
         </div>
 
-        {/* ---- 编辑选项列表 ---- */}
-        <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
+        {/* ---- 修改资料入口(具体项在底部弹层里) ---- */}
+        <div className="mt-4 overflow-hidden rounded-2xl bg-white">
           <button
             type="button"
-            onClick={() => setEditing('houseName')}
-            className="w-full px-5 py-4 text-left active:bg-soft"
+            onClick={() => setShowProfileSheet(true)}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            🏠 修改小屋名字
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing('myName')}
-            className="w-full px-5 py-4 text-left active:bg-soft"
-          >
-            ✏️ 修改我的昵称
-          </button>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="w-full px-5 py-4 text-left active:bg-soft disabled:opacity-50"
-          >
-            {uploading ? '⏳ 头像上传中…' : '📷 更换我的头像'}
+            <span>✏️ 修改资料</span>
+            <span className="text-gray-300">›</span>
           </button>
         </div>
 
@@ -294,6 +281,70 @@ export default function Us() {
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center">
           <span className="rounded-full bg-gray-800/80 px-4 py-2 text-sm text-white">{toast}</span>
+        </div>
+      )}
+
+      {/* 修改资料底部弹层:每项右侧显示当前值 */}
+      {showProfileSheet && (
+        <div
+          className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40"
+          onClick={() => setShowProfileSheet(false)}
+        >
+          <div
+            className="mx-auto w-full max-w-md rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="border-b border-line py-3 text-center text-sm font-medium text-gray-500">
+              修改资料
+            </p>
+            <div className="divide-y divide-line">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft disabled:opacity-50"
+              >
+                <span>我的头像</span>
+                <span className="flex items-center gap-2 text-gray-400">
+                  {uploading ? (
+                    <span className="text-sm">上传中…</span>
+                  ) : (
+                    <Avatar profile={profile} size={36} />
+                  )}
+                  <span className="text-gray-300">›</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing('myName')}
+                className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
+              >
+                <span>我的昵称</span>
+                <span className="flex items-center gap-2 text-sm text-gray-400">
+                  {profile?.display_name}
+                  <span className="text-gray-300">›</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing('houseName')}
+                className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
+              >
+                <span>小屋名字</span>
+                <span className="flex items-center gap-2 text-sm text-gray-400">
+                  {couple?.name}
+                  <span className="text-gray-300">›</span>
+                </span>
+              </button>
+            </div>
+            <button
+              type="button"
+              className="mt-2 w-full border-t border-line py-3.5 text-center text-gray-500 active:bg-soft"
+              onClick={() => setShowProfileSheet(false)}
+            >
+              完成
+            </button>
+          </div>
         </div>
       )}
 
