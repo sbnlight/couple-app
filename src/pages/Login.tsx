@@ -18,10 +18,12 @@ function translateAuthError(err: unknown): string {
   return `出错了:${msg}`
 }
 
-/** 登录 / 注册页(同页切换) */
+type Mode = 'login' | 'signup' | 'forgot'
+
+/** 登录 / 注册 / 忘记密码(同页切换) */
 export default function Login() {
   const { loading, session } = useAuth()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -32,6 +34,12 @@ export default function Login() {
   if (loading) return <Splash />
   // 已登录则交给守卫决定:去配对页还是主界面
   if (session) return <Navigate to="/" replace />
+
+  const switchMode = (m: Mode) => {
+    setMode(m)
+    setError('')
+    setNotice('')
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -44,7 +52,14 @@ export default function Login() {
     }
     setSubmitting(true)
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        // 发送重置密码邮件;链接会跳回本应用的 /reset-password 页
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        })
+        if (error) throw error
+        setNotice('重置邮件已发送,请到邮箱点击链接设置新密码(没收到的话看看垃圾邮件)')
+      } else if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -54,7 +69,7 @@ export default function Login() {
         if (error) throw error
         // 若 Supabase 后台没有关闭邮箱验证,注册后不会直接返回会话
         if (!data.session) {
-          setNotice('注册成功,但项目开启了邮箱验证:请去邮箱点确认链接后回来登录(建议在 Supabase 后台关闭 Confirm email)')
+          setNotice('注册成功,但项目开启了邮箱验证:请去邮箱点确认链接后回来登录')
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -76,7 +91,9 @@ export default function Login() {
       <div className="mb-10 text-center">
         <div className="text-5xl">❤</div>
         <h1 className="mt-3 text-2xl font-bold text-primary-dark">双人小屋</h1>
-        <p className="mt-1 text-sm text-gray-400">只属于我们两个人的地方</p>
+        <p className="mt-1 text-sm text-gray-400">
+          {mode === 'forgot' ? '输入邮箱,找回你的密码' : '只属于我们两个人的地方'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -99,36 +116,50 @@ export default function Login() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <input
-          className="input"
-          type="password"
-          placeholder="密码(至少 6 位)"
-          required
-          minLength={6}
-          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        {mode !== 'forgot' && (
+          <input
+            className="input"
+            type="password"
+            placeholder="密码(至少 6 位)"
+            required
+            minLength={6}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        )}
 
         {error && <p className="text-sm text-red-500">{error}</p>}
         {notice && <p className="text-sm text-amber-600">{notice}</p>}
 
         <button type="submit" disabled={submitting} className="btn-primary mt-2">
-          {submitting ? '请稍候…' : mode === 'login' ? '登录' : '注册'}
+          {submitting
+            ? '请稍候…'
+            : mode === 'login'
+              ? '登录'
+              : mode === 'signup'
+                ? '注册'
+                : '发送重置邮件'}
         </button>
       </form>
 
-      <button
-        type="button"
-        className="mt-6 text-center text-sm text-gray-400"
-        onClick={() => {
-          setMode(mode === 'login' ? 'signup' : 'login')
-          setError('')
-          setNotice('')
-        }}
-      >
-        {mode === 'login' ? '还没有账号?点这里注册' : '已有账号?点这里登录'}
-      </button>
+      <div className="mt-6 flex flex-col items-center gap-3">
+        {mode === 'login' && (
+          <>
+            <button type="button" className="text-sm text-gray-400" onClick={() => switchMode('signup')}>
+              还没有账号?点这里注册
+            </button>
+            <button type="button" className="text-sm text-gray-400" onClick={() => switchMode('forgot')}>
+              忘记密码?
+            </button>
+          </>
+        )}
+        {mode !== 'login' && (
+          <button type="button" className="text-sm text-gray-400" onClick={() => switchMode('login')}>
+            返回登录
+          </button>
+        )}
+      </div>
     </div>
   )
 }

@@ -94,6 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userId) await loadData(userId)
   }, [userId, loadData])
 
+  // 回到前台时刷新一次:能及时看到对方改的昵称/头像/小屋名
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden && userId) void loadData(userId)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [userId, loadData])
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
   }, [])

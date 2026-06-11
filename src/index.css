@@ -2,10 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------- 主题色变量 ----------
+   默认主题:蜜桃粉;其他主题通过 <html data-theme="..."> 覆盖。
+   切换逻辑见 src/lib/prefs.ts,选择界面在「我们」页。 */
+:root {
+  --c-primary: #fb7185;
+  --c-primary-dark: #f43f5e;
+  --c-primary-light: #ffe4e6;
+  --c-bg: #fff8f7;
+  --c-line: #ffe4e6;
+  --c-soft: #fff1f2;
+}
+
+[data-theme='blue'] {
+  --c-primary: #60a5fa;
+  --c-primary-dark: #3b82f6;
+  --c-primary-light: #dbeafe;
+  --c-bg: #f5f9ff;
+  --c-line: #dbeafe;
+  --c-soft: #eff6ff;
+}
+
+[data-theme='green'] {
+  --c-primary: #34d399;
+  --c-primary-dark: #10b981;
+  --c-primary-light: #d1fae5;
+  --c-bg: #f4fbf8;
+  --c-line: #d1fae5;
+  --c-soft: #ecfdf5;
+}
+
+[data-theme='purple'] {
+  --c-primary: #a78bfa;
+  --c-primary-dark: #8b5cf6;
+  --c-primary-light: #ede9fe;
+  --c-bg: #faf8ff;
+  --c-line: #ede9fe;
+  --c-soft: #f5f3ff;
+}
+
 /* 通用表单控件样式 */
 @layer components {
   .input {
-    @apply rounded-xl border border-rose-100 bg-white px-4 py-3 text-base outline-none transition-colors focus:border-primary;
+    @apply rounded-xl border border-line bg-white px-4 py-3 text-base outline-none transition-colors focus:border-primary;
   }
   .btn-primary {
     @apply rounded-xl bg-primary py-3 text-base font-medium text-white transition-colors active:bg-primary-dark disabled:opacity-50;

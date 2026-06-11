@@ -132,9 +132,9 @@ export default function Pair() {
           </button>
 
           <div className="my-6 flex items-center gap-3 text-xs text-gray-300">
-            <div className="h-px flex-1 bg-rose-100" />
+            <div className="h-px flex-1 bg-line" />
             或者
-            <div className="h-px flex-1 bg-rose-100" />
+            <div className="h-px flex-1 bg-line" />
           </div>
 
           <form onSubmit={handleJoin} className="flex flex-col gap-3">

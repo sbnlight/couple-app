@@ -14,7 +14,7 @@ const tabs = [
  */
 export default function TabBar() {
   return (
-    <nav className="border-t border-rose-100 bg-white pb-[env(safe-area-inset-bottom)]">
+    <nav className="border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
       <div className="flex">
         {tabs.map((tab) => (
           <NavLink

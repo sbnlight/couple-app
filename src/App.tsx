@@ -4,6 +4,7 @@ import { RequireAuth, RequireCouple } from './components/Guard'
 import { configMissing } from './lib/supabase'
 import TabBar from './components/TabBar'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Pair from './pages/Pair'
 import Chat from './pages/Chat'
 import Ledger from './pages/Ledger'
@@ -47,6 +48,8 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* 重置密码:从邮件链接进入,自带临时会话,不走常规守卫 */}
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* 以下路由要求已登录 */}
           <Route element={<RequireAuth />}>
             <Route path="/pair" element={<Pair />} />

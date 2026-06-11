@@ -9,6 +9,8 @@ export interface Profile {
 
 export interface Couple {
   id: string
+  /** 小屋名称,可由任一成员修改 */
+  name: string
   invite_code: string
   member_a: string
   /** 第二人加入前为 null */
