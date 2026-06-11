@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -30,6 +30,14 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // 重置邮件发送后的冷却秒数:免费版邮件服务每小时限发几封,防止用户连点
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown === 0) return
+    const t = setTimeout(() => setCooldown(cooldown - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
 
   if (loading) return <Splash />
   // 已登录则交给守卫决定:去配对页还是主界面
@@ -58,7 +66,8 @@ export default function Login() {
           redirectTo: `${window.location.origin}/reset-password`,
         })
         if (error) throw error
-        setNotice('重置邮件已发送,请到邮箱点击链接设置新密码(没收到的话看看垃圾邮件)')
+        setNotice('重置邮件已发送,请到邮箱点击链接设置新密码。邮件可能要等一两分钟,也看看垃圾邮件箱')
+        setCooldown(60)
       } else if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -132,15 +141,27 @@ export default function Login() {
         {error && <p className="text-sm text-red-500">{error}</p>}
         {notice && <p className="text-sm text-amber-600">{notice}</p>}
 
-        <button type="submit" disabled={submitting} className="btn-primary mt-2">
+        <button
+          type="submit"
+          disabled={submitting || (mode === 'forgot' && cooldown > 0)}
+          className="btn-primary mt-2"
+        >
           {submitting
             ? '请稍候…'
-            : mode === 'login'
-              ? '登录'
-              : mode === 'signup'
-                ? '注册'
-                : '发送重置邮件'}
+            : mode === 'forgot' && cooldown > 0
+              ? `已发送,${cooldown} 秒后可重发`
+              : mode === 'login'
+                ? '登录'
+                : mode === 'signup'
+                  ? '注册'
+                  : '发送重置邮件'}
         </button>
+
+        {mode === 'forgot' && (
+          <p className="text-center text-xs text-gray-400">
+            重置邮件每小时只能发送几封,发送后请耐心等待,不要反复点击
+          </p>
+        )}
       </form>
 
       <div className="mt-6 flex flex-col items-center gap-3">
