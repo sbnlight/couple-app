@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CATEGORIES } from '../hooks/useExpenses'
+import {
+  CATEGORIES,
+  INCOME_CATEGORIES,
+  CURRENCIES,
+  getDefaultCurrency,
+  saveDefaultCurrency,
+} from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import type { Expense } from '../types/db'
 
@@ -14,6 +20,7 @@ function todayStr() {
 /**
  * 「记一笔」底部弹层。传入 initial 时为编辑模式(可删除)。
  * 付款人不可选:数据库安全规则要求只能以自己的身份记账。
+ * 货币:本次选择会成为下次的默认货币(本机记忆)。
  */
 export default function ExpenseForm({
   initial,
@@ -26,12 +33,26 @@ export default function ExpenseForm({
   onDelete?: () => Promise<void>
   onClose: () => void
 }) {
+  const [kind, setKind] = useState<'expense' | 'income'>(initial?.kind ?? 'expense')
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '')
   const [category, setCategory] = useState(initial?.category ?? '餐饮')
+  const [scope, setScope] = useState<'shared' | 'personal'>(initial?.scope ?? 'shared')
+  const [currency, setCurrency] = useState(initial?.currency ?? getDefaultCurrency())
   const [note, setNote] = useState(initial?.note ?? '')
   const [spentAt, setSpentAt] = useState(initial?.spent_at ?? todayStr())
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  const cats = kind === 'expense' ? CATEGORIES : INCOME_CATEGORIES
+
+  /** 切换收支类型:分类列表不同,当前分类不在新列表里则重置 */
+  const switchKind = (k: 'expense' | 'income') => {
+    setKind(k)
+    const list = k === 'expense' ? CATEGORIES : INCOME_CATEGORIES
+    if (!list.some((c) => c.id === category)) setCategory(list[0].id)
+    // 收入默认算个人,支出默认算共同(都可再手动改)
+    if (!initial) setScope(k === 'income' ? 'personal' : 'shared')
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -53,11 +74,15 @@ export default function ExpenseForm({
     setErr('')
     try {
       await onSave({
-        amount: Math.round(num * 100) / 100, // 保留两位小数
+        amount: Math.round(num * 100) / 100,
         category,
         note: note.trim(),
         spent_at: spentAt,
+        currency,
+        kind,
+        scope,
       })
+      saveDefaultCurrency(currency) // 记住这次的货币作为下次默认
       onClose()
     } catch {
       setErr('保存失败,请检查网络后重试')
@@ -83,15 +108,39 @@ export default function ExpenseForm({
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
+        className="mx-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
       >
-        <p className="mb-4 text-center text-sm font-medium text-gray-500">
-          {initial ? '修改这笔账' : '记一笔'}
-        </p>
+        {/* 支出 / 收入 切换 */}
+        <div className="mx-auto flex w-44 rounded-full bg-gray-100 p-1 text-sm">
+          <button
+            type="button"
+            onClick={() => switchKind('expense')}
+            className={`flex-1 rounded-full py-1 ${kind === 'expense' ? 'bg-white font-medium text-primary-dark shadow-sm' : 'text-gray-400'}`}
+          >
+            支出
+          </button>
+          <button
+            type="button"
+            onClick={() => switchKind('income')}
+            className={`flex-1 rounded-full py-1 ${kind === 'income' ? 'bg-white font-medium text-green-600 shadow-sm' : 'text-gray-400'}`}
+          >
+            收入
+          </button>
+        </div>
 
-        {/* 金额 */}
-        <div className="flex items-center gap-2 border-b border-line pb-2">
-          <span className="text-2xl font-semibold text-primary-dark">¥</span>
+        {/* 货币 + 金额 */}
+        <div className="mt-4 flex items-center gap-2 border-b border-line pb-2">
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="shrink-0 rounded-lg bg-gray-100 px-2 py-1.5 text-base font-semibold text-primary-dark outline-none"
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.symbol} {c.label}
+              </option>
+            ))}
+          </select>
           <input
             className="min-w-0 flex-1 bg-transparent text-3xl font-semibold outline-none"
             type="number"
@@ -105,9 +154,9 @@ export default function ExpenseForm({
           />
         </div>
 
-        {/* 分类六宫格 */}
+        {/* 分类六宫格(随收支类型切换) */}
         <div className="mt-4 grid grid-cols-3 gap-2">
-          {CATEGORIES.map((c) => (
+          {cats.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -121,6 +170,27 @@ export default function ExpenseForm({
               {c.icon} {c.id}
             </button>
           ))}
+        </div>
+
+        {/* 共同 / 个人 */}
+        <div className="mt-4 flex items-center gap-3">
+          <span className="w-12 shrink-0 text-sm text-gray-400">范围</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setScope('shared')}
+              className={`rounded-full px-4 py-1.5 text-sm ${scope === 'shared' ? 'bg-soft font-medium text-primary-dark' : 'bg-gray-100 text-gray-400'}`}
+            >
+              👫 两人共同
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope('personal')}
+              className={`rounded-full px-4 py-1.5 text-sm ${scope === 'personal' ? 'bg-soft font-medium text-primary-dark' : 'bg-gray-100 text-gray-400'}`}
+            >
+              🙋 我个人的
+            </button>
+          </div>
         </div>
 
         {/* 日期 + 备注 */}

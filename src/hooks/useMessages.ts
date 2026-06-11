@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
-import type { Message } from '../types/db'
+import type { Message, MessageType } from '../types/db'
 
 const PAGE_SIZE = 50
 
@@ -12,8 +12,8 @@ const PAGE_SIZE = 50
 export interface ChatItem {
   key: string
   id?: number
-  type: 'text' | 'image'
-  /** 文本内容,或图片在 Storage 中的路径 */
+  type: MessageType
+  /** 文本内容,或图片/表情包在 Storage 中的路径 */
   content: string
   senderId: string
   createdAt: string
@@ -25,8 +25,8 @@ export interface ChatItem {
 /** 本地待发队列里的一条 */
 interface PendingMsg {
   localId: string
-  type: 'text' | 'image'
-  /** 文本内容;图片为上传成功后的路径(未上传时为空串) */
+  type: MessageType
+  /** 文本/表情包路径;图片为上传成功后的路径(未上传时为空串) */
   content: string
   createdAt: string
   status: 'sending' | 'failed'
@@ -37,12 +37,12 @@ interface PendingMsg {
 const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
 
 /**
- * 把待发的文本消息持久化到本地,杀掉 App 重开也不丢
+ * 把待发的文本/表情包消息持久化到本地,杀掉 App 重开也不丢
  * (图片的 Blob 无法序列化,不做持久化;恢复时一律标记为 failed 等待手动重试)
  */
 function savePending(coupleId: string, list: PendingMsg[]) {
   const texts = list
-    .filter((p) => p.type === 'text')
+    .filter((p) => p.type !== 'image')
     .map(({ localId, type, content, createdAt }) => ({ localId, type, content, createdAt }))
   try {
     localStorage.setItem(pendingKey(coupleId), JSON.stringify(texts))
@@ -311,6 +311,26 @@ export function useMessages(coupleId: string, userId: string) {
     [attemptSend],
   )
 
+  /** 发送表情包消息(图片已在 stickers 桶里,只需写一条消息记录) */
+  const sendSticker = useCallback(
+    (path: string) => {
+      const p: PendingMsg = {
+        localId: crypto.randomUUID(),
+        type: 'sticker',
+        content: path,
+        createdAt: new Date().toISOString(),
+        status: 'sending',
+      }
+      setPending((prev) => {
+        const next = [...prev, p]
+        savePending(coupleId, next)
+        return next
+      })
+      void attemptSend(p)
+    },
+    [coupleId, attemptSend],
+  )
+
   /** 手动重试一条失败的消息 */
   const retrySend = useCallback(
     (localId: string) => {
@@ -352,6 +372,7 @@ export function useMessages(coupleId: string, userId: string) {
     loadOlder,
     sendText,
     sendImage,
+    sendSticker,
     retrySend,
   }
 }

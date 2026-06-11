@@ -18,16 +18,35 @@ export interface Couple {
   created_at: string
 }
 
+export type MessageType = 'text' | 'image' | 'sticker'
+
 export interface Message {
   id: number
   couple_id: string
   sender_id: string
-  type: 'text' | 'image'
-  /** 文本内容,或 Storage 图片路径 */
+  type: MessageType
+  /** 文本内容,或 Storage 图片/表情包路径 */
   content: string
   /** 客户端生成的幂等键,用于发送重试时去重 */
   client_id: string | null
   created_at: string
+}
+
+/** 自定义表情包(小屋内共享) */
+export interface Sticker {
+  id: number
+  couple_id: string
+  owner_id: string
+  path: string
+  created_at: string
+}
+
+/** 已读位置:每人每小屋一行 */
+export interface ReadStatus {
+  couple_id: string
+  user_id: string
+  last_read_id: number
+  updated_at: string
 }
 
 export interface Expense {
@@ -38,5 +57,11 @@ export interface Expense {
   category: string
   note: string | null
   spent_at: string
+  /** 货币代码:CNY/USD/EUR/JPY/GBP */
+  currency: string
+  /** 收支类型 */
+  kind: 'expense' | 'income'
+  /** 共同 / 个人(双方均可见) */
+  scope: 'shared' | 'personal'
   created_at: string
 }

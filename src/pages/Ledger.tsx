@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { categoryIcon, useExpenses } from '../hooks/useExpenses'
+import { categoryIcon, currencySymbol, useExpenses } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import ExpenseForm from '../components/ExpenseForm'
 import type { Expense } from '../types/db'
@@ -19,7 +19,17 @@ function fmtDay(dateStr: string) {
   return `${m}月${d}日 周${wd}`
 }
 
-/** 记账页:月度汇总 + 按日流水 + 记一笔 */
+/** 每种货币一组的月度汇总 */
+interface CurSummary {
+  currency: string
+  expense: number
+  income: number
+  mineExpense: number
+  sharedExpense: number
+  cats: [string, number][]
+}
+
+/** 记账页:月度汇总(按货币分组)+ 按日流水 + 记一笔 */
 export default function Ledger() {
   const { couple, session, profile, partner } = useAuth()
   // 本页在 RequireCouple 守卫内,couple/session 必然存在
@@ -33,19 +43,44 @@ export default function Ledger() {
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Expense | null>(null)
 
-  // 汇总:总额、双方各付、分类占比(整月数据在内存里直接算)
-  const summary = useMemo(() => {
-    let total = 0
-    let mine = 0
-    const byCat = new Map<string, number>()
+  // 汇总:不同货币不能直接相加,按货币分别统计
+  const summaries = useMemo<CurSummary[]>(() => {
+    const map = new Map<
+      string,
+      {
+        expense: number
+        income: number
+        mineExpense: number
+        sharedExpense: number
+        cats: Map<string, number>
+      }
+    >()
     for (const e of expenses) {
+      let b = map.get(e.currency)
+      if (!b) {
+        b = { expense: 0, income: 0, mineExpense: 0, sharedExpense: 0, cats: new Map() }
+        map.set(e.currency, b)
+      }
       const amt = Number(e.amount)
-      total += amt
-      if (e.payer_id === userId) mine += amt
-      byCat.set(e.category, (byCat.get(e.category) ?? 0) + amt)
+      if (e.kind === 'income') {
+        b.income += amt
+        continue
+      }
+      b.expense += amt
+      if (e.payer_id === userId) b.mineExpense += amt
+      if (e.scope === 'shared') b.sharedExpense += amt
+      b.cats.set(e.category, (b.cats.get(e.category) ?? 0) + amt)
     }
-    const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1])
-    return { total, mine, theirs: total - mine, cats }
+    return [...map.entries()]
+      .map(([currency, b]) => ({
+        currency,
+        expense: b.expense,
+        income: b.income,
+        mineExpense: b.mineExpense,
+        sharedExpense: b.sharedExpense,
+        cats: [...b.cats.entries()].sort((a, c) => c[1] - a[1]),
+      }))
+      .sort((a, b) => b.expense - a.expense)
   }, [expenses, userId])
 
   // 按日分组(查询已按日期倒序)
@@ -58,6 +93,15 @@ export default function Ledger() {
     }
     return [...map.entries()]
   }, [expenses])
+
+  /** 某一天的支出小计(按货币拼接,如 ¥32.00 + $5.00) */
+  const daySubtotal = (list: Expense[]) => {
+    const m = new Map<string, number>()
+    for (const e of list) {
+      if (e.kind === 'expense') m.set(e.currency, (m.get(e.currency) ?? 0) + Number(e.amount))
+    }
+    return [...m.entries()].map(([c, v]) => `${currencySymbol(c)}${fmtMoney(v)}`).join(' + ')
+  }
 
   const changeMonth = (delta: number) => {
     const [y, m] = month.split('-').map(Number)
@@ -111,53 +155,83 @@ export default function Ledger() {
           </div>
         ) : (
           <>
-            {/* 月度汇总卡 */}
-            <div className="rounded-2xl bg-white p-4">
-              <p className="text-sm text-gray-400">本月共支出</p>
-              <p className="mt-1 text-2xl font-bold">¥{fmtMoney(summary.total)}</p>
-
-              {summary.total > 0 && (
-                <>
-                  {/* 双方支出对比条 */}
-                  <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className="bg-primary"
-                      style={{ width: `${(summary.mine / summary.total) * 100}%` }}
-                    />
-                  </div>
-                  <div className="mt-1.5 flex justify-between text-xs text-gray-400">
-                    <span>
-                      <span className="mr-1 inline-block h-2 w-2 rounded-full bg-primary" />
-                      {profile?.display_name ?? '我'} ¥{fmtMoney(summary.mine)}
-                    </span>
-                    <span>
-                      {partner?.display_name ?? 'TA'} ¥{fmtMoney(summary.theirs)}
-                      <span className="ml-1 inline-block h-2 w-2 rounded-full bg-gray-300" />
-                    </span>
+            {/* 月度汇总卡:每种货币一块 */}
+            {summaries.map((s) => {
+              const sym = currencySymbol(s.currency)
+              return (
+                <div key={s.currency} className="mb-3 rounded-2xl bg-white p-4">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">
+                        本月支出{summaries.length > 1 && `(${s.currency})`}
+                      </p>
+                      <p className="mt-1 text-2xl font-bold">
+                        {sym}
+                        {fmtMoney(s.expense)}
+                      </p>
+                    </div>
+                    {s.income > 0 && (
+                      <p className="text-sm text-green-600">
+                        收入 +{sym}
+                        {fmtMoney(s.income)}
+                      </p>
+                    )}
                   </div>
 
-                  {/* 分类占比 */}
-                  <div className="mt-4 space-y-2">
-                    {summary.cats.map(([cat, amt]) => (
-                      <div key={cat} className="flex items-center gap-2 text-xs">
-                        <span className="w-14 shrink-0">
-                          {categoryIcon(cat)} {cat}
+                  {s.expense > 0 && (
+                    <>
+                      {/* 双方支出对比条 */}
+                      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className="bg-primary"
+                          style={{ width: `${(s.mineExpense / s.expense) * 100}%` }}
+                        />
+                      </div>
+                      <div className="mt-1.5 flex justify-between text-xs text-gray-400">
+                        <span>
+                          <span className="mr-1 inline-block h-2 w-2 rounded-full bg-primary" />
+                          {profile?.display_name ?? '我'} {sym}
+                          {fmtMoney(s.mineExpense)}
                         </span>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                          <div
-                            className="h-full rounded-full bg-primary opacity-70"
-                            style={{ width: `${(amt / summary.total) * 100}%` }}
-                          />
-                        </div>
-                        <span className="w-20 shrink-0 text-right text-gray-500">
-                          ¥{fmtMoney(amt)}
+                        <span>
+                          {partner?.display_name ?? 'TA'} {sym}
+                          {fmtMoney(s.expense - s.mineExpense)}
+                          <span className="ml-1 inline-block h-2 w-2 rounded-full bg-gray-300" />
                         </span>
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+
+                      {/* 共同 / 个人 */}
+                      <p className="mt-2 text-xs text-gray-400">
+                        👫 共同 {sym}
+                        {fmtMoney(s.sharedExpense)} · 🙋 个人 {sym}
+                        {fmtMoney(s.expense - s.sharedExpense)}
+                      </p>
+
+                      {/* 分类占比 */}
+                      <div className="mt-3 space-y-2">
+                        {s.cats.map(([cat, amt]) => (
+                          <div key={cat} className="flex items-center gap-2 text-xs">
+                            <span className="w-14 shrink-0">
+                              {categoryIcon(cat)} {cat}
+                            </span>
+                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                              <div
+                                className="h-full rounded-full bg-primary opacity-70"
+                                style={{ width: `${(amt / s.expense) * 100}%` }}
+                              />
+                            </div>
+                            <span className="w-20 shrink-0 text-right text-gray-500">
+                              {sym}
+                              {fmtMoney(amt)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
 
             {/* 按日流水 */}
             {expenses.length === 0 ? (
@@ -171,12 +245,13 @@ export default function Ledger() {
               groups.map(([day, list]) => (
                 <div key={day} className="mt-4">
                   <p className="mb-1.5 px-1 text-xs text-gray-400">
-                    {fmtDay(day)} · 共¥
-                    {fmtMoney(list.reduce((s, e) => s + Number(e.amount), 0))}
+                    {fmtDay(day)}
+                    {daySubtotal(list) && ` · 支出 ${daySubtotal(list)}`}
                   </p>
                   <div className="divide-y divide-line overflow-hidden rounded-2xl bg-white">
                     {list.map((e) => {
                       const mine = e.payer_id === userId
+                      const sym = currencySymbol(e.currency)
                       return (
                         <button
                           key={e.id}
@@ -187,12 +262,27 @@ export default function Ledger() {
                         >
                           <span className="text-xl">{categoryIcon(e.category)}</span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm">{e.note || e.category}</span>
+                            <span className="block truncate text-sm">
+                              {e.note || e.category}
+                              {e.scope === 'personal' && (
+                                <span className="ml-1.5 rounded bg-gray-100 px-1 py-0.5 text-[0.65rem] text-gray-400">
+                                  个人
+                                </span>
+                              )}
+                            </span>
                             <span className="block text-xs text-gray-400">
-                              {nameOf(e.payer_id)}付{mine && ' · 点击可修改'}
+                              {nameOf(e.payer_id)}
+                              {e.kind === 'income' ? '收' : '付'}
+                              {mine && ' · 点击可修改'}
                             </span>
                           </span>
-                          <span className="shrink-0 font-medium">¥{fmtMoney(Number(e.amount))}</span>
+                          <span
+                            className={`shrink-0 font-medium ${e.kind === 'income' ? 'text-green-600' : ''}`}
+                          >
+                            {e.kind === 'income' ? '+' : ''}
+                            {sym}
+                            {fmtMoney(Number(e.amount))}
+                          </span>
                         </button>
                       )
                     })}

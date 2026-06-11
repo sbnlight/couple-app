@@ -1,8 +1,11 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useMessages } from '../hooks/useMessages'
+import { useReadStatus } from '../hooks/useReadStatus'
 import MessageBubble from '../components/MessageBubble'
+import ChatPanel from '../components/ChatPanel'
+import ChatSearch from '../components/ChatSearch'
 
 /** 时间条文案:今天只显时分;昨天/今年/更早逐级加详 */
 function formatDivider(iso: string): string {
@@ -23,7 +26,7 @@ function formatDivider(iso: string): string {
 const DIVIDER_GAP = 5 * 60 * 1000
 
 export default function Chat() {
-  const { couple, session } = useAuth()
+  const { couple, session, partner } = useAuth()
   // 本页在 RequireCouple 守卫内,couple/session 必然存在
   const userId = session!.user.id
   const {
@@ -36,12 +39,35 @@ export default function Chat() {
     loadOlder,
     sendText,
     sendImage,
+    sendSticker,
     retrySend,
   } = useMessages(couple!.id, userId)
 
   const [draft, setDraft] = useState('')
   const [viewer, setViewer] = useState<string | null>(null)
   const [toast, setToast] = useState('')
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  // 本地已加载的最新服务端消息 id(作为自己的已读位置上报)
+  const latestServerId = useMemo(() => {
+    for (let i = items.length - 1; i >= 0; i--) {
+      const id = items[i].id
+      if (id !== undefined) return id
+    }
+    return 0
+  }, [items])
+
+  // 自己发出的最后一条已落库消息(只在它下面标「已读」)
+  const myLastKey = useMemo(() => {
+    for (let i = items.length - 1; i >= 0; i--) {
+      const it = items[i]
+      if (it.id !== undefined && it.senderId === userId) return it.key
+    }
+    return null
+  }, [items, userId])
+
+  const partnerReadId = useReadStatus(couple!.id, userId, latestServerId)
   const listRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   // 是否"贴在底部":贴底时新消息到达自动滚到底,翻历史时则不打扰
@@ -88,12 +114,25 @@ export default function Chat() {
     }
   }
 
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2500)
+  }
+
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-line bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
+      <header className="relative border-b border-line bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
         <h1 className="text-base font-semibold text-primary-dark">
           ❤ {couple?.name ?? '双人小屋'}
         </h1>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="absolute bottom-2.5 right-4 text-lg text-gray-400"
+          aria-label="查找聊天记录"
+        >
+          🔍
+        </button>
       </header>
 
       {/* 消息列表 */}
@@ -145,6 +184,11 @@ export default function Chat() {
                   <MessageBubble
                     item={item}
                     mine={item.senderId === userId}
+                    readLabel={
+                      item.key === myLastKey &&
+                      item.id !== undefined &&
+                      partnerReadId >= item.id
+                    }
                     onRetry={() => retrySend(item.key)}
                     onPreview={(url) => setViewer(url)}
                   />
@@ -174,7 +218,16 @@ export default function Chat() {
           maxLength={2000}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => setPanelOpen(false)}
         />
+        <button
+          type="button"
+          onClick={() => setPanelOpen(!panelOpen)}
+          className="text-2xl leading-none"
+          aria-label="表情"
+        >
+          {panelOpen ? '⌨️' : '😊'}
+        </button>
         <button
           type="submit"
           disabled={!draft.trim()}
@@ -183,6 +236,30 @@ export default function Chat() {
           发送
         </button>
       </form>
+
+      {/* 表情 / 表情包面板 */}
+      {panelOpen && (
+        <ChatPanel
+          coupleId={couple!.id}
+          userId={userId}
+          onEmoji={(e) => setDraft((d) => d + e)}
+          onSticker={(path) => {
+            stickRef.current = true
+            sendSticker(path)
+          }}
+          onToast={showToast}
+        />
+      )}
+
+      {/* 聊天记录查找 */}
+      {searchOpen && (
+        <ChatSearch
+          coupleId={couple!.id}
+          userId={userId}
+          partnerName={partner?.display_name ?? 'TA'}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
 
       {/* 隐藏的图片选择器 */}
       <input

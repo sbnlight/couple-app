@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Expense } from '../types/db'
 
-/** 六个固定分类(与 CLAUDE.md 一致) */
+/** 支出分类(与 CLAUDE.md 一致) */
 export const CATEGORIES = [
   { id: '餐饮', icon: '🍜' },
   { id: '交通', icon: '🚇' },
@@ -12,7 +12,42 @@ export const CATEGORIES = [
   { id: '其他', icon: '📦' },
 ] as const
 
-export const categoryIcon = (c: string) => CATEGORIES.find((x) => x.id === c)?.icon ?? '📦'
+/** 收入分类 */
+export const INCOME_CATEGORIES = [
+  { id: '工资', icon: '💼' },
+  { id: '兼职', icon: '🧰' },
+  { id: '理财', icon: '📈' },
+  { id: '红包', icon: '🧧' },
+  { id: '报销', icon: '🧾' },
+  { id: '其他', icon: '📦' },
+] as const
+
+export const categoryIcon = (c: string) =>
+  [...CATEGORIES, ...INCOME_CATEGORIES].find((x) => x.id === c)?.icon ?? '📦'
+
+/** 可选货币 */
+export const CURRENCIES = [
+  { code: 'CNY', symbol: '¥', label: '人民币' },
+  { code: 'USD', symbol: '$', label: '美元' },
+  { code: 'EUR', symbol: '€', label: '欧元' },
+  { code: 'JPY', symbol: 'JP¥', label: '日元' },
+  { code: 'GBP', symbol: '£', label: '英镑' },
+] as const
+
+export const currencySymbol = (code: string) =>
+  CURRENCIES.find((c) => c.code === code)?.symbol ?? code
+
+const CURRENCY_KEY = 'pref-currency'
+
+/** 本机默认货币:记一笔时选了什么,下次默认就是什么 */
+export function getDefaultCurrency(): string {
+  const v = localStorage.getItem(CURRENCY_KEY)
+  return CURRENCIES.some((c) => c.code === v) ? (v as string) : 'CNY'
+}
+
+export function saveDefaultCurrency(code: string) {
+  localStorage.setItem(CURRENCY_KEY, code)
+}
 
 /** 新增/编辑一笔的表单数据 */
 export interface ExpenseInput {
@@ -20,6 +55,9 @@ export interface ExpenseInput {
   category: string
   note: string
   spent_at: string
+  currency: string
+  kind: 'expense' | 'income'
+  scope: 'shared' | 'personal'
 }
 
 /** 'YYYY-MM' → 该月起止(查询用半开区间) */
@@ -79,6 +117,9 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
         category: input.category,
         note: input.note || null,
         spent_at: input.spent_at,
+        currency: input.currency,
+        kind: input.kind,
+        scope: input.scope,
       })
       if (err) throw err
       await load()
@@ -96,6 +137,9 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
           category: input.category,
           note: input.note || null,
           spent_at: input.spent_at,
+          currency: input.currency,
+          kind: input.kind,
+          scope: input.scope,
         })
         .eq('id', id)
       if (err) throw err
