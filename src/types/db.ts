@@ -25,6 +25,8 @@ export interface Message {
   type: 'text' | 'image'
   /** 文本内容,或 Storage 图片路径 */
   content: string
+  /** 客户端生成的幂等键,用于发送重试时去重 */
+  client_id: string | null
   created_at: string
 }
 

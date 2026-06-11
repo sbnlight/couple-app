@@ -1,0 +1,357 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { compressImage } from '../lib/image'
+import type { Message } from '../types/db'
+
+const PAGE_SIZE = 50
+
+/**
+ * 聊天列表里的一条(服务端消息与本地待发消息的统一形态)。
+ * status:sent=服务端已确认 / sending=发送中 / failed=失败等待手动重试
+ */
+export interface ChatItem {
+  key: string
+  id?: number
+  type: 'text' | 'image'
+  /** 文本内容,或图片在 Storage 中的路径 */
+  content: string
+  senderId: string
+  createdAt: string
+  status: 'sent' | 'sending' | 'failed'
+  /** 待发送图片的本地预览地址(object URL) */
+  previewUrl?: string
+}
+
+/** 本地待发队列里的一条 */
+interface PendingMsg {
+  localId: string
+  type: 'text' | 'image'
+  /** 文本内容;图片为上传成功后的路径(未上传时为空串) */
+  content: string
+  createdAt: string
+  status: 'sending' | 'failed'
+  blob?: Blob
+  previewUrl?: string
+}
+
+const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
+
+/**
+ * 把待发的文本消息持久化到本地,杀掉 App 重开也不丢
+ * (图片的 Blob 无法序列化,不做持久化;恢复时一律标记为 failed 等待手动重试)
+ */
+function savePending(coupleId: string, list: PendingMsg[]) {
+  const texts = list
+    .filter((p) => p.type === 'text')
+    .map(({ localId, type, content, createdAt }) => ({ localId, type, content, createdAt }))
+  try {
+    localStorage.setItem(pendingKey(coupleId), JSON.stringify(texts))
+  } catch {
+    // 存储满等异常不影响发送流程
+  }
+}
+
+function loadPending(coupleId: string): PendingMsg[] {
+  try {
+    const raw = localStorage.getItem(pendingKey(coupleId))
+    if (!raw) return []
+    const arr = JSON.parse(raw) as Omit<PendingMsg, 'status'>[]
+    return arr.map((p) => ({ ...p, status: 'failed' as const }))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 聊天数据流核心 Hook(弱网容错设计见 DESIGN.md 4.2):
+ * - 服务端数据库是唯一事实来源,Realtime 推送只是加速通知
+ * - 重连/回前台/网络恢复时按本地最大 id 增量补拉
+ * - 发送走乐观更新 + 自动指数退避重试;重试前先按 client_id 查重,绝不产生重复消息
+ */
+export function useMessages(coupleId: string, userId: string) {
+  const [serverMsgs, setServerMsgs] = useState<Message[]>([])
+  const [pending, setPending] = useState<PendingMsg[]>(() => loadPending(coupleId))
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [initialError, setInitialError] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+
+  // ref 镜像,供回调里读取最新值,避免闭包过期
+  const serverRef = useRef<Message[]>([])
+  const pendingRef = useRef<PendingMsg[]>(pending)
+  const maxIdRef = useRef(0)
+  useEffect(() => {
+    pendingRef.current = pending
+  }, [pending])
+
+  /** 合并服务端消息:按 id 去重排序;命中待发队列 client_id 的一并移除 */
+  const mergeServer = useCallback(
+    (rows: Message[]) => {
+      if (rows.length === 0) return
+      setServerMsgs((prev) => {
+        const map = new Map(prev.map((m) => [m.id, m]))
+        for (const r of rows) map.set(r.id, r)
+        const merged = [...map.values()].sort((a, b) => a.id - b.id)
+        serverRef.current = merged
+        maxIdRef.current = merged.length > 0 ? merged[merged.length - 1].id : 0
+        return merged
+      })
+      const clientIds = new Set(rows.map((r) => r.client_id).filter(Boolean))
+      if (clientIds.size > 0) {
+        setPending((prev) => {
+          const next = prev.filter((p) => !clientIds.has(p.localId))
+          if (next.length !== prev.length) savePending(coupleId, next)
+          return next
+        })
+      }
+    },
+    [coupleId],
+  )
+
+  /** 首次加载:最近 50 条 */
+  const loadInitial = useCallback(async () => {
+    setLoadingInitial(true)
+    setInitialError(false)
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('couple_id', coupleId)
+      .order('id', { ascending: false })
+      .limit(PAGE_SIZE)
+    if (error) {
+      setInitialError(true)
+      setLoadingInitial(false)
+      return
+    }
+    const rows = (data as Message[]).slice().reverse()
+    mergeServer(rows)
+    setHasMore((data as Message[]).length === PAGE_SIZE)
+    setLoadingInitial(false)
+  }, [coupleId, mergeServer])
+
+  /** 向上翻页:加载更早的消息 */
+  const loadOlder = useCallback(async () => {
+    const oldest = serverRef.current[0]?.id
+    if (!oldest || loadingOlder) return
+    setLoadingOlder(true)
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('couple_id', coupleId)
+      .lt('id', oldest)
+      .order('id', { ascending: false })
+      .limit(PAGE_SIZE)
+    if (!error && data) {
+      mergeServer((data as Message[]).slice().reverse())
+      setHasMore((data as Message[]).length === PAGE_SIZE)
+    }
+    setLoadingOlder(false)
+  }, [coupleId, mergeServer, loadingOlder])
+
+  /** 增量补拉:取本地最大 id 之后的所有消息(Realtime 丢推的兜底) */
+  const catchUp = useCallback(async () => {
+    const since = maxIdRef.current
+    if (since === 0) return
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('couple_id', coupleId)
+      .gt('id', since)
+      .order('id', { ascending: true })
+      .limit(200)
+    if (!error && data && data.length > 0) mergeServer(data as Message[])
+  }, [coupleId, mergeServer])
+
+  useEffect(() => {
+    void loadInitial()
+  }, [loadInitial])
+
+  // Realtime 订阅新消息;每次(重)连成功都补拉一次错过的
+  useEffect(() => {
+    const channel = supabase
+      .channel(`messages-${coupleId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `couple_id=eq.${coupleId}`,
+        },
+        (payload) => mergeServer([payload.new as Message]),
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') void catchUp()
+      })
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [coupleId, mergeServer, catchUp])
+
+  // 回到前台 / 网络恢复时补拉
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) void catchUp()
+    }
+    const onOnline = () => void catchUp()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onOnline)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [catchUp])
+
+  /**
+   * 投递一条待发消息:自动重试 3 次(0s/1s/2s 指数退避)。
+   * 每次尝试都先按 client_id 查重——上次"超时但实际已写入"时直接复用服务端行。
+   */
+  const attemptSend = useCallback(
+    async (msg: PendingMsg) => {
+      setPending((prev) =>
+        prev.map((x) => (x.localId === msg.localId ? { ...x, status: 'sending' as const } : x)),
+      )
+      let content = msg.content
+      const delays = [0, 1000, 2000]
+      for (const delay of delays) {
+        if (delay > 0) await new Promise((r) => setTimeout(r, delay))
+        try {
+          // 图片:先上传文件(重试时已传过则跳过)
+          if (msg.type === 'image' && content === '') {
+            if (!msg.blob) throw Object.assign(new Error('图片数据已丢失'), { fatal: true })
+            const path = `${coupleId}/${msg.localId}.jpg`
+            const { error: upErr } = await supabase.storage
+              .from('chat-images')
+              .upload(path, msg.blob, { contentType: 'image/jpeg', upsert: true })
+            if (upErr) throw upErr
+            content = path
+            setPending((prev) =>
+              prev.map((x) => (x.localId === msg.localId ? { ...x, content: path } : x)),
+            )
+          }
+
+          // 查重:client_id 命中说明早已落库
+          const { data: existing } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('client_id', msg.localId)
+            .maybeSingle()
+          let row = existing as Message | null
+          if (!row) {
+            const { data, error } = await supabase
+              .from('messages')
+              .insert({
+                couple_id: coupleId,
+                sender_id: userId,
+                type: msg.type,
+                content,
+                client_id: msg.localId,
+              })
+              .select()
+              .single()
+            if (error) throw error
+            row = data as Message
+          }
+          mergeServer([row]) // 同时会把这条从待发队列移除
+          return
+        } catch (err) {
+          if ((err as { fatal?: boolean }).fatal) break
+        }
+      }
+      // 自动重试均失败 → 标记失败,等用户点击重试(绝不静默丢弃)
+      setPending((prev) => {
+        const next = prev.map((x) =>
+          x.localId === msg.localId ? { ...x, status: 'failed' as const } : x,
+        )
+        savePending(coupleId, next)
+        return next
+      })
+    },
+    [coupleId, userId, mergeServer],
+  )
+
+  /** 发送文本消息(乐观更新:立即上屏,后台投递) */
+  const sendText = useCallback(
+    (text: string) => {
+      const t = text.trim()
+      if (!t) return
+      const p: PendingMsg = {
+        localId: crypto.randomUUID(),
+        type: 'text',
+        content: t,
+        createdAt: new Date().toISOString(),
+        status: 'sending',
+      }
+      setPending((prev) => {
+        const next = [...prev, p]
+        savePending(coupleId, next)
+        return next
+      })
+      void attemptSend(p)
+    },
+    [coupleId, attemptSend],
+  )
+
+  /** 发送图片消息:压缩 → 占位上屏 → 上传 + 落库 */
+  const sendImage = useCallback(
+    async (file: File) => {
+      const blob = await compressImage(file, 1280, 0.8) // 失败会抛错,由页面提示
+      const p: PendingMsg = {
+        localId: crypto.randomUUID(),
+        type: 'image',
+        content: '',
+        createdAt: new Date().toISOString(),
+        status: 'sending',
+        blob,
+        previewUrl: URL.createObjectURL(blob),
+      }
+      setPending((prev) => [...prev, p])
+      void attemptSend(p)
+    },
+    [attemptSend],
+  )
+
+  /** 手动重试一条失败的消息 */
+  const retrySend = useCallback(
+    (localId: string) => {
+      const p = pendingRef.current.find((x) => x.localId === localId)
+      if (p && p.status === 'failed') void attemptSend(p)
+    },
+    [attemptSend],
+  )
+
+  // 输出统一形态:服务端消息在前,本地待发(更新)在后
+  const items: ChatItem[] = [
+    ...serverMsgs.map((m) => ({
+      key: `s-${m.id}`,
+      id: m.id,
+      type: m.type,
+      content: m.content,
+      senderId: m.sender_id,
+      createdAt: m.created_at,
+      status: 'sent' as const,
+    })),
+    ...pending.map((p) => ({
+      key: p.localId,
+      type: p.type,
+      content: p.content,
+      senderId: userId,
+      createdAt: p.createdAt,
+      status: p.status,
+      previewUrl: p.previewUrl,
+    })),
+  ]
+
+  return {
+    items,
+    loadingInitial,
+    initialError,
+    reload: loadInitial,
+    hasMore,
+    loadingOlder,
+    loadOlder,
+    sendText,
+    sendImage,
+    retrySend,
+  }
+}
