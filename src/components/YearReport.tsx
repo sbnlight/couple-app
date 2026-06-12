@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { currencySymbol } from '../hooks/useExpenses'
 import { prevUtcDay } from '../lib/time'
+import { t } from '../lib/i18n'
 
 interface Stats {
   days: number
@@ -184,7 +185,7 @@ export default function YearReport({
       {!stats ? (
         <div className={slide}>
           <span className="animate-pulse text-4xl">📊</span>
-          <p className={label}>正在为你们整理这一年…</p>
+          <p className={label}>{t('正在为你们整理这一年…')}</p>
         </div>
       ) : (
         <>
@@ -194,12 +195,9 @@ export default function YearReport({
             style={{ background: 'linear-gradient(165deg, #fff1f2, #ffe4e6 55%, #fce7f3)' }}
           >
             <span className="text-6xl">❤️</span>
-            <p className="text-3xl font-bold text-primary-dark">我们的 {year}</p>
-            <p className={label}>
-              这是我们在一起的第{' '}
-              <span className="font-semibold text-primary-dark">{stats.days}</span> 天
-            </p>
-            <p className="mt-8 animate-bounce text-xs text-gray-400">上滑查看 ↓</p>
+            <p className="text-3xl font-bold text-primary-dark">{t('我们的 {y}', { y: year })}</p>
+            <p className={label}>{t('这是我们在一起的第 {n} 天', { n: stats.days })}</p>
+            <p className="mt-8 animate-bounce text-xs text-gray-400">{t('上滑查看 ↓')}</p>
           </section>
 
           {/* 聊天 */}
@@ -207,18 +205,23 @@ export default function YearReport({
             className={slide}
             style={{ background: 'linear-gradient(165deg, #fef3c7, #ffe4e6)' }}
           >
-            <p className={label}>这一年,我们说了</p>
+            <p className={label}>{t('这一年,我们说了')}</p>
             <p className={big}>{stats.msgsTotal}</p>
             <p className={label}>
-              条悄悄话
+              {t('条悄悄话')}
               <br />
-              {myName} {stats.msgsMine} 条 · {partnerName} {msgsTheirs} 条
+              {t('{me} {a} 条 · {ta} {b} 条', {
+                me: myName,
+                a: stats.msgsMine,
+                ta: partnerName,
+                b: msgsTheirs,
+              })}
               <br />
-              还有 {stats.imgs} 张照片的瞬间
+              {t('还有 {n} 张照片的瞬间', { n: stats.imgs })}
             </p>
             {talker && (
               <p className="rounded-full bg-white/70 px-4 py-1.5 text-sm text-primary-dark">
-                🏆 年度话痨担当:{talker}
+                {t('🏆 年度话痨担当:{name}', { name: talker })}
               </p>
             )}
           </section>
@@ -228,16 +231,27 @@ export default function YearReport({
             className={slide}
             style={{ background: 'linear-gradient(165deg, #e0f2fe, #fce7f3)' }}
           >
-            <p className={label}>想念发生了</p>
+            <p className={label}>{t('想念发生了')}</p>
             <p className={big}>{stats.missMine + stats.missTheirs}</p>
             <p className={label}>
-              次<br />
-              {myName}想了 {stats.missMine} 次 · {partnerName}想了 {stats.missTheirs} 次
+              {t('次')}
+              <br />
+              {t('{me}想了 {a} 次 · {ta}想了 {b} 次', {
+                me: myName,
+                a: stats.missMine,
+                ta: partnerName,
+                b: stats.missTheirs,
+              })}
             </p>
             <p className={label}>
-              打卡共 {stats.checkinsTotal} 天
+              {t('打卡共 {n} 天', { n: stats.checkinsTotal })}
               <br />
-              最长连续:{myName} {stats.streakMine} 天 · {partnerName} {stats.streakTheirs} 天
+              {t('最长连续:{me} {a} 天 · {ta} {b} 天', {
+                me: myName,
+                a: stats.streakMine,
+                ta: partnerName,
+                b: stats.streakTheirs,
+              })}
             </p>
           </section>
 
@@ -246,18 +260,18 @@ export default function YearReport({
             className={slide}
             style={{ background: 'linear-gradient(165deg, #dcfce7, #fef9c3)' }}
           >
-            <p className={label}>我们一起记下了</p>
+            <p className={label}>{t('我们一起记下了')}</p>
             <p className={big}>{stats.expenseCount}</p>
             <p className={label}>
-              笔生活的痕迹
+              {t('笔生活的痕迹')}
               <br />
               {stats.expense.size > 0 && (
                 <>
-                  支出 {fmtMoneyMap(stats.expense)}
+                  {t('支出 {s}', { s: fmtMoneyMap(stats.expense) })}
                   <br />
                 </>
               )}
-              {stats.income.size > 0 && <>收入 {fmtMoneyMap(stats.income)}</>}
+              {stats.income.size > 0 && <>{t('收入 {s}', { s: fmtMoneyMap(stats.income) })}</>}
             </p>
           </section>
 
@@ -268,16 +282,12 @@ export default function YearReport({
           >
             <span className="text-5xl">🌠</span>
             <p className={label}>
-              愿望清单实现了{' '}
-              <span className="font-semibold text-primary-dark">
-                {stats.wishesDone}/{stats.wishesTotal}
-              </span>{' '}
-              个
+              {t('愿望清单实现了 {a}/{b} 个', { a: stats.wishesDone, b: stats.wishesTotal })}
               <br />
-              留下了 {stats.notes} 张小纸条
+              {t('留下了 {n} 张小纸条', { n: stats.notes })}
             </p>
             <p className="mt-6 text-lg font-semibold text-primary-dark">
-              新的一年,继续把日子过成诗 ❤
+              {t('新的一年,继续把日子过成诗 ❤')}
             </p>
           </section>
         </>

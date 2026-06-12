@@ -7,6 +7,7 @@ import { questionForDate } from '../lib/questions'
 import { utcToday } from '../lib/time'
 import { fireEffect } from '../lib/effects'
 import type { DailyAnswer } from '../types/db'
+import { t } from '../lib/i18n'
 
 /** 回答里附的图片(私有桶签名 URL) */
 function QAImage({ path, onPreview }: { path: string; onPreview: (url: string) => void }) {
@@ -193,21 +194,21 @@ export default function DailyQA({
         <button type="button" onClick={onClose} className="px-1 text-2xl text-gray-400">
           ‹
         </button>
-        <h1 className="text-base font-semibold text-primary-dark">每日一问</h1>
+        <h1 className="text-base font-semibold text-primary-dark">{t('每日一问')}</h1>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* 今日问题 */}
         <div className="rounded-2xl bg-white p-5">
-          <p className="text-xs text-gray-400">今日问题 · {today}</p>
+          <p className="text-xs text-gray-400">{t('今日问题 · {d}', { d: today })}</p>
           <p className="mt-2 text-base font-medium leading-relaxed">{question}</p>
 
           {loading ? (
-            <p className="mt-4 text-sm text-gray-300">加载中…</p>
+            <p className="mt-4 text-sm text-gray-300">{t('加载中…')}</p>
           ) : mine && !editing ? (
             <>
               <div className="mt-4 rounded-xl bg-soft p-3">
-                <p className="text-xs text-gray-400">我的回答</p>
+                <p className="text-xs text-gray-400">{t('我的回答')}</p>
                 {renderAnswer(mine)}
                 <button
                   type="button"
@@ -217,15 +218,15 @@ export default function DailyQA({
                     setEditing(true)
                   }}
                 >
-                  修改
+                  {t('修改')}
                 </button>
               </div>
               <div className="mt-3 rounded-xl bg-gray-50 p-3">
-                <p className="text-xs text-gray-400">{partnerName}的回答</p>
+                <p className="text-xs text-gray-400">{t('{name}的回答', { name: partnerName })}</p>
                 {theirs ? (
                   renderAnswer(theirs)
                 ) : (
-                  <p className="mt-1 text-sm text-gray-300">TA 还没回答,耐心等等~</p>
+                  <p className="mt-1 text-sm text-gray-300">{t('TA 还没回答,耐心等等~')}</p>
                 )}
               </div>
             </>
@@ -235,7 +236,7 @@ export default function DailyQA({
                 className="input w-full resize-none"
                 rows={3}
                 maxLength={500}
-                placeholder="写下你的回答…(也可以只发一张图)"
+                placeholder={t('写下你的回答…(也可以只发一张图)')}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
               />
@@ -271,20 +272,20 @@ export default function DailyQA({
                 )}
               </div>
               {editing && (mine?.image_paths?.length ?? 0) > 0 && imgs.length === 0 && (
-                <p className="mt-1 text-xs text-gray-300">(保留原配图;选了新图则整组替换)</p>
+                <p className="mt-1 text-xs text-gray-300">{t('(保留原配图;选了新图则整组替换)')}</p>
               )}
 
               <p className="mt-2 text-xs text-gray-400">
                 {theyAnswered
-                  ? `${partnerName}已经回答了,写下你的答案就能看到 👀`
-                  : `${partnerName}还没回答;你答完后,TA 的答案一出来就能看到`}
+                  ? t('{name}已经回答了,写下你的答案就能看到 👀', { name: partnerName })
+                  : t('{name}还没回答;你答完后,TA 的答案一出来就能看到', { name: partnerName })}
               </p>
               <button
                 type="submit"
                 disabled={busy || (!draft.trim() && imgs.length === 0)}
                 className="btn-primary mt-3 w-full"
               >
-                {busy ? '提交中…' : editing ? '保存修改' : '提交回答'}
+                {busy ? t('提交中…') : editing ? t('保存修改') : t('提交回答')}
               </button>
             </form>
           )}
@@ -293,7 +294,7 @@ export default function DailyQA({
         {/* 往期回顾 */}
         {historyByDate.size > 0 && (
           <div className="mt-4">
-            <p className="mb-2 px-1 text-xs text-gray-400">往期回顾</p>
+            <p className="mb-2 px-1 text-xs text-gray-400">{t('往期回顾')}</p>
             {[...historyByDate.entries()].map(([date, answers]) => (
               <div key={date} className="mb-3 rounded-2xl bg-white p-4">
                 <p className="text-xs text-gray-400">{date}</p>
@@ -301,7 +302,7 @@ export default function DailyQA({
                 {answers.map((a) => (
                   <div key={a.id} className="mt-2 text-sm">
                     <span className="text-gray-400">
-                      {a.user_id === userId ? '我' : partnerName}:
+                      {a.user_id === userId ? t('我') : partnerName}:
                     </span>
                     {a.content}
                     {a.image_paths && a.image_paths.length > 0 && (
