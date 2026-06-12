@@ -33,11 +33,14 @@ export default function ChatSearch({
   coupleId,
   userId,
   partnerName,
+  onLocate,
   onClose,
 }: {
   coupleId: string
   userId: string
   partnerName: string
+  /** 点击结果:回到聊天并定位到该条消息 */
+  onLocate: (id: number) => void
   onClose: () => void
 }) {
   const [keyword, setKeyword] = useState('')
@@ -207,19 +210,34 @@ export default function ChatSearch({
           <>
             <div className="divide-y divide-line overflow-hidden rounded-2xl bg-white">
               {results.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => void openContext(m)}
-                  className="block w-full px-4 py-3 text-left active:bg-soft"
-                >
-                  <p className="text-xs text-gray-400">
-                    {senderName(m.sender_id)} · {fmtTime(m.created_at)}
-                  </p>
-                  <p className="mt-0.5 truncate text-sm">
-                    {m.type === 'text' ? m.content : m.type === 'image' ? '🖼 [图片]' : '⭐ [表情包]'}
-                  </p>
-                </button>
+                <div key={m.id} className="flex items-center">
+                  {/* 点击整行:直接定位到聊天中的这条消息 */}
+                  <button
+                    type="button"
+                    onClick={() => onLocate(m.id)}
+                    className="block min-w-0 flex-1 px-4 py-3 text-left active:bg-soft"
+                  >
+                    <p className="text-xs text-gray-400">
+                      {senderName(m.sender_id)} · {fmtTime(m.created_at)}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm">
+                      {m.recalled
+                        ? '(已撤回)'
+                        : m.type === 'text'
+                          ? m.content
+                          : m.type === 'image'
+                            ? '🖼 [图片]'
+                            : '⭐ [表情包]'}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void openContext(m)}
+                    className="shrink-0 px-3 py-3 text-xs text-gray-400"
+                  >
+                    上下文
+                  </button>
+                </div>
               ))}
             </div>
             {hasMore && (

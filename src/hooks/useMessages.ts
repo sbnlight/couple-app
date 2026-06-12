@@ -20,6 +20,8 @@ export interface ChatItem {
   status: 'sent' | 'sending' | 'failed'
   /** 待发送图片的本地预览地址(object URL) */
   previewUrl?: string
+  /** 已撤回 */
+  recalled?: boolean
 }
 
 /** 本地待发队列里的一条 */
@@ -75,6 +77,15 @@ export function useMessages(coupleId: string, userId: string) {
   const [initialError, setInitialError] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
+  // live=跟随最新;history=从搜索定位进入的历史浏览(此时暂停实时合并)
+  const [mode, setMode] = useState<'live' | 'history'>('live')
+  const [hasNewer, setHasNewer] = useState(false)
+  const modeRef = useRef<'live' | 'history'>('live')
+
+  const switchMode = (m: 'live' | 'history') => {
+    modeRef.current = m
+    setMode(m)
+  }
 
   // ref 镜像,供回调里读取最新值,避免闭包过期
   const serverRef = useRef<Message[]>([])
@@ -148,8 +159,19 @@ export function useMessages(coupleId: string, userId: string) {
     setLoadingOlder(false)
   }, [coupleId, mergeServer, loadingOlder])
 
+  /** 已加载消息的就地更新(撤回等场景) */
+  const mergeUpdate = useCallback((row: Message) => {
+    setServerMsgs((prev) => {
+      if (!prev.some((m) => m.id === row.id)) return prev
+      const next = prev.map((m) => (m.id === row.id ? row : m))
+      serverRef.current = next
+      return next
+    })
+  }, [])
+
   /** 增量补拉:取本地最大 id 之后的所有消息(Realtime 丢推的兜底) */
   const catchUp = useCallback(async () => {
+    if (modeRef.current !== 'live') return
     const since = maxIdRef.current
     if (since === 0) return
     const { data, error } = await supabase
@@ -178,7 +200,24 @@ export function useMessages(coupleId: string, userId: string) {
           table: 'messages',
           filter: `couple_id=eq.${coupleId}`,
         },
-        (payload) => mergeServer([payload.new as Message]),
+        (payload) => {
+          // 历史浏览中不并入新消息,只点亮"有更新"的提示
+          if (modeRef.current !== 'live') {
+            setHasNewer(true)
+            return
+          }
+          mergeServer([payload.new as Message])
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `couple_id=eq.${coupleId}`,
+        },
+        (payload) => mergeUpdate(payload.new as Message),
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') void catchUp()
@@ -340,6 +379,80 @@ export function useMessages(coupleId: string, userId: string) {
     [attemptSend],
   )
 
+  /** 撤回自己的消息(服务端校验:仅本人、2 分钟内) */
+  const recallMessage = useCallback(
+    async (id: number) => {
+      const { error } = await supabase.rpc('recall_message', { mid: id })
+      if (error) throw error
+      const row = serverRef.current.find((m) => m.id === id)
+      if (row) mergeUpdate({ ...row, recalled: true, content: '' })
+    },
+    [mergeUpdate],
+  )
+
+  /** 定位到某条历史消息:加载它前后各 25 条,进入历史浏览模式 */
+  const jumpTo = useCallback(
+    async (targetId: number) => {
+      const [beforeRes, afterRes] = await Promise.all([
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('couple_id', coupleId)
+          .lte('id', targetId)
+          .order('id', { ascending: false })
+          .limit(25),
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('couple_id', coupleId)
+          .gt('id', targetId)
+          .order('id', { ascending: true })
+          .limit(25),
+      ])
+      if (beforeRes.error || afterRes.error) return false
+      const before = (beforeRes.data as Message[]).slice().reverse()
+      const after = (afterRes.data as Message[]) ?? []
+      const win = [...before, ...after]
+      serverRef.current = win
+      maxIdRef.current = win.length > 0 ? win[win.length - 1].id : 0
+      setServerMsgs(win)
+      setHasMore(before.length === 25)
+      const newerFull = after.length === 25
+      setHasNewer(newerFull)
+      switchMode(newerFull ? 'history' : 'live')
+      return true
+    },
+    [coupleId],
+  )
+
+  /** 历史浏览中向下翻页(更新的消息);翻到头自动回到 live */
+  const loadNewer = useCallback(async () => {
+    const since = maxIdRef.current
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('couple_id', coupleId)
+      .gt('id', since)
+      .order('id', { ascending: true })
+      .limit(50)
+    if (error || !data) return
+    mergeServer(data as Message[])
+    if ((data as Message[]).length < 50) {
+      setHasNewer(false)
+      switchMode('live')
+    }
+  }, [coupleId, mergeServer])
+
+  /** 一键回到最新对话 */
+  const backToLatest = useCallback(async () => {
+    switchMode('live')
+    setHasNewer(false)
+    serverRef.current = []
+    maxIdRef.current = 0
+    setServerMsgs([])
+    await loadInitial()
+  }, [loadInitial])
+
   // 输出统一形态:服务端消息在前,本地待发(更新)在后
   const items: ChatItem[] = [
     ...serverMsgs.map((m) => ({
@@ -350,6 +463,7 @@ export function useMessages(coupleId: string, userId: string) {
       senderId: m.sender_id,
       createdAt: m.created_at,
       status: 'sent' as const,
+      recalled: m.recalled,
     })),
     ...pending.map((p) => ({
       key: p.localId,
@@ -374,5 +488,11 @@ export function useMessages(coupleId: string, userId: string) {
     sendImage,
     sendSticker,
     retrySend,
+    recallMessage,
+    mode,
+    hasNewer,
+    jumpTo,
+    loadNewer,
+    backToLatest,
   }
 }
