@@ -26,6 +26,7 @@ export default function Login() {
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [password2, setPassword2] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -56,6 +57,10 @@ export default function Login() {
     setNotice('')
     if (mode === 'signup' && !displayName.trim()) {
       setError('给自己起个昵称吧')
+      return
+    }
+    if (mode === 'signup' && password !== password2) {
+      setError('两次输入的密码不一致,请检查')
       return
     }
     setSubmitting(true)
@@ -135,6 +140,18 @@ export default function Login() {
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+          />
+        )}
+        {mode === 'signup' && (
+          <input
+            className="input"
+            type="password"
+            placeholder="再输入一次密码确认"
+            required
+            minLength={6}
+            autoComplete="new-password"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
           />
         )}
 

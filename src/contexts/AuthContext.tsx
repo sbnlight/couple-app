@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { deviceTimezone } from '../lib/time'
 import type { Couple, Profile } from '../types/db'
 
 /**
@@ -62,6 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ])
     const p = (profileRes.data as Profile | null) ?? null
     const c = (coupleRes.data as Couple | null) ?? null
+
+    // 设备时区变了(出差/旅行)就自动同步到个人资料,对方看到的"当地时间"随之更新
+    const tz = deviceTimezone()
+    if (p && tz && p.timezone !== tz) {
+      p.timezone = tz
+      void supabase.from('profiles').update({ timezone: tz }).eq('id', uid)
+    }
+
     setProfile(p)
     setCouple(c)
 

@@ -1,0 +1,153 @@
+import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { prevUtcDay, utcToday } from '../lib/time'
+import type { Checkin } from '../types/db'
+
+/** 从打卡日期集合算连续天数(今天没打就从昨天往前数) */
+function streakOf(days: Set<string>): number {
+  let cur = utcToday()
+  if (!days.has(cur)) cur = prevUtcDay(cur)
+  let n = 0
+  while (days.has(cur)) {
+    n++
+    cur = prevUtcDay(cur)
+  }
+  return n
+}
+
+/**
+ * 「今日小互动」卡片:想你按钮(当日互相计数)+ 每日打卡(连续天数)。
+ * "今天"统一按 UTC 日期,保证异地两人一致。
+ */
+export default function MomentsCard({
+  coupleId,
+  userId,
+  partnerName,
+  onToast,
+}: {
+  coupleId: string
+  userId: string
+  partnerName: string
+  onToast: (msg: string) => void
+}) {
+  const [missMine, setMissMine] = useState(0)
+  const [missTheirs, setMissTheirs] = useState(0)
+  const [checkedToday, setCheckedToday] = useState(false)
+  const [theirCheckedToday, setTheirCheckedToday] = useState(false)
+  const [streakMine, setStreakMine] = useState(0)
+  const [streakTheirs, setStreakTheirs] = useState(0)
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(async () => {
+    const today = utcToday()
+    const [missRes, checkRes] = await Promise.all([
+      supabase
+        .from('misses')
+        .select('user_id')
+        .eq('couple_id', coupleId)
+        .gte('created_at', `${today}T00:00:00Z`),
+      // 取最近 120 天的打卡记录用于算连续天数
+      supabase
+        .from('checkins')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .order('day', { ascending: false })
+        .limit(240),
+    ])
+    if (missRes.data) {
+      const rows = missRes.data as { user_id: string }[]
+      setMissMine(rows.filter((r) => r.user_id === userId).length)
+      setMissTheirs(rows.filter((r) => r.user_id !== userId).length)
+    }
+    if (checkRes.data) {
+      const rows = checkRes.data as Checkin[]
+      const mine = new Set(rows.filter((r) => r.user_id === userId).map((r) => r.day))
+      const theirs = new Set(rows.filter((r) => r.user_id !== userId).map((r) => r.day))
+      setCheckedToday(mine.has(today))
+      setTheirCheckedToday(theirs.has(today))
+      setStreakMine(streakOf(mine))
+      setStreakTheirs(streakOf(theirs))
+    }
+  }, [coupleId, userId])
+
+  useEffect(() => {
+    void load()
+    const onVisible = () => {
+      if (!document.hidden) void load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [load])
+
+  /** 想你 +1 */
+  const handleMiss = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const { error } = await supabase
+        .from('misses')
+        .insert({ couple_id: coupleId, user_id: userId })
+      if (error) throw error
+      setMissMine((n) => n + 1)
+      onToast('已经告诉 TA 你在想 TA 了 💭')
+    } catch {
+      onToast('网络不太好,再试一次')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 今日打卡 */
+  const handleCheckin = async () => {
+    if (busy || checkedToday) return
+    setBusy(true)
+    try {
+      const { error } = await supabase
+        .from('checkins')
+        .insert({ couple_id: coupleId, user_id: userId, day: utcToday() })
+      if (error) throw error
+      await load()
+      onToast('打卡成功 ✅')
+    } catch {
+      onToast('网络不太好,再试一次')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl bg-white p-5">
+      <p className="text-sm font-medium text-gray-500">今日小互动</p>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => void handleMiss()}
+          disabled={busy}
+          className="rounded-xl bg-soft py-3 text-center active:opacity-70 disabled:opacity-50"
+        >
+          <span className="block text-2xl">💭</span>
+          <span className="mt-1 block text-sm font-medium text-primary-dark">想 TA</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleCheckin()}
+          disabled={busy || checkedToday}
+          className={`rounded-xl py-3 text-center active:opacity-70 ${
+            checkedToday ? 'bg-gray-100' : 'bg-soft'
+          }`}
+        >
+          <span className="block text-2xl">{checkedToday ? '✅' : '📍'}</span>
+          <span className="mt-1 block text-sm font-medium text-primary-dark">
+            {checkedToday ? '今日已打卡' : '每日打卡'}
+          </span>
+        </button>
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-gray-400">
+        今天:你想了 TA {missMine} 次,{partnerName}想了你 {missTheirs} 次
+        <br />
+        打卡:你已连续 {streakMine} 天,{partnerName}已连续 {streakTheirs} 天
+        {theirCheckedToday && ' · TA 今天已打卡'}
+      </p>
+    </div>
+  )
+}

@@ -3,7 +3,15 @@ import type { ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { compressImage } from '../lib/image'
+import { daysUntil } from '../lib/time'
+import { useAnniversaries } from '../hooks/useAnniversaries'
 import Avatar from '../components/Avatar'
+import PartnerClock from '../components/PartnerClock'
+import MomentsCard from '../components/MomentsCard'
+import AnniversaryManager from '../components/AnniversaryManager'
+import DailyQA from '../components/DailyQA'
+import WishList from '../components/WishList'
+import NotesPage from '../components/NotesPage'
 import {
   FONT_SIZES,
   THEMES,
@@ -101,6 +109,9 @@ export default function Us() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [showProfileSheet, setShowProfileSheet] = useState(false)
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
+  /** 当前打开的功能页:每日一问 / 愿望清单 / 小纸条 / 纪念日管理 */
+  const [feature, setFeature] = useState<'qa' | 'wish' | 'notes' | 'anniv' | null>(null)
+  const anniversaries = useAnniversaries(couple!.id)
   const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState('')
   const [fontSize, setFontSize] = useState<FontSize>(getFontSize)
@@ -212,12 +223,83 @@ export default function Us() {
             <div className="flex flex-col items-center gap-2">
               <Avatar profile={partner} />
               <span className="text-sm">{partner?.display_name ?? '等待加入'}</span>
+              <span className="text-xs text-gray-400">
+                <PartnerClock tz={partner?.timezone} prefix="那边" />
+              </span>
             </div>
           </div>
 
           <p className="mt-4 text-center text-sm text-gray-400">
             小屋已建立 <span className="font-semibold text-primary-dark">{days}</span> 天
           </p>
+
+          {/* 见面倒数 */}
+          {couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0 && (
+            <p className="mt-1 text-center text-sm text-primary-dark">
+              ✈️ 距离下次见面还有{' '}
+              <span className="font-semibold">{daysUntil(couple.next_meet_date)}</span> 天
+              {daysUntil(couple.next_meet_date) === 0 && ',就是今天!'}
+            </p>
+          )}
+
+          {/* 纪念日 */}
+          {anniversaries.list.length > 0 && (
+            <div className="mt-3 space-y-1 border-t border-line pt-3">
+              {anniversaries.list.map((a) => {
+                const n = daysUntil(a.anniv_date)
+                return (
+                  <p key={a.id} className="text-center text-xs text-gray-400">
+                    🎀 {a.title} ·{' '}
+                    {n > 0 ? `还有 ${n} 天` : n === 0 ? '就是今天 🎉' : `第 ${-n + 1} 天`}
+                  </p>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ---- 今日小互动:想你 + 打卡 ---- */}
+        <MomentsCard
+          coupleId={couple!.id}
+          userId={profile!.id}
+          partnerName={partner?.display_name ?? 'TA'}
+          onToast={showToast}
+        />
+
+        {/* ---- 功能入口 ---- */}
+        <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
+          <button
+            type="button"
+            onClick={() => setFeature('qa')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>💬 每日一问</span>
+            <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeature('wish')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>🌠 愿望清单</span>
+            <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeature('notes')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>💌 留言小纸条</span>
+            <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeature('anniv')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>🎀 纪念日与见面日</span>
+            <span className="text-gray-300">›</span>
+          </button>
         </div>
 
         {/* ---- 修改资料 / 检查更新 ---- */}
@@ -384,6 +466,43 @@ export default function Us() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 功能页(全屏覆盖) */}
+      {feature === 'qa' && (
+        <DailyQA
+          coupleId={couple!.id}
+          userId={profile!.id}
+          partnerName={partner?.display_name ?? 'TA'}
+          onClose={() => setFeature(null)}
+        />
+      )}
+      {feature === 'wish' && (
+        <WishList
+          coupleId={couple!.id}
+          userId={profile!.id}
+          partnerName={partner?.display_name ?? 'TA'}
+          onClose={() => setFeature(null)}
+        />
+      )}
+      {feature === 'notes' && (
+        <NotesPage
+          coupleId={couple!.id}
+          userId={profile!.id}
+          partnerName={partner?.display_name ?? 'TA'}
+          onClose={() => setFeature(null)}
+        />
+      )}
+      {feature === 'anniv' && couple && (
+        <AnniversaryManager
+          couple={couple}
+          anniversaries={anniversaries.list}
+          onAdd={anniversaries.add}
+          onRemove={anniversaries.remove}
+          onCoupleChanged={refresh}
+          onClose={() => setFeature(null)}
+          onToast={showToast}
+        />
       )}
 
       {editing === 'myName' && (

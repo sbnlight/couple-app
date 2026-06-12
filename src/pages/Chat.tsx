@@ -6,6 +6,7 @@ import { useReadStatus } from '../hooks/useReadStatus'
 import MessageBubble from '../components/MessageBubble'
 import ChatPanel from '../components/ChatPanel'
 import ChatSearch from '../components/ChatSearch'
+import PartnerClock from '../components/PartnerClock'
 
 /** 时间条文案:今天只显时分;昨天/今年/更早逐级加详 */
 function formatDivider(iso: string): string {
@@ -125,6 +126,11 @@ export default function Chat() {
         <h1 className="text-base font-semibold text-primary-dark">
           ❤ {couple?.name ?? '双人小屋'}
         </h1>
+        {partner?.timezone && (
+          <p className="text-xs text-gray-400">
+            <PartnerClock tz={partner.timezone} />
+          </p>
+        )}
         <button
           type="button"
           onClick={() => setSearchOpen(true)}

@@ -4,6 +4,8 @@ export interface Profile {
   id: string
   display_name: string
   avatar_url: string | null
+  /** IANA 时区(如 Asia/Shanghai),App 打开时自动同步设备时区 */
+  timezone: string | null
   created_at: string
 }
 
@@ -15,6 +17,56 @@ export interface Couple {
   member_a: string
   /** 第二人加入前为 null */
   member_b: string | null
+  /** 下次见面日期(倒数日) */
+  next_meet_date: string | null
+  created_at: string
+}
+
+/** 纪念日 */
+export interface Anniversary {
+  id: number
+  couple_id: string
+  title: string
+  anniv_date: string
+  created_at: string
+}
+
+/** 每日一问的回答 */
+export interface DailyAnswer {
+  id: number
+  couple_id: string
+  user_id: string
+  question_date: string
+  content: string
+  created_at: string
+}
+
+/** 愿望清单条目 */
+export interface Wish {
+  id: number
+  couple_id: string
+  creator_id: string
+  content: string
+  done: boolean
+  done_at: string | null
+  created_at: string
+}
+
+/** 留言小纸条 */
+export interface Note {
+  id: number
+  couple_id: string
+  author_id: string
+  content: string
+  unlock_at: string
+  created_at: string
+}
+
+/** 每日打卡(UTC 日期) */
+export interface Checkin {
+  couple_id: string
+  user_id: string
+  day: string
   created_at: string
 }
 
