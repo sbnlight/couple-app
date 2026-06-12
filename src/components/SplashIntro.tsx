@@ -51,7 +51,14 @@ const TITLE_CHARS = ['双', '人', '小', '屋']
  * → 合体大心弹跳,金粉碎心四散 → 标题逐字浮现,流光扫过 → 整体淡出。
  * 约 3.2 秒,点击任意处跳过;系统"减少动态效果"时退化为简单淡入。
  */
-export default function SplashIntro({ onDone }: { onDone: () => void }) {
+export default function SplashIntro({
+  onDone,
+  updated = false,
+}: {
+  onDone: () => void
+  /** 刚完成版本更新后的首次启动:动画里加一行"已更新"提示 */
+  updated?: boolean
+}) {
   const [leaving, setLeaving] = useState(false)
   const reduce =
     typeof window !== 'undefined' &&
@@ -216,6 +223,14 @@ export default function SplashIntro({ onDone }: { onDone: () => void }) {
         >
           只属于我们两个人的地方
         </p>
+        {updated && (
+          <p
+            className="mt-3 text-xs font-medium text-green-600"
+            style={reduce ? undefined : { animation: 'intro-rise 0.5s ease-out 2.2s both' }}
+          >
+            ✓ 已更新到最新版本
+          </p>
+        )}
       </div>
     </div>
   )

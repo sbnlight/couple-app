@@ -31,6 +31,12 @@ function MainLayout() {
 export default function App() {
   // 开场动画:每次冷启动播一次,盖在界面上方(数据在底下照常加载)
   const [introDone, setIntroDone] = useState(false)
+  // 「检查更新」触发的重启:本次动画带"已更新"提示(标记读后即焚)
+  const [justUpdated] = useState(() => {
+    const v = sessionStorage.getItem('just-updated') === '1'
+    if (v) sessionStorage.removeItem('just-updated')
+    return v
+  })
 
   // 环境变量没配时给出明确提示,而不是白屏
   if (configMissing) {
@@ -51,7 +57,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        {!introDone && <SplashIntro onDone={() => setIntroDone(true)} />}
+        {!introDone && (
+          <SplashIntro updated={justUpdated} onDone={() => setIntroDone(true)} />
+        )}
         <Routes>
           <Route path="/login" element={<Login />} />
           {/* 重置密码:从邮件链接进入,自带临时会话,不走常规守卫 */}
