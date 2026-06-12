@@ -14,6 +14,7 @@ import DailyQA from '../components/DailyQA'
 import WishList from '../components/WishList'
 import NotesPage from '../components/NotesPage'
 import YearReport from '../components/YearReport'
+import FeatureToggles, { featureOn } from '../components/FeatureToggles'
 import {
   FONT_SIZES,
   THEMES,
@@ -199,10 +200,10 @@ export default function Us() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [showProfileSheet, setShowProfileSheet] = useState(false)
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
-  /** 当前打开的功能页:每日一问 / 愿望清单 / 小纸条 / 纪念日管理 / 年度报告 */
-  const [feature, setFeature] = useState<'qa' | 'wish' | 'notes' | 'anniv' | 'report' | null>(
-    null,
-  )
+  /** 当前打开的功能页 */
+  const [feature, setFeature] = useState<
+    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | null
+  >(null)
   const [showPwModal, setShowPwModal] = useState(false)
   const anniversaries = useAnniversaries(couple!.id)
   const [uploading, setUploading] = useState(false)
@@ -368,24 +369,30 @@ export default function Us() {
           )}
         </div>
 
-        {/* ---- 今日小互动:想你 + 打卡 ---- */}
-        <MomentsCard
-          coupleId={couple!.id}
-          userId={profile!.id}
-          partnerName={partner?.display_name ?? 'TA'}
-          onToast={showToast}
-        />
+        {/* ---- 今日小互动:想你 + 打卡(可在功能开关里关闭) ---- */}
+        {(featureOn(couple, 'miss') || featureOn(couple, 'checkin')) && (
+          <MomentsCard
+            coupleId={couple!.id}
+            userId={profile!.id}
+            partnerName={partner?.display_name ?? 'TA'}
+            onToast={showToast}
+            missEnabled={featureOn(couple, 'miss')}
+            checkinEnabled={featureOn(couple, 'checkin')}
+          />
+        )}
 
         {/* ---- 功能入口 ---- */}
         <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
-          <button
-            type="button"
-            onClick={() => setFeature('qa')}
-            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
-          >
-            <span>💬 每日一问</span>
-            <span className="text-gray-300">›</span>
-          </button>
+          {featureOn(couple, 'daily_qa') && (
+            <button
+              type="button"
+              onClick={() => setFeature('qa')}
+              className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+            >
+              <span>💬 每日一问</span>
+              <span className="text-gray-300">›</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setFeature('wish')}
@@ -428,6 +435,14 @@ export default function Us() {
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
             <span>✏️ 修改资料</span>
+            <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeature('toggles')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>🧩 功能开关</span>
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -647,6 +662,14 @@ export default function Us() {
           userId={profile!.id}
           partnerName={partner?.display_name ?? 'TA'}
           onClose={() => setFeature(null)}
+        />
+      )}
+      {feature === 'toggles' && couple && (
+        <FeatureToggles
+          couple={couple}
+          onChanged={refresh}
+          onClose={() => setFeature(null)}
+          onToast={showToast}
         />
       )}
       {feature === 'report' && couple && (

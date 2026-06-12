@@ -24,11 +24,16 @@ export default function MomentsCard({
   userId,
   partnerName,
   onToast,
+  missEnabled = true,
+  checkinEnabled = true,
 }: {
   coupleId: string
   userId: string
   partnerName: string
   onToast: (msg: string) => void
+  /** 功能开关(小屋级):关闭的部分不显示 */
+  missEnabled?: boolean
+  checkinEnabled?: boolean
 }) {
   const [missMine, setMissMine] = useState(0)
   const [missTheirs, setMissTheirs] = useState(0)
@@ -118,35 +123,47 @@ export default function MomentsCard({
   return (
     <div className="mt-4 rounded-2xl bg-white p-5">
       <p className="text-sm font-medium text-gray-500">今日小互动</p>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => void handleMiss()}
-          disabled={busy}
-          className="rounded-xl bg-soft py-3 text-center active:opacity-70 disabled:opacity-50"
-        >
-          <span className="block text-2xl">💭</span>
-          <span className="mt-1 block text-sm font-medium text-primary-dark">想 TA</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleCheckin()}
-          disabled={busy || checkedToday}
-          className={`rounded-xl py-3 text-center active:opacity-70 ${
-            checkedToday ? 'bg-gray-100' : 'bg-soft'
-          }`}
-        >
-          <span className="block text-2xl">{checkedToday ? '✅' : '📍'}</span>
-          <span className="mt-1 block text-sm font-medium text-primary-dark">
-            {checkedToday ? '今日已打卡' : '每日打卡'}
-          </span>
-        </button>
+      <div className={`mt-3 grid gap-3 ${missEnabled && checkinEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {missEnabled && (
+          <button
+            type="button"
+            onClick={() => void handleMiss()}
+            disabled={busy}
+            className="rounded-xl bg-soft py-3 text-center active:opacity-70 disabled:opacity-50"
+          >
+            <span className="block text-2xl">💭</span>
+            <span className="mt-1 block text-sm font-medium text-primary-dark">想 TA</span>
+          </button>
+        )}
+        {checkinEnabled && (
+          <button
+            type="button"
+            onClick={() => void handleCheckin()}
+            disabled={busy || checkedToday}
+            className={`rounded-xl py-3 text-center active:opacity-70 ${
+              checkedToday ? 'bg-gray-100' : 'bg-soft'
+            }`}
+          >
+            <span className="block text-2xl">{checkedToday ? '✅' : '📍'}</span>
+            <span className="mt-1 block text-sm font-medium text-primary-dark">
+              {checkedToday ? '今日已打卡' : '每日打卡'}
+            </span>
+          </button>
+        )}
       </div>
       <p className="mt-3 text-xs leading-relaxed text-gray-400">
-        今天:你想了 TA {missMine} 次,{partnerName}想了你 {missTheirs} 次
-        <br />
-        打卡:你已连续 {streakMine} 天,{partnerName}已连续 {streakTheirs} 天
-        {theirCheckedToday && ' · TA 今天已打卡'}
+        {missEnabled && (
+          <>
+            今天:你想了 TA {missMine} 次,{partnerName}想了你 {missTheirs} 次
+            {checkinEnabled && <br />}
+          </>
+        )}
+        {checkinEnabled && (
+          <>
+            打卡:你已连续 {streakMine} 天,{partnerName}已连续 {streakTheirs} 天
+            {theirCheckedToday && ' · TA 今天已打卡'}
+          </>
+        )}
       </p>
     </div>
   )

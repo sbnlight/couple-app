@@ -1,13 +1,39 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { compressImage } from '../lib/image'
+import { getSignedUrl } from '../lib/storage'
 import { questionForDate } from '../lib/questions'
 import { utcToday } from '../lib/time'
 import type { DailyAnswer } from '../types/db'
 
+/** 回答里附的图片(私有桶签名 URL) */
+function QAImage({ path, onPreview }: { path: string; onPreview: (url: string) => void }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    getSignedUrl('chat-images', path).then((u) => {
+      if (!cancelled) setUrl(u)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [path])
+  if (!url) return <div className="aspect-square w-full animate-pulse rounded-lg bg-line" />
+  return (
+    <img
+      src={url}
+      alt="回答配图"
+      className="aspect-square w-full rounded-lg object-cover"
+      onClick={() => onPreview(url)}
+    />
+  )
+}
+
 /**
  * 每日一问(全屏覆盖页)。
- * 规则:回答完当天的问题,才能看到对方的答案(数据库强制)。
+ * 规则:回答完当天的问题,才能看到对方的答案(数据库强制);
+ * 回答支持文字 + 一张配图(图片存 chat-images 私有桶)。
  */
 export default function DailyQA({
   coupleId,
@@ -22,7 +48,9 @@ export default function DailyQA({
 }) {
   const today = utcToday()
   const question = questionForDate(today)
+  const MAX_IMGS = 9
   const [draft, setDraft] = useState('')
+  const [imgs, setImgs] = useState<{ blob: Blob; url: string }[]>([])
   const [mine, setMine] = useState<DailyAnswer | null>(null)
   const [theirs, setTheirs] = useState<DailyAnswer | null>(null)
   const [theyAnswered, setTheyAnswered] = useState(false)
@@ -30,6 +58,8 @@ export default function DailyQA({
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [viewer, setViewer] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const [todayRes, partnerRes, histRes] = await Promise.all([
@@ -59,16 +89,48 @@ export default function DailyQA({
     void load()
   }, [load])
 
+  const pickImage = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = [...(e.target.files ?? [])]
+    e.target.value = ''
+    if (files.length === 0) return
+    const room = MAX_IMGS - imgs.length
+    for (const file of files.slice(0, room)) {
+      try {
+        const blob = await compressImage(file, 1280, 0.8)
+        setImgs((prev) =>
+          prev.length >= MAX_IMGS ? prev : [...prev, { blob, url: URL.createObjectURL(blob) }],
+        )
+      } catch {
+        // 单张读图失败跳过,继续处理其余
+      }
+    }
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const content = draft.trim()
-    if (!content || busy) return
+    if ((!content && imgs.length === 0) || busy) return
     setBusy(true)
     try {
+      // 先传图(若有);编辑时选了新图则整组替换,否则保留原图
+      let imagePaths: string[] | null = editing ? (mine?.image_paths ?? null) : null
+      if (imgs.length > 0) {
+        const paths: string[] = []
+        for (const im of imgs) {
+          const path = `${coupleId}/qa-${crypto.randomUUID()}.jpg`
+          const { error: upErr } = await supabase.storage
+            .from('chat-images')
+            .upload(path, im.blob, { contentType: 'image/jpeg' })
+          if (upErr) throw upErr
+          paths.push(path)
+        }
+        imagePaths = paths
+      }
+
       if (mine && editing) {
         const { error } = await supabase
           .from('daily_answers')
-          .update({ content })
+          .update({ content, image_paths: imagePaths })
           .eq('id', mine.id)
         if (error) throw error
       } else {
@@ -77,18 +139,34 @@ export default function DailyQA({
           user_id: userId,
           question_date: today,
           content,
+          image_paths: imagePaths,
         })
         if (error) throw error
       }
       setDraft('')
+      setImgs([])
       setEditing(false)
       await load() // 答完即可看到对方的答案
     } catch {
-      // 失败保留草稿,提示在按钮上体现
+      // 失败保留草稿
     } finally {
       setBusy(false)
     }
   }
+
+  /** 渲染一条回答(文字 + 九宫格配图) */
+  const renderAnswer = (a: DailyAnswer) => (
+    <>
+      {a.content && <p className="mt-1 whitespace-pre-wrap text-sm">{a.content}</p>}
+      {a.image_paths && a.image_paths.length > 0 && (
+        <div className="mt-2 grid grid-cols-3 gap-1">
+          {a.image_paths.map((p) => (
+            <QAImage key={p} path={p} onPreview={(u) => setViewer(u)} />
+          ))}
+        </div>
+      )}
+    </>
+  )
 
   // 往期按日期归并
   const historyByDate = new Map<string, DailyAnswer[]>()
@@ -119,7 +197,7 @@ export default function DailyQA({
             <>
               <div className="mt-4 rounded-xl bg-soft p-3">
                 <p className="text-xs text-gray-400">我的回答</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm">{mine.content}</p>
+                {renderAnswer(mine)}
                 <button
                   type="button"
                   className="mt-1 text-xs text-gray-400 underline"
@@ -134,22 +212,57 @@ export default function DailyQA({
               <div className="mt-3 rounded-xl bg-gray-50 p-3">
                 <p className="text-xs text-gray-400">{partnerName}的回答</p>
                 {theirs ? (
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{theirs.content}</p>
+                  renderAnswer(theirs)
                 ) : (
                   <p className="mt-1 text-sm text-gray-300">TA 还没回答,耐心等等~</p>
                 )}
               </div>
             </>
           ) : (
-            <form onSubmit={handleSubmit} className="mt-4">
+            <form onSubmit={(e) => void handleSubmit(e)} className="mt-4">
               <textarea
                 className="input w-full resize-none"
                 rows={3}
                 maxLength={500}
-                placeholder="写下你的回答…"
+                placeholder="写下你的回答…(也可以只发一张图)"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
               />
+
+              {/* 配图(最多 9 张) */}
+              <div className="mt-2 grid grid-cols-4 gap-2">
+                {imgs.map((im, i) => (
+                  <span key={im.url} className="relative">
+                    <img
+                      src={im.url}
+                      alt={`待发送配图${i + 1}`}
+                      className="aspect-square w-full rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImgs((prev) => prev.filter((_, j) => j !== i))}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs text-white"
+                      aria-label="移除这张图"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+                {imgs.length < MAX_IMGS && (
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="flex aspect-square w-full items-center justify-center rounded-lg border border-dashed border-line text-xl text-gray-300"
+                    aria-label="添加配图"
+                  >
+                    📷
+                  </button>
+                )}
+              </div>
+              {editing && (mine?.image_paths?.length ?? 0) > 0 && imgs.length === 0 && (
+                <p className="mt-1 text-xs text-gray-300">(保留原配图;选了新图则整组替换)</p>
+              )}
+
               <p className="mt-2 text-xs text-gray-400">
                 {theyAnswered
                   ? `${partnerName}已经回答了,写下你的答案就能看到 👀`
@@ -157,7 +270,7 @@ export default function DailyQA({
               </p>
               <button
                 type="submit"
-                disabled={busy || !draft.trim()}
+                disabled={busy || (!draft.trim() && imgs.length === 0)}
                 className="btn-primary mt-3 w-full"
               >
                 {busy ? '提交中…' : editing ? '保存修改' : '提交回答'}
@@ -175,18 +288,44 @@ export default function DailyQA({
                 <p className="text-xs text-gray-400">{date}</p>
                 <p className="mt-1 text-sm font-medium">{questionForDate(date)}</p>
                 {answers.map((a) => (
-                  <p key={a.id} className="mt-2 text-sm">
+                  <div key={a.id} className="mt-2 text-sm">
                     <span className="text-gray-400">
                       {a.user_id === userId ? '我' : partnerName}:
                     </span>
                     {a.content}
-                  </p>
+                    {a.image_paths && a.image_paths.length > 0 && (
+                      <div className="mt-1.5 grid grid-cols-4 gap-1">
+                        {a.image_paths.map((p) => (
+                          <QAImage key={p} path={p} onPreview={(u) => setViewer(u)} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => void pickImage(e)}
+      />
+
+      {/* 全屏看图 */}
+      {viewer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          onClick={() => setViewer(null)}
+        >
+          <img src={viewer} alt="查看图片" className="max-h-full max-w-full object-contain" />
+        </div>
+      )}
     </div>
   )
 }
