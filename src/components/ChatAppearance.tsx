@@ -16,6 +16,7 @@ import {
   saveBubbleStyle,
   saveChatBgToken,
 } from '../lib/prefs'
+import { t } from '../lib/i18n'
 
 type Page = 'menu' | 'bubble' | 'bg' | 'font'
 
@@ -115,9 +116,9 @@ export default function ChatAppearance({
       saveChatBgToken(token)
       setBgToken(token)
       onChanged()
-      onToast('背景已更换')
+      onToast(t('背景已更换'))
     } catch {
-      onToast('背景上传失败,请重试')
+      onToast(t('背景上传失败,请重试'))
     } finally {
       setUploading(false)
     }
@@ -126,8 +127,8 @@ export default function ChatAppearance({
   const currentBubble = BUBBLE_STYLES.find((b) => b.id === bubbleId) ?? BUBBLE_STYLES[0]
   const currentFont = BUBBLE_FONTS.find((f) => f.id === fontId) ?? BUBBLE_FONTS[0]
   const currentBgLabel = bgToken.startsWith('custom:')
-    ? '相册图片'
-    : (CHAT_BGS.find((b) => b.id === bgToken.slice(7))?.label ?? '默认')
+    ? t('相册图片')
+    : t(CHAT_BGS.find((b) => b.id === bgToken.slice(7))?.label ?? '默认')
 
   const bubbleGroups = [...new Set(BUBBLE_STYLES.map((b) => b.group))]
   const bgGroups = [...new Set(CHAT_BGS.map((b) => b.group))]
@@ -135,10 +136,10 @@ export default function ChatAppearance({
   /* ---------- 子页:气泡 ---------- */
   if (page === 'bubble') {
     return (
-      <PickerPage title="修改气泡" onBack={() => setPage('menu')}>
+      <PickerPage title={t('修改气泡')} onBack={() => setPage('menu')}>
         {bubbleGroups.map((g) => (
           <div key={g} className="mb-5">
-            <p className="mb-2 px-1 text-xs text-gray-400">{g}</p>
+            <p className="mb-2 px-1 text-xs text-gray-400">{t(g)}</p>
             <div className="grid grid-cols-3 gap-3">
               {BUBBLE_STYLES.filter((b) => b.group === g).map((b) => (
                 <button
@@ -153,9 +154,9 @@ export default function ChatAppearance({
                     }`}
                     style={bubbleCss(b)}
                   >
-                    你好呀
+                    {t('你好呀')}
                   </span>
-                  <span className="text-xs text-gray-500">{b.label}</span>
+                  <span className="text-xs text-gray-500">{t(b.label)}</span>
                 </button>
               ))}
             </div>
@@ -168,8 +169,8 @@ export default function ChatAppearance({
   /* ---------- 子页:背景 ---------- */
   if (page === 'bg') {
     return (
-      <PickerPage title="修改聊天背景" onBack={() => setPage('menu')}>
-        <p className="mb-2 px-1 text-xs text-gray-400">自定义</p>
+      <PickerPage title={t('修改聊天背景')} onBack={() => setPage('menu')}>
+        <p className="mb-2 px-1 text-xs text-gray-400">{t('自定义')}</p>
         <button
           type="button"
           disabled={uploading}
@@ -186,13 +187,13 @@ export default function ChatAppearance({
             />
           )}
           <span className="relative rounded-full bg-white/85 px-2 py-1">
-            {uploading ? '上传中…' : '📷 从相册选择'}
+            {uploading ? t('上传中…') : t('📷 从相册选择')}
           </span>
         </button>
 
         {bgGroups.map((g) => (
           <div key={g} className="mb-5">
-            <p className="mb-2 px-1 text-xs text-gray-400">{g}</p>
+            <p className="mb-2 px-1 text-xs text-gray-400">{t(g)}</p>
             <div className="grid grid-cols-3 gap-2">
               {CHAT_BGS.filter((b) => b.group === g).map((bg) => (
                 <button
@@ -209,7 +210,7 @@ export default function ChatAppearance({
                       g === '深色' ? 'bg-black/30 text-white/90' : 'bg-white/70 text-gray-500'
                     }`}
                   >
-                    {bg.label}
+                    {t(bg.label)}
                   </span>
                 </button>
               ))}
@@ -231,9 +232,9 @@ export default function ChatAppearance({
   /* ---------- 子页:字体 ---------- */
   if (page === 'font') {
     return (
-      <PickerPage title="修改字体" onBack={() => setPage('menu')}>
+      <PickerPage title={t('修改字体')} onBack={() => setPage('menu')}>
         <p className="mb-3 px-1 text-xs text-gray-400">
-          只改变你自己发出的文字;个别设备缺少某字体时会自动用近似效果
+          {t('只改变你自己发出的文字;个别设备缺少某字体时会自动用近似效果')}
         </p>
         <div className="space-y-3">
           {BUBBLE_FONTS.map((f) => (
@@ -249,9 +250,9 @@ export default function ChatAppearance({
                 className="rounded-2xl rounded-br-sm px-3.5 py-2 text-base"
                 style={{ ...bubbleCss(currentBubble), ...fontCss(f) }}
               >
-                晚安,好梦呀
+                {t('晚安,好梦呀')}
               </span>
-              <span className="text-sm text-gray-500">{f.label}</span>
+              <span className="text-sm text-gray-500">{t(f.label)}</span>
             </button>
           ))}
         </div>
@@ -267,7 +268,7 @@ export default function ChatAppearance({
         onClick={(e) => e.stopPropagation()}
       >
         <p className="border-b border-line py-3 text-center text-sm font-medium text-gray-500">
-          聊天外观
+          {t('聊天外观')}
         </p>
         <div className="divide-y divide-line">
           <button
@@ -275,9 +276,9 @@ export default function ChatAppearance({
             onClick={() => setPage('bubble')}
             className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
           >
-            <span>💬 修改气泡</span>
+            <span>{t('💬 修改气泡')}</span>
             <span className="flex items-center gap-2 text-sm text-gray-400">
-              {currentBubble.label}
+              {t(currentBubble.label)}
               <span className="text-gray-300">›</span>
             </span>
           </button>
@@ -286,7 +287,7 @@ export default function ChatAppearance({
             onClick={() => setPage('bg')}
             className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
           >
-            <span>🖼 修改聊天背景</span>
+            <span>{t('🖼 修改聊天背景')}</span>
             <span className="flex items-center gap-2 text-sm text-gray-400">
               {currentBgLabel}
               <span className="text-gray-300">›</span>
@@ -297,20 +298,20 @@ export default function ChatAppearance({
             onClick={() => setPage('font')}
             className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
           >
-            <span>🔤 修改字体</span>
+            <span>{t('🔤 修改字体')}</span>
             <span className="flex items-center gap-2 text-sm text-gray-400">
-              {currentFont.label}
+              {t(currentFont.label)}
               <span className="text-gray-300">›</span>
             </span>
           </button>
         </div>
-        <p className="px-5 pt-2 text-xs text-gray-300">以上设置只对这台设备生效</p>
+        <p className="px-5 pt-2 text-xs text-gray-300">{t('以上设置只对这台设备生效')}</p>
         <button
           type="button"
           className="mt-2 w-full border-t border-line py-3 text-center text-gray-500"
           onClick={onClose}
         >
-          完成
+          {t('完成')}
         </button>
       </div>
     </div>

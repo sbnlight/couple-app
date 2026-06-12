@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { useStickers } from '../hooks/useStickers'
 import { getSignedUrl } from '../lib/storage'
 import type { Sticker } from '../types/db'
+import { t } from '../lib/i18n'
 
 /** 常用 emoji(微信式面板,纯文本插入输入框) */
 const EMOJIS = [
@@ -75,9 +76,9 @@ export default function ChatPanel({
     setBusy(true)
     try {
       await add(file)
-      onToast('已添加到表情包')
+      onToast(t('已添加到表情包'))
     } catch {
-      onToast('添加失败,请重试')
+      onToast(t('添加失败,请重试'))
     } finally {
       setBusy(false)
     }
@@ -87,7 +88,7 @@ export default function ChatPanel({
     try {
       await remove(s)
     } catch {
-      onToast('删除失败,请重试')
+      onToast(t('删除失败,请重试'))
     }
   }
 
@@ -100,14 +101,14 @@ export default function ChatPanel({
           onClick={() => setTab('emoji')}
           className={`rounded-full px-3 py-1 text-sm ${tab === 'emoji' ? 'bg-soft text-primary-dark' : 'text-gray-400'}`}
         >
-          😀 表情
+          {t('😀 表情')}
         </button>
         <button
           type="button"
           onClick={() => setTab('sticker')}
           className={`rounded-full px-3 py-1 text-sm ${tab === 'sticker' ? 'bg-soft text-primary-dark' : 'text-gray-400'}`}
         >
-          ⭐ 表情包
+          {t('⭐ 表情包')}
         </button>
         {tab === 'sticker' && stickers.some((s) => s.owner_id === userId) && (
           <button
@@ -115,7 +116,7 @@ export default function ChatPanel({
             onClick={() => setManaging(!managing)}
             className="ml-auto text-sm text-gray-400"
           >
-            {managing ? '完成' : '管理'}
+            {managing ? t('完成') : t('管理')}
           </button>
         )}
       </div>
@@ -166,7 +167,7 @@ export default function ChatPanel({
             ))}
             {!loading && stickers.length === 0 && (
               <p className="col-span-3 self-center text-sm text-gray-300">
-                点 ＋ 从相册收藏你们的专属表情包
+                {t('点 ＋ 从相册收藏你们的专属表情包')}
               </p>
             )}
           </div>
