@@ -4,6 +4,7 @@ import { useAnniversaries } from '../hooks/useAnniversaries'
 import { onLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
 import { daysUntil } from '../lib/time'
+import { t } from '../lib/i18n'
 
 /**
  * 全局互动监听(挂在主布局):
@@ -24,7 +25,7 @@ export default function GlobalLive() {
   useEffect(() => {
     return onLive('miss', () => {
       fireEffect(['💗', '💕', '💭', '❤️'], 32)
-      showToast(`${partner?.display_name ?? 'TA'} 正在想你 💭`)
+      showToast(t('TA 正在想你 💭'))
     })
   }, [partner?.display_name])
 
@@ -38,11 +39,11 @@ export default function GlobalLive() {
 
     let title: string | null = null
     if (couple?.next_meet_date && daysUntil(couple.next_meet_date) === 0) {
-      title = '今天就要见面啦 ✈️'
+      title = t('今天就要见面啦 ✈️')
     } else {
       const md = todayLocal.slice(5)
       const hit = anniversaries.find((a) => a.anniv_date.slice(5) === md)
-      if (hit) title = `今天是「${hit.title}」🎉`
+      if (hit) title = t('今天是「{t}」🎉', { t: hit.title })
     }
     if (title) {
       sessionStorage.setItem(key, '1')

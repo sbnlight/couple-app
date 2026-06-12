@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Splash } from '../components/Guard'
+import { t } from '../lib/i18n'
 
 /**
  * 重设密码页。
@@ -26,9 +27,9 @@ export default function ResetPassword() {
     return (
       <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 px-8 text-center">
         <span className="text-4xl">⏰</span>
-        <p className="text-sm text-gray-500">链接无效或已过期</p>
+        <p className="text-sm text-gray-500">{t('链接无效或已过期')}</p>
         <Link to="/login" className="text-sm text-primary-dark underline">
-          回登录页重新发起「忘记密码」
+          {t('回登录页重新发起「忘记密码」')}
         </Link>
       </div>
     )
@@ -39,11 +40,11 @@ export default function ResetPassword() {
     if (busy) return
     setError('')
     if (pw1.length < 6) {
-      setError('密码至少需要 6 位')
+      setError(t('密码至少需要 6 位'))
       return
     }
     if (pw1 !== pw2) {
-      setError('两次输入的密码不一致')
+      setError(t('两次输入的密码不一致'))
       return
     }
     setBusy(true)
@@ -53,9 +54,9 @@ export default function ResetPassword() {
       setDone(true)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      if (msg.includes('different from the old')) setError('新密码不能和旧密码相同')
-      else if (msg.includes('超时') || msg.includes('Failed to fetch')) setError('网络不太好,请重试')
-      else setError(`出错了:${msg}`)
+      if (msg.includes('different from the old')) setError(t('新密码不能和旧密码相同'))
+      else if (msg.includes('超时') || msg.includes('Failed to fetch')) setError(t('网络不太好,请重试'))
+      else setError(t('出错了:{msg}', { msg }))
     } finally {
       setBusy(false)
     }
@@ -65,9 +66,9 @@ export default function ResetPassword() {
     return (
       <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center gap-4 px-8 text-center">
         <span className="text-4xl">✅</span>
-        <p className="text-sm text-gray-500">密码已重设成功</p>
+        <p className="text-sm text-gray-500">{t('密码已重设成功')}</p>
         <button type="button" className="btn-primary w-full" onClick={() => navigate('/', { replace: true })}>
-          进入小屋
+          {t('进入小屋')}
         </button>
       </div>
     )
@@ -77,14 +78,14 @@ export default function ResetPassword() {
     <div className="mx-auto flex h-full max-w-md flex-col justify-center px-8">
       <div className="mb-8 text-center">
         <div className="text-5xl">🔑</div>
-        <h1 className="mt-3 text-xl font-bold text-primary-dark">设置新密码</h1>
+        <h1 className="mt-3 text-xl font-bold text-primary-dark">{t('设置新密码')}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <input
           className="input"
           type="password"
-          placeholder="新密码(至少 6 位)"
+          placeholder={t('新密码(至少 6 位)')}
           required
           minLength={6}
           autoComplete="new-password"
@@ -94,7 +95,7 @@ export default function ResetPassword() {
         <input
           className="input"
           type="password"
-          placeholder="再输入一次确认"
+          placeholder={t('再输入一次确认')}
           required
           autoComplete="new-password"
           value={pw2}
@@ -102,7 +103,7 @@ export default function ResetPassword() {
         />
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button type="submit" disabled={busy} className="btn-primary mt-2">
-          {busy ? '请稍候…' : '确认重设'}
+          {busy ? t('请稍候…') : t('确认重设')}
         </button>
       </form>
     </div>

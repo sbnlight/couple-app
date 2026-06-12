@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Couple } from '../types/db'
+import { t } from '../lib/i18n'
 
 /** 可开关的互动功能定义 */
 export const FEATURE_DEFS = [
@@ -44,7 +45,7 @@ export default function FeatureToggles({
       if (error) throw error
       await onChanged()
     } catch {
-      onToast('保存失败,请重试')
+      onToast(t('保存失败,请重试'))
     } finally {
       setBusy(false)
     }
@@ -56,9 +57,9 @@ export default function FeatureToggles({
         className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="mb-1 text-center text-sm font-medium text-gray-500">功能开关</p>
+        <p className="mb-1 text-center text-sm font-medium text-gray-500">{t('功能开关')}</p>
         <p className="mb-3 text-center text-xs text-gray-300">
-          这是你们俩的共同设置:任一方修改,双方同时生效
+          {t('这是你们俩的共同设置:任一方修改,双方同时生效')}
         </p>
 
         <div className="divide-y divide-line">
@@ -67,8 +68,8 @@ export default function FeatureToggles({
             return (
               <div key={f.key} className="flex items-center gap-3 py-3.5">
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm">{f.label}</span>
-                  <span className="block text-xs text-gray-400">{f.desc}</span>
+                  <span className="block text-sm">{t(f.label)}</span>
+                  <span className="block text-xs text-gray-400">{t(f.desc)}</span>
                 </span>
                 <button
                   type="button"
@@ -95,7 +96,7 @@ export default function FeatureToggles({
           className="mt-2 w-full border-t border-line py-3 text-center text-gray-500"
           onClick={onClose}
         >
-          完成
+          {t('完成')}
         </button>
       </div>
     </div>

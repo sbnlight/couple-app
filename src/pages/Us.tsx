@@ -51,7 +51,7 @@ function EditModal({
   const handleSave = async () => {
     const v = value.trim()
     if (!v) {
-      setErr('名字不能为空')
+      setErr(t('名字不能为空'))
       return
     }
     setSaving(true)
@@ -60,7 +60,7 @@ function EditModal({
       await onSave(v)
       onClose()
     } catch {
-      setErr('保存失败,请检查网络后重试')
+      setErr(t('保存失败,请检查网络后重试'))
       setSaving(false)
     }
   }
@@ -89,7 +89,7 @@ function EditModal({
             className="flex-1 rounded-xl border border-line py-2.5 text-gray-500"
             onClick={onClose}
           >
-            取消
+            {t('取消')}
           </button>
           <button
             type="button"
@@ -97,7 +97,7 @@ function EditModal({
             disabled={saving}
             onClick={handleSave}
           >
-            {saving ? '保存中…' : '保存'}
+            {saving ? t('保存中…') : t('保存')}
           </button>
         </div>
       </div>
@@ -115,11 +115,11 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
   const handleSave = async () => {
     if (busy) return
     if (pw1.length < 6) {
-      setErr('密码至少需要 6 位')
+      setErr(t('密码至少需要 6 位'))
       return
     }
     if (pw1 !== pw2) {
-      setErr('两次输入的密码不一致')
+      setErr(t('两次输入的密码不一致'))
       return
     }
     setBusy(true)
@@ -131,9 +131,9 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
       onClose()
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      if (msg.includes('different from the old')) setErr('新密码不能和旧密码相同')
-      else if (msg.includes('超时') || msg.includes('Failed to fetch')) setErr('网络不太好,请重试')
-      else setErr(`出错了:${msg}`)
+      if (msg.includes('different from the old')) setErr(t('新密码不能和旧密码相同'))
+      else if (msg.includes('超时') || msg.includes('Failed to fetch')) setErr(t('网络不太好,请重试'))
+      else setErr(t('出错了:{msg}', { msg }))
       setBusy(false)
     }
   }
@@ -147,12 +147,12 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
         className="w-full max-w-sm rounded-2xl bg-white p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-3 text-center text-base font-semibold">修改密码</h2>
+        <h2 className="mb-3 text-center text-base font-semibold">{t('修改密码')}</h2>
         <div className="flex flex-col gap-3">
           <input
             className="input w-full"
             type="password"
-            placeholder="新密码(至少 6 位)"
+            placeholder={t('新密码(至少 6 位)')}
             autoComplete="new-password"
             autoFocus
             value={pw1}
@@ -161,7 +161,7 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
           <input
             className="input w-full"
             type="password"
-            placeholder="再输入一次确认"
+            placeholder={t('再输入一次确认')}
             autoComplete="new-password"
             value={pw2}
             onChange={(e) => setPw2(e.target.value)}
@@ -174,7 +174,7 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
             className="flex-1 rounded-xl border border-line py-2.5 text-gray-500"
             onClick={onClose}
           >
-            取消
+            {t('取消')}
           </button>
           <button
             type="button"
@@ -182,7 +182,7 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
             disabled={busy}
             onClick={() => void handleSave()}
           >
-            {busy ? '保存中…' : '确认修改'}
+            {busy ? t('保存中…') : t('确认修改')}
           </button>
         </div>
       </div>
@@ -264,9 +264,9 @@ export default function Us() {
       // 删旧文件省空间;失败也无妨,不阻塞流程
       if (oldPath) void supabase.storage.from('avatars').remove([oldPath])
       await refresh()
-      showToast('头像已更新')
+      showToast(t('头像已更新'))
     } catch {
-      showToast('头像上传失败,请重试')
+      showToast(t('头像上传失败,请重试'))
     } finally {
       setUploading(false)
     }
@@ -283,7 +283,7 @@ export default function Us() {
   }
 
   const handleSignOut = () => {
-    if (window.confirm('确定要退出登录吗?')) void signOut()
+    if (window.confirm(t('确定要退出登录吗?'))) void signOut()
   }
 
   /**
@@ -291,11 +291,11 @@ export default function Us() {
    * 已是最新则只提示,不打断使用。
    */
   const handleCheckUpdate = async () => {
-    showToast('正在检查更新…')
+    showToast(t('正在检查更新…'))
     try {
       const reg = await navigator.serviceWorker?.getRegistration()
       if (!reg) {
-        showToast('当前已是最新版本 ✓')
+        showToast(t('当前已是最新版本 ✓'))
         return
       }
       await reg.update()
@@ -304,40 +304,40 @@ export default function Us() {
       if (hasNew) {
         // 给重启后的开场动画留个标记,显示"已更新"
         sessionStorage.setItem('just-updated', '1')
-        showToast('发现新版本,正在更新…')
+        showToast(t('发现新版本,正在更新…'))
         setTimeout(() => window.location.reload(), 1200)
       } else {
-        showToast('当前已是最新版本 ✓')
+        showToast(t('当前已是最新版本 ✓'))
       }
     } catch {
-      showToast('检查失败,请稍后再试')
+      showToast(t('检查失败,请稍后再试'))
     }
   }
 
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
-        <h1 className="text-base font-semibold text-primary-dark">我们</h1>
+        <h1 className="text-base font-semibold text-primary-dark">{t('我们')}</h1>
       </header>
 
       <div className="page-in flex-1 overflow-y-auto px-5 py-6">
         {/* ---- 小屋名片(纯展示,编辑入口在下方选项列表) ---- */}
         <div className="rounded-2xl bg-white p-5">
-          <p className="text-center text-base font-semibold">{couple?.name ?? '双人小屋'}</p>
+          <p className="text-center text-base font-semibold">{couple?.name ?? t('双人小屋')}</p>
 
           <div className="mt-4 flex items-center justify-center gap-6">
             <div className="flex flex-col items-center gap-2">
               <Avatar profile={profile} />
-              <span className="text-sm">{profile?.display_name ?? '我'}</span>
+              <span className="text-sm">{profile?.display_name ?? t('我')}</span>
             </div>
 
             <span className="text-2xl text-primary">❤</span>
 
             <div className="flex flex-col items-center gap-2">
               <Avatar profile={partner} />
-              <span className="text-sm">{partner?.display_name ?? '等待加入'}</span>
+              <span className="text-sm">{partner?.display_name ?? t('等待加入')}</span>
               <span className="text-xs text-gray-400">
-                <PartnerClock tz={partner?.timezone} prefix="那边" />
+                <PartnerClock tz={partner?.timezone} prefix={t('那边')} />
               </span>
               {moodValid(partner) && (
                 <span className="rounded-full bg-soft px-2 py-0.5 text-xs text-primary-dark">
@@ -348,15 +348,14 @@ export default function Us() {
           </div>
 
           <p className="mt-4 text-center text-sm text-gray-400">
-            小屋已建立 <span className="font-semibold text-primary-dark">{days}</span> 天
+            {t('小屋已建立 {n} 天', { n: days })}
           </p>
 
           {/* 见面倒数 */}
           {couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0 && (
             <p className="mt-1 text-center text-sm text-primary-dark">
-              ✈️ 距离下次见面还有{' '}
-              <span className="font-semibold">{daysUntil(couple.next_meet_date)}</span> 天
-              {daysUntil(couple.next_meet_date) === 0 && ',就是今天!'}
+              {t('✈️ 距离下次见面还有 {n} 天', { n: daysUntil(couple.next_meet_date) })}
+              {daysUntil(couple.next_meet_date) === 0 && t(',就是今天!')}
             </p>
           )}
 
@@ -368,7 +367,7 @@ export default function Us() {
                 return (
                   <p key={a.id} className="text-center text-xs text-gray-400">
                     🎀 {a.title} ·{' '}
-                    {n > 0 ? `还有 ${n} 天` : n === 0 ? '就是今天 🎉' : `第 ${-n + 1} 天`}
+                    {n > 0 ? t('还有 {n} 天', { n }) : n === 0 ? t('就是今天 🎉') : t('第 {n} 天', { n: -n + 1 })}
                   </p>
                 )
               })}
@@ -384,7 +383,7 @@ export default function Us() {
           <MomentsCard
             coupleId={couple!.id}
             userId={profile!.id}
-            partnerName={partner?.display_name ?? 'TA'}
+            partnerName={partner?.display_name ?? t('TA')}
             onToast={showToast}
             missEnabled={featureOn(couple, 'miss')}
             checkinEnabled={featureOn(couple, 'checkin')}
@@ -399,7 +398,7 @@ export default function Us() {
               onClick={() => setFeature('qa')}
               className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
             >
-              <span>💬 每日一问</span>
+              <span>{t('💬 每日一问')}</span>
               <span className="text-gray-300">›</span>
             </button>
           )}
@@ -408,7 +407,7 @@ export default function Us() {
             onClick={() => setFeature('wish')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>🌠 愿望清单</span>
+            <span>{t('🌠 愿望清单')}</span>
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -416,7 +415,7 @@ export default function Us() {
             onClick={() => setFeature('notes')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>💌 留言小纸条</span>
+            <span>{t('💌 留言小纸条')}</span>
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -424,7 +423,7 @@ export default function Us() {
             onClick={() => setFeature('anniv')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>🎀 纪念日与见面日</span>
+            <span>{t('🎀 纪念日与见面日')}</span>
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -432,7 +431,7 @@ export default function Us() {
             onClick={() => setFeature('report')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>🎊 我们的{new Date().getFullYear()}(年度报告)</span>
+            <span>{t('🎊 我们的{y}(年度报告)', { y: new Date().getFullYear() })}</span>
             <span className="text-gray-300">›</span>
           </button>
         </div>
@@ -444,7 +443,7 @@ export default function Us() {
             onClick={() => setShowProfileSheet(true)}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>✏️ 修改资料</span>
+            <span>{t('✏️ 修改资料')}</span>
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -452,7 +451,7 @@ export default function Us() {
             onClick={() => setFeature('toggles')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>🧩 功能开关</span>
+            <span>{t('🧩 功能开关')}</span>
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -460,7 +459,7 @@ export default function Us() {
             onClick={() => setShowPwModal(true)}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>🔑 修改密码</span>
+            <span>{t('🔑 修改密码')}</span>
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -468,7 +467,7 @@ export default function Us() {
             onClick={() => void handleCheckUpdate()}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>🔄 检查更新</span>
+            <span>{t('🔄 检查更新')}</span>
             <span className="text-gray-300">›</span>
           </button>
         </div>
@@ -476,11 +475,11 @@ export default function Us() {
         {/* ---- 安装引导(已安装为 PWA 时不显示) ---- */}
         {!isStandalone && (
           <div className="mt-4 rounded-2xl bg-white p-5">
-            <p className="text-sm font-medium text-gray-500">📲 安装到主屏幕</p>
+            <p className="text-sm font-medium text-gray-500">{t('📲 安装到主屏幕')}</p>
             <p className="mt-2 text-sm leading-relaxed text-gray-400">
               {isIOS
-                ? '用 Safari 打开本页 → 点底部「分享」按钮 → 选「添加到主屏幕」,以后就能像 App 一样全屏使用。'
-                : '在浏览器菜单中选择「添加到桌面 / 安装应用」,以后就能像 App 一样全屏使用。'}
+                ? t('用 Safari 打开本页 → 点底部「分享」按钮 → 选「添加到主屏幕」,以后就能像 App 一样全屏使用。')
+                : t('在浏览器菜单中选择「添加到桌面 / 安装应用」,以后就能像 App 一样全屏使用。')}
             </p>
           </div>
         )}
@@ -537,7 +536,7 @@ export default function Us() {
             ))}
           </div>
 
-          <p className="mt-5 text-sm font-medium text-gray-500">字体大小</p>
+          <p className="mt-5 text-sm font-medium text-gray-500">{t('字体大小')}</p>
           <div className="mt-3 flex gap-2">
             {FONT_SIZES.map((f) => (
               <button
@@ -550,31 +549,31 @@ export default function Us() {
                     : 'border-line text-gray-500'
                 }`}
               >
-                {f.label}
+                {t(f.label)}
               </button>
             ))}
           </div>
 
-          <p className="mt-5 text-sm font-medium text-gray-500">主题色</p>
+          <p className="mt-5 text-sm font-medium text-gray-500">{t('主题色')}</p>
           <div className="mt-3 flex gap-4">
-            {THEMES.map((t) => (
+            {THEMES.map((th) => (
               <button
-                key={t.id}
+                key={th.id}
                 type="button"
-                onClick={() => handleTheme(t.id)}
+                onClick={() => handleTheme(th.id)}
                 className="flex flex-col items-center gap-1.5"
               >
                 <span
-                  style={{ backgroundColor: t.swatch }}
+                  style={{ backgroundColor: th.swatch }}
                   className={`h-9 w-9 rounded-full ${
-                    theme === t.id ? 'ring-2 ring-gray-700 ring-offset-2' : ''
+                    theme === th.id ? 'ring-2 ring-gray-700 ring-offset-2' : ''
                   }`}
                 />
-                <span className="text-xs text-gray-500">{t.label}</span>
+                <span className="text-xs text-gray-500">{t(th.label)}</span>
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-gray-300">以上设置只对这台设备生效</p>
+          <p className="mt-3 text-xs text-gray-300">{t('以上设置只对这台设备生效')}</p>
         </div>
 
         {/* ---- 其他操作 ---- */}
@@ -584,7 +583,7 @@ export default function Us() {
             onClick={handleSignOut}
             className="w-full px-5 py-4 text-left text-red-500 active:bg-soft"
           >
-            🚪 退出登录
+            {t('🚪 退出登录')}
           </button>
         </div>
       </div>
@@ -616,7 +615,7 @@ export default function Us() {
             onClick={(e) => e.stopPropagation()}
           >
             <p className="border-b border-line py-3 text-center text-sm font-medium text-gray-500">
-              修改资料
+              {t('修改资料')}
             </p>
             <div className="divide-y divide-line">
               <button
@@ -625,10 +624,10 @@ export default function Us() {
                 disabled={uploading}
                 className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft disabled:opacity-50"
               >
-                <span>我的头像</span>
+                <span>{t('我的头像')}</span>
                 <span className="flex items-center gap-2 text-gray-400">
                   {uploading ? (
-                    <span className="text-sm">上传中…</span>
+                    <span className="text-sm">{t('上传中…')}</span>
                   ) : (
                     <Avatar profile={profile} size={36} />
                   )}
@@ -640,7 +639,7 @@ export default function Us() {
                 onClick={() => setEditing('myName')}
                 className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
               >
-                <span>我的昵称</span>
+                <span>{t('我的昵称')}</span>
                 <span className="flex items-center gap-2 text-sm text-gray-400">
                   {profile?.display_name}
                   <span className="text-gray-300">›</span>
@@ -651,7 +650,7 @@ export default function Us() {
                 onClick={() => setEditing('houseName')}
                 className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
               >
-                <span>小屋名字</span>
+                <span>{t('小屋名字')}</span>
                 <span className="flex items-center gap-2 text-sm text-gray-400">
                   {couple?.name}
                   <span className="text-gray-300">›</span>
@@ -663,7 +662,7 @@ export default function Us() {
               className="mt-2 w-full border-t border-line py-3.5 text-center text-gray-500 active:bg-soft"
               onClick={() => setShowProfileSheet(false)}
             >
-              完成
+              {t('完成')}
             </button>
           </div>
         </div>
@@ -733,7 +732,7 @@ export default function Us() {
 
       {editing === 'myName' && (
         <EditModal
-          title="修改我的昵称"
+          title={t('修改我的昵称')}
           initial={profile?.display_name ?? ''}
           maxLength={12}
           onSave={saveMyName}
@@ -742,8 +741,8 @@ export default function Us() {
       )}
       {editing === 'houseName' && (
         <EditModal
-          title="给小屋起个名字"
-          initial={couple?.name ?? '双人小屋'}
+          title={t('给小屋起个名字')}
+          initial={couple?.name ?? t('双人小屋')}
           maxLength={16}
           onSave={saveHouseName}
           onClose={() => setEditing(null)}
