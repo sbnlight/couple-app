@@ -177,6 +177,70 @@
     transform: translateX(360%) skewX(-20deg);
   }
 }
+/* SVG 线条逐笔描绘(配合 pathLength=1 + dasharray=1) */
+@keyframes intro-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* 烟囱里升起的心形炊烟 */
+@keyframes intro-smoke {
+  0% {
+    transform: translate(0, 0) scale(0.45);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-8px, -38px) scale(1.05);
+    opacity: 0;
+  }
+}
+/* 两颗小心飞进门里(缩小消失) */
+@keyframes intro-door-left {
+  0% {
+    transform: translate(-44vw, -14px) scale(0.9);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 8px) scale(0.15);
+    opacity: 0;
+  }
+}
+@keyframes intro-door-right {
+  0% {
+    transform: translate(44vw, -14px) scale(0.9);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 8px) scale(0.15);
+    opacity: 0;
+  }
+}
+/* 窗户亮起暖光 */
+@keyframes intro-window {
+  from {
+    fill-opacity: 0;
+  }
+  to {
+    fill-opacity: 0.85;
+  }
+}
 
 /* 通用表单控件样式 */
 @layer components {
