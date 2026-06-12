@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { RequireAuth, RequireCouple } from './components/Guard'
 import { configMissing } from './lib/supabase'
 import SplashIntro from './components/SplashIntro'
+import { t } from './lib/i18n'
 import TabBar from './components/TabBar'
 import EffectHost from './components/EffectHost'
 import GlobalLive from './components/GlobalLive'
@@ -49,11 +50,11 @@ export default function App() {
       <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
         <span className="text-4xl">🔧</span>
         <p className="text-sm text-gray-500">
-          尚未配置 Supabase 环境变量。
+          {t('尚未配置 Supabase 环境变量。')}
           <br />
-          本地开发:复制 .env.example 为 .env.local 并填写;
+          {t('本地开发:复制 .env.example 为 .env.local 并填写;')}
           <br />
-          线上部署:在托管平台的环境变量里设置后重新部署。
+          {t('线上部署:在托管平台的环境变量里设置后重新部署。')}
         </p>
       </div>
     )

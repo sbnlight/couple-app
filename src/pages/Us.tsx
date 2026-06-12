@@ -16,6 +16,7 @@ import NotesPage from '../components/NotesPage'
 import YearReport from '../components/YearReport'
 import FeatureToggles, { featureOn } from '../components/FeatureToggles'
 import MoodCard, { moodValid } from '../components/MoodCard'
+import { LANGS, getLang, setLang, t } from '../lib/i18n'
 import {
   FONT_SIZES,
   THEMES,
@@ -495,7 +496,27 @@ export default function Us() {
 
         {/* ---- 本机显示设置(各自手机独立,不影响对方) ---- */}
         <div className="mt-4 rounded-2xl bg-white p-5">
-          <p className="text-sm font-medium text-gray-500">外观</p>
+          <p className="text-sm font-medium text-gray-500">{t('语言 / Language')}</p>
+          <div className="mt-3 flex gap-2">
+            {LANGS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => {
+                  if (l.id !== getLang()) setLang(l.id) // 切换后整页刷新生效
+                }}
+                className={`flex-1 rounded-xl border py-2 text-sm transition-colors ${
+                  getLang() === l.id
+                    ? 'border-primary bg-soft font-medium text-primary-dark'
+                    : 'border-line text-gray-500'
+                }`}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="mt-5 text-sm font-medium text-gray-500">{t('外观')}</p>
           <div className="mt-3 flex gap-2">
             {THEME_MODES.map((m) => (
               <button

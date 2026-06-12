@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isZh, t } from '../lib/i18n'
 
 /** 描边小屋的每一笔:路径 + 开始时刻 + 时长(pathLength=1 统一节奏) */
 const STROKES: { d: string; delay: number; dur: number }[] = [
@@ -19,7 +20,8 @@ const SMOKES = [
   { left: 145, top: 20, delay: 2.65 },
 ]
 
-const TITLE_CHARS = ['双', '人', '小', '屋']
+// 中文逐字浮现;其他语言整体浮现
+const TITLE_CHARS = isZh ? ['双', '人', '小', '屋'] : [t('双人小屋')]
 
 /**
  * 开场动画「小屋建造」:一笔一笔画出小屋 → 窗户亮起暖光、
@@ -150,7 +152,7 @@ export default function SplashIntro({
         <div className="relative mt-4 overflow-hidden px-2">
           <p className="text-2xl font-bold tracking-wide text-primary-dark">
             {reduce
-              ? '双人小屋'
+              ? t('双人小屋')
               : TITLE_CHARS.map((ch, i) => (
                   <span
                     key={i}
@@ -172,14 +174,14 @@ export default function SplashIntro({
           className="mt-1.5 text-sm text-gray-400"
           style={reduce ? undefined : { animation: 'intro-rise 0.6s ease-out 2.95s both' }}
         >
-          只属于我们两个人的地方
+          {t('只属于我们两个人的地方')}
         </p>
         {updated && (
           <p
             className="mt-3 text-xs font-medium text-green-600"
             style={reduce ? undefined : { animation: 'intro-rise 0.5s ease-out 3.15s both' }}
           >
-            ✓ 已更新到最新版本
+            {t('✓ 已更新到最新版本')}
           </p>
         )}
       </div>

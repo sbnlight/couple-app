@@ -1,12 +1,13 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { t } from '../lib/i18n'
 
 /** 全屏启动画面(会话恢复期间显示,避免闪到登录页再跳回) */
 export function Splash() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3">
       <span className="animate-pulse text-5xl">❤</span>
-      <p className="text-sm text-gray-400">双人小屋</p>
+      <p className="text-sm text-gray-400">{t('双人小屋')}</p>
     </div>
   )
 }

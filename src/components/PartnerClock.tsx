@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { timeInZone } from '../lib/time'
+import { t } from '../lib/i18n'
 
 /** 对方当地时间(每 30 秒刷新);时区未知时不渲染 */
 export default function PartnerClock({
   tz,
-  prefix = 'TA那边现在',
+  prefix,
 }: {
   tz: string | null | undefined
   prefix?: string
@@ -19,7 +20,7 @@ export default function PartnerClock({
   if (!info) return null
   return (
     <>
-      {prefix} {info.hm} {info.night ? '🌙' : '☀️'}
+      {prefix ?? t('TA那边现在')} {info.hm} {info.night ? '🌙' : '☀️'}
     </>
   )
 }
