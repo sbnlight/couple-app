@@ -28,12 +28,16 @@ export interface ChatItem {
 interface PendingMsg {
   localId: string
   type: MessageType
-  /** 文本/表情包路径;图片为上传成功后的路径(未上传时为空串) */
+  /** 文本/表情包路径;图片与语音为上传成功后的内容(未上传时为空串) */
   content: string
   createdAt: string
   status: 'sending' | 'failed'
   blob?: Blob
   previewUrl?: string
+  /** 语音时长(秒)与文件信息 */
+  voiceDur?: number
+  voiceExt?: string
+  voiceMime?: string
 }
 
 const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
@@ -44,7 +48,7 @@ const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
  */
 function savePending(coupleId: string, list: PendingMsg[]) {
   const texts = list
-    .filter((p) => p.type !== 'image')
+    .filter((p) => p.type !== 'image' && p.type !== 'voice')
     .map(({ localId, type, content, createdAt }) => ({ localId, type, content, createdAt }))
   try {
     localStorage.setItem(pendingKey(coupleId), JSON.stringify(texts))
@@ -255,17 +259,26 @@ export function useMessages(coupleId: string, userId: string) {
       for (const delay of delays) {
         if (delay > 0) await new Promise((r) => setTimeout(r, delay))
         try {
-          // 图片:先上传文件(重试时已传过则跳过)
-          if (msg.type === 'image' && content === '') {
-            if (!msg.blob) throw Object.assign(new Error('图片数据已丢失'), { fatal: true })
-            const path = `${coupleId}/${msg.localId}.jpg`
+          // 图片/语音:先上传文件(重试时已传过则跳过)
+          if ((msg.type === 'image' || msg.type === 'voice') && content === '') {
+            if (!msg.blob) throw Object.assign(new Error('媒体数据已丢失'), { fatal: true })
+            const ext = msg.type === 'voice' ? (msg.voiceExt ?? 'm4a') : 'jpg'
+            const path = `${coupleId}/${msg.localId}.${ext}`
             const { error: upErr } = await supabase.storage
               .from('chat-images')
-              .upload(path, msg.blob, { contentType: 'image/jpeg', upsert: true })
+              .upload(path, msg.blob, {
+                contentType: msg.type === 'voice' ? (msg.voiceMime ?? 'audio/mp4') : 'image/jpeg',
+                upsert: true,
+              })
             if (upErr) throw upErr
-            content = path
+            // 语音的 content 是 JSON:路径 + 时长(秒)
+            content =
+              msg.type === 'voice'
+                ? JSON.stringify({ p: path, d: msg.voiceDur ?? 0 })
+                : path
+            const done = content
             setPending((prev) =>
-              prev.map((x) => (x.localId === msg.localId ? { ...x, content: path } : x)),
+              prev.map((x) => (x.localId === msg.localId ? { ...x, content: done } : x)),
             )
           }
 
@@ -349,6 +362,39 @@ export function useMessages(coupleId: string, userId: string) {
     },
     [attemptSend],
   )
+
+  /** 发送语音消息:blob 上传后 content 存 {p:路径, d:秒数} */
+  const sendVoice = useCallback(
+    (blob: Blob, durationSec: number, ext: string, mime: string) => {
+      const p: PendingMsg = {
+        localId: crypto.randomUUID(),
+        type: 'voice',
+        content: '',
+        createdAt: new Date().toISOString(),
+        status: 'sending',
+        blob,
+        voiceDur: Math.max(1, Math.round(durationSec)),
+        voiceExt: ext,
+        voiceMime: mime,
+      }
+      setPending((prev) => [...prev, p])
+      void attemptSend(p)
+    },
+    [attemptSend],
+  )
+
+  /** 拍一拍:一条 nudge 类型的消息(聊天里显示居中提示) */
+  const sendNudge = useCallback(() => {
+    const p: PendingMsg = {
+      localId: crypto.randomUUID(),
+      type: 'nudge',
+      content: '',
+      createdAt: new Date().toISOString(),
+      status: 'sending',
+    }
+    setPending((prev) => [...prev, p])
+    void attemptSend(p)
+  }, [attemptSend])
 
   /** 发送表情包消息(图片已在 stickers 桶里,只需写一条消息记录) */
   const sendSticker = useCallback(
@@ -487,6 +533,8 @@ export function useMessages(coupleId: string, userId: string) {
     sendText,
     sendImage,
     sendSticker,
+    sendVoice,
+    sendNudge,
     retrySend,
     recallMessage,
     mode,

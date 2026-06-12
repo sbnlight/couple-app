@@ -15,6 +15,7 @@ import WishList from '../components/WishList'
 import NotesPage from '../components/NotesPage'
 import YearReport from '../components/YearReport'
 import FeatureToggles, { featureOn } from '../components/FeatureToggles'
+import MoodCard, { moodValid } from '../components/MoodCard'
 import {
   FONT_SIZES,
   THEMES,
@@ -337,6 +338,11 @@ export default function Us() {
               <span className="text-xs text-gray-400">
                 <PartnerClock tz={partner?.timezone} prefix="那边" />
               </span>
+              {moodValid(partner) && (
+                <span className="rounded-full bg-soft px-2 py-0.5 text-xs text-primary-dark">
+                  {moodValid(partner)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -368,6 +374,9 @@ export default function Us() {
             </div>
           )}
         </div>
+
+        {/* ---- 今日心情(对方可见) ---- */}
+        {profile && <MoodCard profile={profile} onSaved={refresh} onToast={showToast} />}
 
         {/* ---- 今日小互动:想你 + 打卡(可在功能开关里关闭) ---- */}
         {(featureOn(couple, 'miss') || featureOn(couple, 'checkin')) && (

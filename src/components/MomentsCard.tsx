@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { prevUtcDay, utcToday } from '../lib/time'
+import { sendLive } from '../lib/live'
+import { fireEffect } from '../lib/effects'
 import type { Checkin } from '../types/db'
+
+/** 连续天数徽章:7🔥 / 30🏅 / 100💯 */
+const badgeOf = (n: number) => (n >= 100 ? ' 💯' : n >= 30 ? ' 🏅' : n >= 7 ? ' 🔥' : '')
 
 /** 从打卡日期集合算连续天数(今天没打就从昨天往前数) */
 function streakOf(days: Set<string>): number {
@@ -94,6 +99,9 @@ export default function MomentsCard({
         .insert({ couple_id: coupleId, user_id: userId })
       if (error) throw error
       setMissMine((n) => n + 1)
+      // 对方如果正开着 App,立刻下一场爱心雨
+      sendLive('miss')
+      fireEffect(['💭', '💗'], 12)
       onToast('已经告诉 TA 你在想 TA 了 💭')
     } catch {
       onToast('网络不太好,再试一次')
@@ -111,8 +119,14 @@ export default function MomentsCard({
         .from('checkins')
         .insert({ couple_id: coupleId, user_id: userId, day: utcToday() })
       if (error) throw error
+      const newStreak = streakMine + 1
       await load()
-      onToast('打卡成功 ✅')
+      if ([7, 30, 100, 365].includes(newStreak)) {
+        fireEffect(['🔥', '🎉', '🏅'], 36)
+        onToast(`连续打卡 ${newStreak} 天!太厉害了 🎉`)
+      } else {
+        onToast('打卡成功 ✅')
+      }
     } catch {
       onToast('网络不太好,再试一次')
     } finally {
@@ -160,7 +174,8 @@ export default function MomentsCard({
         )}
         {checkinEnabled && (
           <>
-            打卡:你已连续 {streakMine} 天,{partnerName}已连续 {streakTheirs} 天
+            打卡:你已连续 {streakMine} 天{badgeOf(streakMine)},{partnerName}已连续{' '}
+            {streakTheirs} 天{badgeOf(streakTheirs)}
             {theirCheckedToday && ' · TA 今天已打卡'}
           </>
         )}

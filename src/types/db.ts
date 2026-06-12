@@ -6,6 +6,9 @@ export interface Profile {
   avatar_url: string | null
   /** IANA 时区(如 Asia/Shanghai),App 打开时自动同步设备时区 */
   timezone: string | null
+  /** 今日心情(如 "😴 好困"),24 小时内有效 */
+  mood: string | null
+  mood_at: string | null
   created_at: string
 }
 
@@ -74,7 +77,7 @@ export interface Checkin {
   created_at: string
 }
 
-export type MessageType = 'text' | 'image' | 'sticker'
+export type MessageType = 'text' | 'image' | 'sticker' | 'voice' | 'nudge'
 
 export interface Message {
   id: number

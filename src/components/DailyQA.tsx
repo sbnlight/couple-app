@@ -5,6 +5,7 @@ import { compressImage } from '../lib/image'
 import { getSignedUrl } from '../lib/storage'
 import { questionForDate } from '../lib/questions'
 import { utcToday } from '../lib/time'
+import { fireEffect } from '../lib/effects'
 import type { DailyAnswer } from '../types/db'
 
 /** 回答里附的图片(私有桶签名 URL) */
@@ -78,11 +79,21 @@ export default function DailyQA({
         .limit(40),
     ])
     const rows = (todayRes.data as DailyAnswer[] | null) ?? []
-    setMine(rows.find((r) => r.user_id === userId) ?? null)
-    setTheirs(rows.find((r) => r.user_id !== userId) ?? null)
+    const mineRow = rows.find((r) => r.user_id === userId) ?? null
+    const theirsRow = rows.find((r) => r.user_id !== userId) ?? null
+    setMine(mineRow)
+    setTheirs(theirsRow)
     setTheyAnswered(Boolean(partnerRes.data))
     setHistory((histRes.data as DailyAnswer[] | null) ?? [])
     setLoading(false)
+    // 默契时刻:双方都答完今天的问题,撒一次花(每天每设备一次)
+    if (mineRow && theirsRow) {
+      const key = `qa-fx-${today}`
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1')
+        fireEffect(['✨', '💞', '🎊'], 30)
+      }
+    }
   }, [coupleId, userId, today])
 
   useEffect(() => {

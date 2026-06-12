@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { deviceTimezone } from '../lib/time'
+import { initLive, teardownLive } from '../lib/live'
 import type { Couple, Profile } from '../types/db'
 
 /**
@@ -102,6 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (userId) await loadData(userId)
   }, [userId, loadData])
+
+  // 配对完成后建立小屋实时通道(拍一拍/输入中/想你/在场);登出时拆除
+  useEffect(() => {
+    if (couple?.member_b && userId) initLive(couple.id, userId)
+  }, [couple, userId])
+  useEffect(() => {
+    if (!userId) teardownLive()
+  }, [userId])
 
   // 回到前台时刷新一次:能及时看到对方改的昵称/头像/小屋名
   useEffect(() => {
