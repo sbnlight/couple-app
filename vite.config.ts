@@ -39,6 +39,8 @@ export default defineConfig({
         navigateFallback: '/index.html',
         // 不对跨域请求(Supabase API)做任何运行时缓存
         runtimeCaching: [],
+        // 把 Web Push 的事件处理并入生成的 service worker
+        importScripts: ['push-sw.js'],
       },
     }),
   ],
