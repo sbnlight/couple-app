@@ -97,6 +97,91 @@ function EditModal({
   )
 }
 
+/** 修改密码弹层:已登录状态直接改,无需收邮件 */
+function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [pw1, setPw1] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const handleSave = async () => {
+    if (busy) return
+    if (pw1.length < 6) {
+      setErr('密码至少需要 6 位')
+      return
+    }
+    if (pw1 !== pw2) {
+      setErr('两次输入的密码不一致')
+      return
+    }
+    setBusy(true)
+    setErr('')
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw1 })
+      if (error) throw error
+      onDone()
+      onClose()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('different from the old')) setErr('新密码不能和旧密码相同')
+      else if (msg.includes('超时') || msg.includes('Failed to fetch')) setErr('网络不太好,请重试')
+      else setErr(`出错了:${msg}`)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-8"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl bg-white p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-3 text-center text-base font-semibold">修改密码</h2>
+        <div className="flex flex-col gap-3">
+          <input
+            className="input w-full"
+            type="password"
+            placeholder="新密码(至少 6 位)"
+            autoComplete="new-password"
+            autoFocus
+            value={pw1}
+            onChange={(e) => setPw1(e.target.value)}
+          />
+          <input
+            className="input w-full"
+            type="password"
+            placeholder="再输入一次确认"
+            autoComplete="new-password"
+            value={pw2}
+            onChange={(e) => setPw2(e.target.value)}
+          />
+        </div>
+        {err && <p className="mt-2 text-sm text-red-500">{err}</p>}
+        <div className="mt-4 flex gap-3">
+          <button
+            type="button"
+            className="flex-1 rounded-xl border border-line py-2.5 text-gray-500"
+            onClick={onClose}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className="btn-primary flex-1 py-2.5"
+            disabled={busy}
+            onClick={() => void handleSave()}
+          >
+            {busy ? '保存中…' : '确认修改'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // 是否已作为 PWA 全屏安装(在浏览器里打开则显示安装引导)
 const isStandalone =
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -111,6 +196,7 @@ export default function Us() {
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
   /** 当前打开的功能页:每日一问 / 愿望清单 / 小纸条 / 纪念日管理 */
   const [feature, setFeature] = useState<'qa' | 'wish' | 'notes' | 'anniv' | null>(null)
+  const [showPwModal, setShowPwModal] = useState(false)
   const anniversaries = useAnniversaries(couple!.id)
   const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState('')
@@ -314,6 +400,14 @@ export default function Us() {
           </button>
           <button
             type="button"
+            onClick={() => setShowPwModal(true)}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>🔑 修改密码</span>
+            <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
             onClick={() => void handleCheckUpdate()}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
@@ -502,6 +596,13 @@ export default function Us() {
           onCoupleChanged={refresh}
           onClose={() => setFeature(null)}
           onToast={showToast}
+        />
+      )}
+
+      {showPwModal && (
+        <ChangePasswordModal
+          onClose={() => setShowPwModal(false)}
+          onDone={() => showToast('密码已修改 ✓')}
         />
       )}
 
