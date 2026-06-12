@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { categoryIcon, currencySymbol, useExpenses } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
@@ -17,6 +18,94 @@ function fmtDay(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const wd = '日一二三四五六'[new Date(y, m - 1, d).getDay()]
   return `${m}月${d}日 周${wd}`
+}
+
+/** 近 6 个月支出趋势(按货币分线) */
+interface TrendData {
+  yms: string[]
+  series: { currency: string; values: number[] }[]
+}
+
+const TREND_COLORS = ['var(--c-primary)', '#60a5fa']
+
+/** 折线图(纯 SVG) */
+function TrendChart({ yms, series }: TrendData) {
+  const W = 320
+  const H = 120
+  const PAD = 16
+  const max = Math.max(1, ...series.flatMap((s) => s.values))
+  const x = (i: number) => PAD + (i * (W - 2 * PAD)) / (yms.length - 1)
+  const y = (v: number) => H - 24 - (v / max) * (H - 42)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      {series.map((s, si) => (
+        <g key={s.currency}>
+          <polyline
+            fill="none"
+            stroke={TREND_COLORS[si]}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            points={s.values.map((v, i) => `${x(i)},${y(v)}`).join(' ')}
+          />
+          {s.values.map((v, i) => (
+            <circle key={i} cx={x(i)} cy={y(v)} r="3" fill={TREND_COLORS[si]} />
+          ))}
+        </g>
+      ))}
+      {yms.map((ym, i) => (
+        <text key={ym} x={x(i)} y={H - 6} textAnchor="middle" fontSize="10" fill="#9ca3af">
+          {Number(ym.slice(5))}月
+        </text>
+      ))}
+    </svg>
+  )
+}
+
+const DONUT_COLORS = ['var(--c-primary)', '#f59e0b', '#60a5fa', '#34d399', '#a78bfa', '#94a3b8']
+
+/** 分类占比环形图(纯 SVG) */
+function Donut({ cats, total }: { cats: [string, number][]; total: number }) {
+  const R = 40
+  const C = 2 * Math.PI * R
+  let acc = 0
+  return (
+    <div className="flex items-center gap-4">
+      <svg viewBox="0 0 100 100" className="h-24 w-24 shrink-0 -rotate-90">
+        {cats.map(([cat, amt], i) => {
+          const frac = amt / total
+          const seg = (
+            <circle
+              key={cat}
+              cx="50"
+              cy="50"
+              r={R}
+              fill="none"
+              stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
+              strokeWidth="14"
+              strokeDasharray={`${frac * C} ${C}`}
+              strokeDashoffset={-acc * C}
+            />
+          )
+          acc += frac
+          return seg
+        })}
+      </svg>
+      <div className="min-w-0 flex-1 space-y-1">
+        {cats.slice(0, 6).map(([cat, amt], i) => (
+          <p key={cat} className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }}
+            />
+            <span className="truncate">
+              {cat} {Math.round((amt / total) * 100)}%
+            </span>
+          </p>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** 每种货币一组的月度汇总 */
@@ -42,6 +131,58 @@ export default function Ledger() {
   )
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Expense | null>(null)
+  const [trend, setTrend] = useState<TrendData | null>(null)
+
+  // 近 6 个月支出趋势(记账有增删改时跟着 expenses 一起刷新)
+  useEffect(() => {
+    const now = new Date()
+    const yms: string[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      yms.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    }
+    const start = `${yms[0]}-01`
+    const endD = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const end = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-01`
+    void (async () => {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('spent_at, amount, currency')
+        .eq('couple_id', couple!.id)
+        .eq('kind', 'expense')
+        .gte('spent_at', start)
+        .lt('spent_at', end)
+      if (error || !data) return
+      const map = new Map<string, number[]>()
+      for (const row of data as { spent_at: string; amount: number; currency: string }[]) {
+        const idx = yms.indexOf(row.spent_at.slice(0, 7))
+        if (idx < 0) continue
+        let arr = map.get(row.currency)
+        if (!arr) {
+          arr = [0, 0, 0, 0, 0, 0]
+          map.set(row.currency, arr)
+        }
+        arr[idx] += Number(row.amount)
+      }
+      const series = [...map.entries()]
+        .map(([currency, values]) => ({ currency, values }))
+        .sort((a, b) => b.values.reduce((s, v) => s + v, 0) - a.values.reduce((s, v) => s + v, 0))
+        .slice(0, 2) // 最多画两条线,多了看不清
+      setTrend({ yms, series })
+    })()
+  }, [couple, expenses])
+
+  // 环比文案(主货币:本月 vs 上月)
+  const momText = useMemo(() => {
+    const s = trend?.series[0]
+    if (!s) return null
+    const cur = s.values[5]
+    const prev = s.values[4]
+    if (prev <= 0 || cur <= 0) return null
+    const pct = Math.round(((cur - prev) / prev) * 100)
+    if (pct === 0) return `${s.currency} 支出与上月持平`
+    return `${s.currency} 支出比上月${pct > 0 ? `多 ${pct}%  ↗` : `少 ${-pct}%  ↘`}`
+  }, [trend])
 
   // 汇总:不同货币不能直接相加,按货币分别统计
   const summaries = useMemo<CurSummary[]>(() => {
@@ -232,6 +373,37 @@ export default function Ledger() {
                 </div>
               )
             })}
+
+            {/* 统计图表 */}
+            {trend && trend.series.length > 0 && (
+              <div className="mb-3 rounded-2xl bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-500">📈 近半年支出趋势</p>
+                  <span className="flex gap-3 text-xs text-gray-400">
+                    {trend.series.map((s, i) => (
+                      <span key={s.currency} className="flex items-center gap-1">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: TREND_COLORS[i] }}
+                        />
+                        {s.currency}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <TrendChart yms={trend.yms} series={trend.series} />
+                </div>
+                {momText && <p className="text-xs text-gray-400">{momText}</p>}
+
+                {isCurrentMonth && summaries[0] && summaries[0].expense > 0 && (
+                  <>
+                    <p className="mb-2 mt-4 text-sm font-medium text-gray-500">本月分类占比</p>
+                    <Donut cats={summaries[0].cats} total={summaries[0].expense} />
+                  </>
+                )}
+              </div>
+            )}
 
             {/* 按日流水 */}
             {expenses.length === 0 ? (

@@ -13,6 +13,7 @@ import AnniversaryManager from '../components/AnniversaryManager'
 import DailyQA from '../components/DailyQA'
 import WishList from '../components/WishList'
 import NotesPage from '../components/NotesPage'
+import YearReport from '../components/YearReport'
 import {
   FONT_SIZES,
   THEMES,
@@ -198,8 +199,10 @@ export default function Us() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [showProfileSheet, setShowProfileSheet] = useState(false)
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
-  /** 当前打开的功能页:每日一问 / 愿望清单 / 小纸条 / 纪念日管理 */
-  const [feature, setFeature] = useState<'qa' | 'wish' | 'notes' | 'anniv' | null>(null)
+  /** 当前打开的功能页:每日一问 / 愿望清单 / 小纸条 / 纪念日管理 / 年度报告 */
+  const [feature, setFeature] = useState<'qa' | 'wish' | 'notes' | 'anniv' | 'report' | null>(
+    null,
+  )
   const [showPwModal, setShowPwModal] = useState(false)
   const anniversaries = useAnniversaries(couple!.id)
   const [uploading, setUploading] = useState(false)
@@ -405,6 +408,14 @@ export default function Us() {
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
             <span>🎀 纪念日与见面日</span>
+            <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeature('report')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>🎊 我们的{new Date().getFullYear()}(年度报告)</span>
             <span className="text-gray-300">›</span>
           </button>
         </div>
@@ -635,6 +646,16 @@ export default function Us() {
           coupleId={couple!.id}
           userId={profile!.id}
           partnerName={partner?.display_name ?? 'TA'}
+          onClose={() => setFeature(null)}
+        />
+      )}
+      {feature === 'report' && couple && (
+        <YearReport
+          coupleId={couple.id}
+          userId={profile!.id}
+          myName={profile?.display_name ?? '我'}
+          partnerName={partner?.display_name ?? 'TA'}
+          coupleCreatedAt={couple.created_at}
           onClose={() => setFeature(null)}
         />
       )}
