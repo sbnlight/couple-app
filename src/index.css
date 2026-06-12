@@ -75,6 +75,9 @@ html.dark .bg-gray-100 {
 html.dark .bg-gray-200 {
   background-color: #3c3242;
 }
+html.dark .bg-gray-300 {
+  background-color: #4a4050;
+}
 html.dark .text-gray-500 {
   color: #b4a9b2;
 }

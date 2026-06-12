@@ -19,6 +19,8 @@ export interface Couple {
   member_b: string | null
   /** 下次见面日期(倒数日) */
   next_meet_date: string | null
+  /** 互动功能开关(小屋级共享):缺省开启,显式 false 为关闭 */
+  feature_flags: Record<string, boolean> | null
   created_at: string
 }
 
@@ -38,6 +40,8 @@ export interface DailyAnswer {
   user_id: string
   question_date: string
   content: string
+  /** 随答案附的图片(chat-images 桶路径,最多 9 张),可为空 */
+  image_paths: string[] | null
   created_at: string
 }
 
