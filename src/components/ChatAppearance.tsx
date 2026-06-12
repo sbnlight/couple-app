@@ -17,6 +17,7 @@ import {
   saveChatBgToken,
 } from '../lib/prefs'
 import { t } from '../lib/i18n'
+import { renderDecos } from './MessageBubble'
 
 type Page = 'menu' | 'bubble' | 'bg' | 'font'
 
@@ -148,13 +149,16 @@ export default function ChatAppearance({
                   onClick={() => pickBubble(b.id)}
                   className="flex flex-col items-center gap-1.5"
                 >
-                  <span
-                    className={`flex h-11 w-full items-center justify-center rounded-2xl rounded-br-sm text-sm ${b.anim ?? ''} ${
-                      bubbleId === b.id ? 'ring-2 ring-gray-700 ring-offset-2' : ''
-                    }`}
-                    style={bubbleCss(b)}
-                  >
-                    {t('你好呀')}
+                  <span className="relative w-full">
+                    <span
+                      className={`flex h-11 w-full items-center justify-center rounded-2xl rounded-br-sm text-sm ${b.anim ?? ''} ${b.extraClass ?? ''} ${
+                        bubbleId === b.id ? 'ring-2 ring-gray-700 ring-offset-2' : ''
+                      }`}
+                      style={bubbleCss(b)}
+                    >
+                      {t('你好呀')}
+                    </span>
+                    {renderDecos(b.deco, 0.85)}
                   </span>
                   <span className="text-xs text-gray-500">{t(b.label)}</span>
                 </button>

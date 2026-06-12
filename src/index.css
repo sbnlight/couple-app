@@ -248,6 +248,34 @@ html.dark .rounded-2xl.bg-white {
   animation: bubble-beat 1.8s ease-in-out infinite;
   transform-origin: bottom right;
 }
+/* 玻璃拟态气泡 */
+.bubble-glass {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+/* 故障入侵气泡:双色错位 + 偶发抖动 */
+@keyframes bubble-glitch {
+  0%,
+  88%,
+  100% {
+    transform: translateX(0);
+    text-shadow:
+      2px 0 rgba(255, 0, 255, 0.7),
+      -2px 0 rgba(0, 255, 255, 0.7);
+  }
+  90% {
+    transform: translateX(-2px);
+    text-shadow:
+      -3px 0 rgba(255, 0, 255, 0.85),
+      3px 0 rgba(0, 255, 255, 0.85);
+  }
+  94% {
+    transform: translateX(2px) skewX(-3deg);
+  }
+}
+.bubble-glitch {
+  animation: bubble-glitch 2.4s steps(1) infinite;
+}
 
 /* ---------- 全屏表情雨 ---------- */
 @keyframes effect-fall {

@@ -50,21 +50,85 @@ export function applyThemeMode(mode: ThemeMode) {
 
 /* ---------- 聊天气泡样式(自己的气泡,本机生效) ---------- */
 
+/** 气泡角落挂件(emoji 探头装饰,QQ 风) */
+export interface BubbleDeco {
+  emoji: string
+  pos: 'tl' | 'tr' | 'bl' | 'br'
+  size?: number
+  rot?: number
+}
+
 export interface BubbleStyle {
   id: string
   label: string
-  /** CSS 背景值(渐变或纯色) */
+  /** CSS 背景值(渐变或纯色,可多层) */
   bg: string
   text: string
-  /** 分组:渐变 / 纯色 / 动态 */
+  /** 分组 */
   group: string
   /** 动态效果的 CSS 类(见 index.css) */
   anim?: string
-  /** 可选描边(浅色气泡用) */
+  /** 可选描边 */
   border?: string
+  /** 异形圆角(覆盖默认) */
+  radius?: string
+  /** 立体/特效阴影 */
+  shadow?: string
+  /** 文字阴影(霓虹字等) */
+  textShadow?: string
+  /** 额外效果类(玻璃拟态/手绘/像素/故障等) */
+  extraClass?: string
+  /** 角落挂件 */
+  deco?: BubbleDeco[]
 }
 
 export const BUBBLE_STYLES: BubbleStyle[] = [
+  // ---- 萌宠挂件:小动物在气泡边探头 ----
+  { group: '萌宠挂件', id: 'pet-cat', label: '猫猫探头', bg: '#fff7ed', text: '#9a3412', border: '1.5px solid #fdba74', deco: [{ emoji: '🐱', pos: 'tr', size: 22, rot: 12 }, { emoji: '🐾', pos: 'bl', size: 13, rot: -15 }] },
+  { group: '萌宠挂件', id: 'pet-bunny', label: '兔兔蹲守', bg: '#fdf2f8', text: '#be185d', border: '1.5px solid #f9a8d4', deco: [{ emoji: '🐰', pos: 'tr', size: 22 }, { emoji: '🥕', pos: 'bl', size: 13, rot: 30 }] },
+  { group: '萌宠挂件', id: 'pet-bear', label: '小熊抱抱', bg: '#fef3c7', text: '#92400e', border: '1.5px solid #fcd34d', deco: [{ emoji: '🐻', pos: 'br', size: 22, rot: -8 }, { emoji: '🍯', pos: 'tl', size: 13 }] },
+  { group: '萌宠挂件', id: 'pet-shiba', label: '柴犬歪头', bg: '#fffbeb', text: '#b45309', border: '1.5px solid #fde68a', deco: [{ emoji: '🐶', pos: 'tl', size: 22, rot: -12 }, { emoji: '🦴', pos: 'br', size: 13, rot: 20 }] },
+  { group: '萌宠挂件', id: 'pet-pig', label: '猪猪软糯', bg: 'linear-gradient(135deg, #fce7f3, #fbcfe8)', text: '#9d174d', radius: '22px 22px 22px 22px', deco: [{ emoji: '🐷', pos: 'br', size: 22 }, { emoji: '💗', pos: 'tl', size: 12 }] },
+  { group: '萌宠挂件', id: 'pet-shark', label: '鲨鲨咬住', bg: '#e0f2fe', text: '#075985', border: '1.5px solid #7dd3fc', deco: [{ emoji: '🦈', pos: 'tl', size: 24, rot: 18 }, { emoji: '💦', pos: 'br', size: 13 }] },
+  { group: '萌宠挂件', id: 'pet-chick', label: '小鸡叽叽', bg: '#fefce8', text: '#854d0e', border: '1.5px solid #fef08a', deco: [{ emoji: '🐥', pos: 'tr', size: 21 }, { emoji: '🌾', pos: 'bl', size: 13, rot: -20 }] },
+  { group: '萌宠挂件', id: 'pet-frog', label: '蛙蛙偷看', bg: '#f0fdf4', text: '#166534', border: '1.5px solid #86efac', deco: [{ emoji: '🐸', pos: 'bl', size: 21 }, { emoji: '🪷', pos: 'tr', size: 13 }] },
+  { group: '萌宠挂件', id: 'pet-seal', label: '海豹趴趴', bg: '#ecfeff', text: '#155e75', border: '1.5px solid #a5f3fc', deco: [{ emoji: '🦭', pos: 'br', size: 22, rot: -10 }, { emoji: '🫧', pos: 'tl', size: 13 }] },
+  { group: '萌宠挂件', id: 'pet-ghost', label: '幽灵飘飘', bg: 'linear-gradient(135deg, #3f3f46, #27272a)', text: '#e4e4e7', deco: [{ emoji: '👻', pos: 'tr', size: 22, rot: 10 }, { emoji: '✨', pos: 'bl', size: 12 }] },
+  { group: '萌宠挂件', id: 'pet-devil', label: '小恶魔', bg: 'linear-gradient(135deg, #450a0a, #1c1917)', text: '#fca5a5', deco: [{ emoji: '😈', pos: 'br', size: 21 }, { emoji: '🔥', pos: 'tl', size: 13 }] },
+  { group: '萌宠挂件', id: 'pet-angel', label: '小天使', bg: 'linear-gradient(135deg, #eff6ff, #e0e7ff)', text: '#3730a3', border: '1.5px solid #c7d2fe', deco: [{ emoji: '😇', pos: 'tr', size: 21 }, { emoji: '☁️', pos: 'bl', size: 14 }] },
+  // ---- 少女装饰 ----
+  { group: '少女装饰', id: 'deco-ribbon', label: '蝴蝶结', bg: '#fff1f2', text: '#be123c', border: '1.5px solid #fda4af', deco: [{ emoji: '🎀', pos: 'tl', size: 20, rot: -15 }] },
+  { group: '少女装饰', id: 'deco-sakura', label: '樱花飞舞', bg: 'linear-gradient(135deg, #fdf2f8, #fce7f3)', text: '#9d174d', deco: [{ emoji: '🌸', pos: 'tr', size: 18, rot: 15 }, { emoji: '🌸', pos: 'bl', size: 12, rot: -20 }] },
+  { group: '少女装饰', id: 'deco-star', label: '星星魔法', bg: 'linear-gradient(135deg, #fef9c3, #fde68a)', text: '#854d0e', deco: [{ emoji: '⭐', pos: 'tl', size: 16, rot: -10 }, { emoji: '✨', pos: 'br', size: 15 }] },
+  { group: '少女装饰', id: 'deco-butterfly', label: '蝴蝶停驻', bg: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', text: '#6d28d9', deco: [{ emoji: '🦋', pos: 'tr', size: 19, rot: 20 }] },
+  { group: '少女装饰', id: 'deco-music', label: '音符飘扬', bg: '#f8fafc', text: '#334155', border: '1.5px solid #cbd5e1', deco: [{ emoji: '🎵', pos: 'tr', size: 16, rot: 10 }, { emoji: '🎶', pos: 'bl', size: 13, rot: -10 }] },
+  { group: '少女装饰', id: 'deco-hearts', label: '爱心爆棚', bg: 'linear-gradient(135deg, #ffe4e6, #fecdd3)', text: '#be123c', deco: [{ emoji: '💕', pos: 'tl', size: 16, rot: -12 }, { emoji: '💖', pos: 'br', size: 16, rot: 12 }, { emoji: '💗', pos: 'tr', size: 12 }] },
+  { group: '少女装饰', id: 'deco-berry', label: '草莓甜心', bg: '#fff1f2', text: '#b91c1c', border: '1.5px solid #fecaca', deco: [{ emoji: '🍓', pos: 'br', size: 18, rot: 15 }] },
+  { group: '少女装饰', id: 'deco-peachy', label: '蜜桃乌龙', bg: 'linear-gradient(135deg, #fff7ed, #ffedd5)', text: '#c2410c', deco: [{ emoji: '🍑', pos: 'br', size: 18 }, { emoji: '🧋', pos: 'tl', size: 14, rot: -10 }] },
+  { group: '少女装饰', id: 'deco-rainbow', label: '彩虹之上', bg: 'linear-gradient(135deg, #fef2f2, #eff6ff)', text: '#475569', deco: [{ emoji: '🌈', pos: 'tl', size: 18 }, { emoji: '☁️', pos: 'br', size: 14 }] },
+  { group: '少女装饰', id: 'deco-moon', label: '月夜星辰', bg: 'linear-gradient(135deg, #1e1b4b, #312e81)', text: '#e0e7ff', deco: [{ emoji: '🌙', pos: 'tr', size: 17, rot: 15 }, { emoji: '⭐', pos: 'bl', size: 12 }] },
+  // ---- 异形边框 ----
+  { group: '异形边框', id: 'shape-pill', label: '胶囊', bg: 'linear-gradient(135deg, var(--c-primary), var(--c-primary-dark))', text: '#ffffff', radius: '999px' },
+  { group: '异形边框', id: 'shape-drop', label: '水滴', bg: 'linear-gradient(135deg, #7dd3fc, #3b82f6)', text: '#ffffff', radius: '28px 28px 6px 28px' },
+  { group: '异形边框', id: 'shape-leaf', label: '叶片', bg: 'linear-gradient(135deg, #86efac, #16a34a)', text: '#ffffff', radius: '28px 6px 28px 6px' },
+  { group: '异形边框', id: 'shape-double', label: '复古双线', bg: '#fffbf5', text: '#7c2d12', border: '4px double #c2410c', radius: '14px' },
+  { group: '异形边框', id: 'shape-stamp', label: '邮票边', bg: '#fffdf7', text: '#57534e', border: '2px dashed #d6d3d1', radius: '8px' },
+  { group: '异形边框', id: 'shape-comic', label: '漫画黑框', bg: '#ffffff', text: '#111827', border: '2.5px solid #111827', radius: '16px', shadow: '3px 3px 0 #111827' },
+  { group: '异形边框', id: 'shape-pixel', label: '像素8bit', bg: '#312e81', text: '#a5f3fc', radius: '0px', shadow: '4px 0 0 #312e81, -4px 0 0 #312e81, 0 4px 0 #312e81, 0 -4px 0 #312e81' },
+  { group: '异形边框', id: 'shape-sketchy', label: '手绘涂鸦', bg: '#fffef8', text: '#374151', border: '2px solid #374151', radius: '255px 15px 225px 15px / 15px 225px 15px 255px' },
+  { group: '异形边框', id: 'shape-flip', label: '反向圆角', bg: 'linear-gradient(135deg, #f9a8d4, #ec4899)', text: '#ffffff', radius: '6px 28px 28px 28px' },
+  { group: '异形边框', id: 'shape-seal', label: '印章红框', bg: '#fef2f2', text: '#991b1b', border: '3px solid #dc2626', radius: '6px', shadow: 'inset 0 0 0 1.5px #fef2f2, inset 0 0 0 3px #dc2626' },
+  // ---- 氛围质感 ----
+  { group: '氛围质感', id: 'tex-glass', label: '玻璃拟态', bg: 'rgba(255,255,255,0.4)', text: '#1f2937', border: '1px solid rgba(255,255,255,0.7)', extraClass: 'bubble-glass' },
+  { group: '氛围质感', id: 'tex-lawn', label: '后院草坪', bg: 'linear-gradient(180deg, #4ade80 0 9px, #8b5a2b 9px)', text: '#fef9c3', radius: '10px', deco: [{ emoji: '🌱', pos: 'tl', size: 14, rot: -10 }] },
+  { group: '氛围质感', id: 'tex-wood', label: '原木板', bg: 'repeating-linear-gradient(90deg, #a9744f 0 20px, #9a6845 20px 22px)', text: '#fff7ed', radius: '10px', shadow: 'inset 0 0 0 2px #7c4a21' },
+  { group: '氛围质感', id: 'tex-gingham', label: '格子布', bg: 'repeating-linear-gradient(0deg, rgba(244,63,94,.12) 0 8px, transparent 8px 16px), repeating-linear-gradient(90deg, rgba(244,63,94,.12) 0 8px, transparent 8px 16px), #ffffff', text: '#be123c', border: '1.5px solid #fda4af' },
+  { group: '氛围质感', id: 'tex-letter', label: '信纸', bg: 'linear-gradient(rgba(96,165,250,.18) 1px, transparent 1px) 0 6px / 100% 22px, #fffef6', text: '#44403c', border: '1px solid #e7e5e4' },
+  { group: '氛围质感', id: 'tex-blackgold', label: '黑金奢华', bg: 'linear-gradient(135deg, #1c1917, #0c0a09)', text: '#f5d061', border: '1px solid #d4af37' },
+  { group: '氛围质感', id: 'tex-denim', label: '牛仔布', bg: 'repeating-linear-gradient(45deg, #4a6da7 0 4px, #41619c 4px 8px)', text: '#eff6ff', shadow: 'inset 0 0 0 2px #34518a', radius: '12px' },
+  { group: '氛围质感', id: 'tex-plush', label: '毛绒绒', bg: 'radial-gradient(circle, rgba(255,255,255,.5) 1.5px, transparent 2px) 0 0 / 8px 8px, #fda4af', text: '#881337', radius: '24px' },
+  { group: '氛围质感', id: 'tex-glitch', label: '故障入侵', bg: '#18181b', text: '#f4f4f5', extraClass: 'bubble-glitch', radius: '6px' },
+  { group: '氛围质感', id: 'tex-holo', label: '全息镭射', bg: 'linear-gradient(135deg, #f0abfc, #67e8f9, #fde68a, #f0abfc)', text: '#581c87', anim: 'bubble-flow' },
   // ---- 渐变 ----
   { group: '渐变', id: 'theme', label: '主题渐变', bg: 'linear-gradient(135deg, var(--c-primary), var(--c-primary-dark))', text: '#ffffff' },
   { group: '渐变', id: 'peach', label: '蜜桃', bg: 'linear-gradient(135deg, #fda4af, #fb7185)', text: '#ffffff' },
@@ -147,12 +211,18 @@ export function bubbleCss(b: BubbleStyle): {
   backgroundColor?: string
   color: string
   border?: string
+  borderRadius?: string
+  boxShadow?: string
+  textShadow?: string
 } {
   const isGradient = b.bg.includes('gradient(')
   return {
     ...(isGradient ? { backgroundImage: b.bg } : { backgroundColor: b.bg }),
     color: b.text,
     ...(b.border ? { border: b.border } : {}),
+    ...(b.radius ? { borderRadius: b.radius } : {}),
+    ...(b.shadow ? { boxShadow: b.shadow } : {}),
+    ...(b.textShadow ? { textShadow: b.textShadow } : {}),
   }
 }
 
