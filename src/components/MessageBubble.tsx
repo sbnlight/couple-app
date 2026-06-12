@@ -2,7 +2,33 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { getSignedUrl } from '../lib/storage'
 import { BUBBLE_FONTS, BUBBLE_STYLES, bubbleCss, fontCss } from '../lib/prefs'
-import type { BubbleFont, BubbleStyle } from '../lib/prefs'
+import type { BubbleDeco, BubbleFont, BubbleStyle } from '../lib/prefs'
+
+/** 挂件的四角定位 */
+const DECO_POS: Record<BubbleDeco['pos'], CSSProperties> = {
+  tl: { top: -11, left: -7 },
+  tr: { top: -11, right: -7 },
+  bl: { bottom: -9, left: -7 },
+  br: { bottom: -9, right: -7 },
+}
+
+/** 渲染气泡角落的 emoji 挂件 */
+export function renderDecos(deco: BubbleDeco[] | undefined, scale = 1) {
+  if (!deco) return null
+  return deco.map((d, i) => (
+    <span
+      key={i}
+      className="pointer-events-none absolute z-10 leading-none"
+      style={{
+        ...DECO_POS[d.pos],
+        fontSize: (d.size ?? 18) * scale,
+        transform: d.rot ? `rotate(${d.rot}deg)` : undefined,
+      }}
+    >
+      {d.emoji}
+    </span>
+  ))
+}
 import type { ChatItem } from '../hooks/useMessages'
 import { t } from '../lib/i18n'
 
@@ -196,13 +222,18 @@ export default function MessageBubble({
           {item.type === 'voice' ? (
             <VoiceBubble item={item} mine={mine} styleObj={bubbleCss(bubble)} />
           ) : item.type === 'text' ? (
-            <div
-              className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-base leading-relaxed ${
-                mine ? `rounded-br-sm ${bubble.anim ?? ''}` : 'rounded-bl-sm bg-white'
-              }`}
-              style={mine ? { ...bubbleCss(bubble), ...fontCss(font) } : undefined}
-            >
-              {item.content}
+            <div className="relative">
+              <div
+                className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-base leading-relaxed ${
+                  mine
+                    ? `rounded-br-sm ${bubble.anim ?? ''} ${bubble.extraClass ?? ''}`
+                    : 'rounded-bl-sm bg-white'
+                }`}
+                style={mine ? { ...bubbleCss(bubble), ...fontCss(font) } : undefined}
+              >
+                {item.content}
+              </div>
+              {mine && renderDecos(bubble.deco)}
             </div>
           ) : (
             <ChatImage item={item} onPreview={onPreview} />
