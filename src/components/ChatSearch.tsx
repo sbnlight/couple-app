@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import MessageBubble from './MessageBubble'
 import type { ChatItem } from '../hooks/useMessages'
 import type { Message } from '../types/db'
+import { t } from '../lib/i18n'
 
 const PAGE = 50
 
@@ -125,7 +126,7 @@ export default function ChatSearch({
     setContext({ list: [...before, ...after], targetId: target.id })
   }
 
-  const senderName = (id: string) => (id === userId ? '我' : partnerName)
+  const senderName = (id: string) => (id === userId ? t('我') : partnerName)
 
   return (
     <div className="fixed inset-0 z-40 mx-auto flex max-w-md flex-col bg-warmbg">
@@ -134,7 +135,7 @@ export default function ChatSearch({
         <button type="button" onClick={onClose} className="px-1 text-2xl text-gray-400">
           ‹
         </button>
-        <h1 className="text-base font-semibold text-primary-dark">查找聊天记录</h1>
+        <h1 className="text-base font-semibold text-primary-dark">{t('查找聊天记录')}</h1>
       </header>
 
       {/* 筛选条件 */}
@@ -143,7 +144,7 @@ export default function ChatSearch({
           <input
             className="input min-w-0 flex-1 py-2"
             type="search"
-            placeholder="搜索消息内容…"
+            placeholder={t('搜索消息内容…')}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             disabled={imagesOnly}
@@ -153,7 +154,7 @@ export default function ChatSearch({
             disabled={!hasCondition || loading}
             className="btn-primary px-4 py-2"
           >
-            搜索
+            {t('搜索')}
           </button>
         </div>
 
@@ -168,7 +169,7 @@ export default function ChatSearch({
                 sender === s ? 'bg-soft font-medium text-primary-dark' : 'bg-gray-100 text-gray-400'
               }`}
             >
-              {s === 'all' ? '全部' : s === 'me' ? '我发的' : `${partnerName}发的`}
+              {s === 'all' ? t('全部') : s === 'me' ? t('我发的') : t('{name}发的', { name: partnerName })}
             </button>
           ))}
           {/* 只看图片 */}
@@ -179,7 +180,7 @@ export default function ChatSearch({
               imagesOnly ? 'bg-soft font-medium text-primary-dark' : 'bg-gray-100 text-gray-400'
             }`}
           >
-            🖼 只看图片
+            {t('🖼 只看图片')}
           </button>
           {/* 日期 */}
           <input
@@ -190,7 +191,7 @@ export default function ChatSearch({
           />
           {date && (
             <button type="button" onClick={() => setDate('')} className="text-gray-300">
-              清除日期
+              {t('清除日期')}
             </button>
           )}
         </div>
@@ -199,13 +200,13 @@ export default function ChatSearch({
       {/* 结果列表 */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {loading && results.length === 0 ? (
-          <p className="py-10 text-center text-sm text-gray-300">搜索中…</p>
+          <p className="py-10 text-center text-sm text-gray-300">{t('加载中…')}</p>
         ) : !searched ? (
           <p className="py-10 text-center text-sm text-gray-300">
-            输入关键词、选日期或「只看图片」,然后点搜索
+            {t('输入关键词、选日期或「只看图片」,然后点搜索')}
           </p>
         ) : results.length === 0 ? (
-          <p className="py-10 text-center text-sm text-gray-300">没有找到相关消息</p>
+          <p className="py-10 text-center text-sm text-gray-300">{t('没有找到相关消息')}</p>
         ) : (
           <>
             <div className="divide-y divide-line overflow-hidden rounded-2xl bg-white">
@@ -222,12 +223,14 @@ export default function ChatSearch({
                     </p>
                     <p className="mt-0.5 truncate text-sm">
                       {m.recalled
-                        ? '(已撤回)'
+                        ? t('(已撤回)')
                         : m.type === 'text'
                           ? m.content
                           : m.type === 'image'
-                            ? '🖼 [图片]'
-                            : '⭐ [表情包]'}
+                            ? t('🖼 [图片]')
+                            : m.type === 'voice'
+                              ? t('🎤 [语音]')
+                              : t('⭐ [表情包]')}
                     </p>
                   </button>
                   <button
@@ -235,7 +238,7 @@ export default function ChatSearch({
                     onClick={() => void openContext(m)}
                     className="shrink-0 px-3 py-3 text-xs text-gray-400"
                   >
-                    上下文
+                    {t('上下文')}
                   </button>
                 </div>
               ))}
@@ -247,7 +250,7 @@ export default function ChatSearch({
                 disabled={loading}
                 className="mx-auto mt-3 block rounded-full bg-white px-4 py-1.5 text-xs text-gray-400"
               >
-                {loading ? '加载中…' : '加载更多'}
+                {loading ? t('加载中…') : t('加载更多')}
               </button>
             )}
           </>
@@ -265,7 +268,7 @@ export default function ChatSearch({
             >
               ‹
             </button>
-            <h1 className="text-base font-semibold text-primary-dark">消息上下文</h1>
+            <h1 className="text-base font-semibold text-primary-dark">{t('消息上下文')}</h1>
           </header>
           <div className="flex-1 overflow-y-auto px-3 py-3">
             {context.list.map((m) => (

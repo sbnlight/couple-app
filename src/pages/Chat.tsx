@@ -15,6 +15,7 @@ import ChatSearch from '../components/ChatSearch'
 import ChatAppearance from '../components/ChatAppearance'
 import PartnerClock from '../components/PartnerClock'
 import { moodValid } from '../components/MoodCard'
+import { t } from '../lib/i18n'
 
 /** 时间条文案:今天只显时分;昨天/今年/更早逐级加详 */
 function formatDivider(iso: string): string {
@@ -26,9 +27,10 @@ function formatDivider(iso: string): string {
   const yesterday = new Date(now)
   yesterday.setDate(now.getDate() - 1)
   if (sameDay(d, now)) return hm
-  if (sameDay(d, yesterday)) return `昨天 ${hm}`
-  if (d.getFullYear() === now.getFullYear()) return `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${hm}`
+  if (sameDay(d, yesterday)) return `${t('昨天')} ${hm}`
+  if (d.getFullYear() === now.getFullYear())
+    return `${t('{m}月{d}日', { m: d.getMonth() + 1, d: d.getDate() })} ${hm}`
+  return `${t('{y}年{m}月{d}日', { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })} ${hm}`
 }
 
 /** 相邻消息间隔超过 5 分钟时显示时间条 */
@@ -183,7 +185,7 @@ export default function Chat() {
       setRecording(false)
       if (!send) return
       if (durSec < 1) {
-        showToast('太短啦,按住说话')
+        showToast(t('太短啦,按住说话'))
         return
       }
       const mime = r.mr.mimeType || 'audio/mp4'
@@ -205,7 +207,7 @@ export default function Chat() {
     if (mode === 'history') await backToLatest()
     const mime = pickMime()
     if (mime === null || !navigator.mediaDevices?.getUserMedia) {
-      showToast('这个浏览器不支持录音')
+      showToast(t('这个浏览器不支持录音'))
       return
     }
     try {
@@ -225,7 +227,7 @@ export default function Chat() {
         if (el >= 60) stopRec(true) // 60 秒上限自动发送
       }, 250)
     } catch {
-      showToast('无法使用麦克风,请检查权限设置')
+      showToast(t('无法使用麦克风,请检查权限设置'))
     }
   }
 
@@ -325,7 +327,7 @@ export default function Chat() {
     try {
       await sendImage(file)
     } catch {
-      showToast('无法读取这张图片,请换一张试试')
+      showToast(t('无法读取这张图片,请换一张试试'))
     }
   }
 
@@ -335,7 +337,7 @@ export default function Chat() {
     stickRef.current = false
     const ok = await jumpTo(id)
     if (!ok) {
-      showToast('定位失败,请重试')
+      showToast(t('定位失败,请重试'))
       return
     }
     setHighlightId(id)
@@ -347,28 +349,28 @@ export default function Chat() {
 
   /** 长按菜单:撤回 */
   const handleRecall = async () => {
-    const t = actionTarget
+    const target = actionTarget
     setActionTarget(null)
-    if (!t?.id) return
+    if (!target?.id) return
     try {
-      await recallMessage(t.id)
+      await recallMessage(target.id)
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('RECALL_TIMEOUT')) showToast('发出超过 2 分钟,不能撤回了')
-      else showToast('撤回失败,请重试')
+      if (msg.includes('RECALL_TIMEOUT')) showToast(t('发出超过 2 分钟,不能撤回了'))
+      else showToast(t('撤回失败,请重试'))
     }
   }
 
   /** 长按菜单:复制 */
   const handleCopy = async () => {
-    const t = actionTarget
+    const target = actionTarget
     setActionTarget(null)
-    if (!t) return
+    if (!target) return
     try {
-      await navigator.clipboard.writeText(t.content)
-      showToast('已复制')
+      await navigator.clipboard.writeText(target.content)
+      showToast(t('已复制'))
     } catch {
-      showToast('复制失败,长按文字手动选择吧')
+      showToast(t('复制失败,长按文字手动选择吧'))
     }
   }
 
@@ -386,7 +388,7 @@ export default function Chat() {
           ❤ {couple?.name ?? '双人小屋'}
         </h1>
         {partnerTyping ? (
-          <p className="text-xs text-primary-dark">对方正在输入…</p>
+          <p className="text-xs text-primary-dark">{t('对方正在输入…')}</p>
         ) : (
           (partner?.timezone || moodValid(partner)) && (
             <p className="text-xs text-gray-400">
@@ -427,16 +429,16 @@ export default function Chat() {
         style={bgStyle}
       >
         {loadingInitial ? (
-          <p className="py-10 text-center text-sm text-gray-300">加载中…</p>
+          <p className="py-10 text-center text-sm text-gray-300">{t('加载中…')}</p>
         ) : initialError ? (
           <div className="flex flex-col items-center gap-3 py-10">
-            <p className="text-sm text-gray-400">消息加载失败</p>
+            <p className="text-sm text-gray-400">{t('消息加载失败')}</p>
             <button
               type="button"
               onClick={() => void reload()}
               className="rounded-full border border-primary px-4 py-1.5 text-sm text-primary-dark"
             >
-              重新加载
+              {t('重新加载')}
             </button>
           </div>
         ) : (
@@ -448,13 +450,13 @@ export default function Chat() {
                 disabled={loadingOlder}
                 className="mx-auto mb-3 block rounded-full bg-white px-4 py-1.5 text-xs text-gray-400"
               >
-                {loadingOlder ? '加载中…' : '查看更早的消息'}
+                {loadingOlder ? t('加载中…') : t('查看更早的消息')}
               </button>
             )}
             {items.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-16 text-gray-300">
                 <span className="text-4xl">💬</span>
-                <p className="text-sm">说点什么,开启你们的小屋吧</p>
+                <p className="text-sm">{t('说点什么,开启你们的小屋吧')}</p>
               </div>
             )}
             {items.map((item, i) => {
@@ -508,7 +510,7 @@ export default function Chat() {
                 onClick={() => void loadNewer()}
                 className="mx-auto mt-1 block rounded-full bg-white px-4 py-1.5 text-xs text-gray-400"
               >
-                查看更新的消息
+                {t('查看更新的消息')}
               </button>
             )}
           </>
@@ -525,7 +527,7 @@ export default function Chat() {
           }}
           className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50vw-13rem))] rounded-full bg-primary px-3.5 py-2 text-sm text-white shadow-lg"
         >
-          ↓ 回到最新
+          {t('↓ 回到最新')}
         </button>
       )}
 
@@ -557,7 +559,7 @@ export default function Chat() {
         </button>
         <input
           className="min-w-0 flex-1 rounded-full border border-line bg-warmbg px-4 py-2 text-base outline-none focus:border-primary"
-          placeholder="说点什么…"
+          placeholder={t('说点什么…')}
           maxLength={2000}
           value={draft}
           onChange={(e) => {
@@ -583,7 +585,7 @@ export default function Chat() {
           disabled={!draft.trim()}
           className="rounded-full bg-primary px-4 py-2 text-base text-white disabled:opacity-40"
         >
-          发送
+          {t('发送')}
         </button>
       </form>
 
@@ -643,7 +645,7 @@ export default function Chat() {
                   onClick={() => void handleCopy()}
                   className="w-full py-3.5 text-center active:bg-soft"
                 >
-                  📋 复制
+                  {t('📋 复制')}
                 </button>
               )}
               {canRecall(actionTarget) && (
@@ -652,7 +654,7 @@ export default function Chat() {
                   onClick={() => void handleRecall()}
                   className="w-full py-3.5 text-center text-red-500 active:bg-soft"
                 >
-                  ↩️ 撤回
+                  {t('↩️ 撤回')}
                 </button>
               )}
             </div>
@@ -661,7 +663,7 @@ export default function Chat() {
               className="mt-2 w-full border-t border-line py-3.5 text-center text-gray-500"
               onClick={() => setActionTarget(null)}
             >
-              取消
+              {t('取消')}
             </button>
           </div>
         </div>
@@ -682,7 +684,7 @@ export default function Chat() {
           <div className="flex flex-col items-center gap-2 rounded-2xl bg-gray-800/85 px-8 py-6 text-white">
             <span className="animate-pulse text-4xl">🎙</span>
             <span className="font-mono text-lg">{recElapsed}s</span>
-            <span className="text-xs text-white/70">松开发送 · 最长 60 秒</span>
+            <span className="text-xs text-white/70">{t('松开发送 · 最长 60 秒')}</span>
           </div>
         </div>
       )}

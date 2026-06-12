@@ -4,6 +4,7 @@ import { getSignedUrl } from '../lib/storage'
 import { BUBBLE_FONTS, BUBBLE_STYLES, bubbleCss, fontCss } from '../lib/prefs'
 import type { BubbleFont, BubbleStyle } from '../lib/prefs'
 import type { ChatItem } from '../hooks/useMessages'
+import { t } from '../lib/i18n'
 
 /** 图片/表情包消息:待发送时用本地预览,已落库则取私有桶签名 URL */
 function ChatImage({ item, onPreview }: { item: ChatItem; onPreview: (url: string) => void }) {
@@ -33,7 +34,7 @@ function ChatImage({ item, onPreview }: { item: ChatItem; onPreview: (url: strin
   return (
     <img
       src={url}
-      alt={isSticker ? '表情包' : '图片消息'}
+      alt={isSticker ? t('表情包') : t('图片消息')}
       className={
         isSticker
           ? 'h-24 w-24 rounded-lg object-contain'
@@ -143,7 +144,7 @@ export default function MessageBubble({
   if (item.recalled) {
     return (
       <p className="my-1 text-center text-xs text-gray-300">
-        {mine ? '你' : '对方'}撤回了一条消息
+        {mine ? t('你撤回了一条消息') : t('对方撤回了一条消息')}
       </p>
     )
   }
@@ -152,7 +153,7 @@ export default function MessageBubble({
   if (item.type === 'nudge') {
     return (
       <p className="my-1 text-center text-xs text-gray-300">
-        {mine ? '你拍了拍 TA' : 'TA 拍了拍你'} 👋
+        {mine ? t('你拍了拍 TA') : t('TA 拍了拍你')} 👋
       </p>
     )
   }
@@ -209,7 +210,7 @@ export default function MessageBubble({
         </div>
 
         {item.status === 'sending' && (
-          <p className="mt-0.5 text-right text-xs text-gray-300">发送中…</p>
+          <p className="mt-0.5 text-right text-xs text-gray-300">{t('发送中…')}</p>
         )}
         {item.status === 'failed' && (
           <button
@@ -217,11 +218,11 @@ export default function MessageBubble({
             onClick={onRetry}
             className="mt-0.5 w-full text-right text-xs text-red-500"
           >
-            ⚠ 发送失败,点击重试
+            {t('⚠ 发送失败,点击重试')}
           </button>
         )}
         {item.status === 'sent' && readLabel && (
-          <p className="mt-0.5 text-right text-xs text-gray-300">已读</p>
+          <p className="mt-0.5 text-right text-xs text-gray-300">{t('已读')}</p>
         )}
       </div>
     </div>
