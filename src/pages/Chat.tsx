@@ -1,11 +1,15 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { CSSProperties, ChangeEvent, FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useMessages } from '../hooks/useMessages'
+import type { ChatItem } from '../hooks/useMessages'
 import { useReadStatus } from '../hooks/useReadStatus'
+import { CHAT_BGS, getBubbleStyle, getChatBgToken } from '../lib/prefs'
+import { getSignedUrl } from '../lib/storage'
 import MessageBubble from '../components/MessageBubble'
 import ChatPanel from '../components/ChatPanel'
 import ChatSearch from '../components/ChatSearch'
+import ChatAppearance from '../components/ChatAppearance'
 import PartnerClock from '../components/PartnerClock'
 
 /** 时间条文案:今天只显时分;昨天/今年/更早逐级加详 */
@@ -25,6 +29,8 @@ function formatDivider(iso: string): string {
 
 /** 相邻消息间隔超过 5 分钟时显示时间条 */
 const DIVIDER_GAP = 5 * 60 * 1000
+/** 发出后多久内可撤回(与数据库 RPC 一致) */
+const RECALL_WINDOW = 2 * 60 * 1000
 
 export default function Chat() {
   const { couple, session, partner } = useAuth()
@@ -42,6 +48,12 @@ export default function Chat() {
     sendImage,
     sendSticker,
     retrySend,
+    recallMessage,
+    mode,
+    hasNewer,
+    jumpTo,
+    loadNewer,
+    backToLatest,
   } = useMessages(couple!.id, userId)
 
   const [draft, setDraft] = useState('')
@@ -49,6 +61,49 @@ export default function Chat() {
   const [toast, setToast] = useState('')
   const [panelOpen, setPanelOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
+  const [actionTarget, setActionTarget] = useState<ChatItem | null>(null)
+  const [highlightId, setHighlightId] = useState<number | null>(null)
+
+  // 聊天外观(本机偏好)
+  const [bubble, setBubble] = useState(getBubbleStyle)
+  const [bgToken, setBgToken] = useState(getChatBgToken)
+  const [customBgUrl, setCustomBgUrl] = useState<string | null>(null)
+
+  const listRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  // 是否"贴在底部":贴底时新消息到达自动滚到底,翻历史时则不打扰
+  const stickRef = useRef(true)
+
+  // 自定义背景:解析签名 URL
+  useLayoutEffect(() => {
+    if (!bgToken.startsWith('custom:')) {
+      setCustomBgUrl(null)
+      return
+    }
+    let cancelled = false
+    getSignedUrl('avatars', bgToken.slice(7)).then((u) => {
+      if (!cancelled) setCustomBgUrl(u)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [bgToken])
+
+  const bgStyle = useMemo<CSSProperties | undefined>(() => {
+    if (bgToken.startsWith('preset:')) {
+      const css = CHAT_BGS.find((b) => b.id === bgToken.slice(7))?.css
+      return css ? { background: css } : undefined
+    }
+    if (customBgUrl) {
+      return {
+        backgroundImage: `url(${customBgUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    }
+    return undefined
+  }, [bgToken, customBgUrl])
 
   // 本地已加载的最新服务端消息 id(作为自己的已读位置上报)
   const latestServerId = useMemo(() => {
@@ -63,25 +118,26 @@ export default function Chat() {
   const myLastKey = useMemo(() => {
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i]
-      if (it.id !== undefined && it.senderId === userId) return it.key
+      if (it.id !== undefined && it.senderId === userId && !it.recalled) return it.key
     }
     return null
   }, [items, userId])
 
-  const partnerReadId = useReadStatus(couple!.id, userId, latestServerId)
-  const listRef = useRef<HTMLDivElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-  // 是否"贴在底部":贴底时新消息到达自动滚到底,翻历史时则不打扰
-  const stickRef = useRef(true)
+  const partnerReadId = useReadStatus(couple!.id, userId, mode === 'live' ? latestServerId : 0)
 
   useLayoutEffect(() => {
     const el = listRef.current
-    if (el && stickRef.current) el.scrollTop = el.scrollHeight
-  }, [items.length, loadingInitial])
+    if (el && stickRef.current && mode === 'live') el.scrollTop = el.scrollHeight
+  }, [items.length, loadingInitial, mode])
 
   const onScroll = () => {
     const el = listRef.current
     if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2500)
   }
 
   /** 加载更早消息并保持滚动位置不跳动 */
@@ -94,9 +150,11 @@ export default function Chat() {
     }, 0)
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!draft.trim()) return
+    // 历史浏览中发消息:先回到最新再发,避免消息"落"在历史窗口里
+    if (mode === 'history') await backToLatest()
     stickRef.current = true
     sendText(draft)
     setDraft('')
@@ -106,19 +164,63 @@ export default function Chat() {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    if (mode === 'history') await backToLatest()
     stickRef.current = true
     try {
       await sendImage(file)
     } catch {
-      setToast('无法读取这张图片,请换一张试试')
-      setTimeout(() => setToast(''), 2500)
+      showToast('无法读取这张图片,请换一张试试')
     }
   }
 
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2500)
+  /** 从搜索结果定位到聊天中的某条消息 */
+  const locate = async (id: number) => {
+    setSearchOpen(false)
+    stickRef.current = false
+    const ok = await jumpTo(id)
+    if (!ok) {
+      showToast('定位失败,请重试')
+      return
+    }
+    setHighlightId(id)
+    setTimeout(() => {
+      document.getElementById(`msg-${id}`)?.scrollIntoView({ block: 'center' })
+    }, 60)
+    setTimeout(() => setHighlightId(null), 2200)
   }
+
+  /** 长按菜单:撤回 */
+  const handleRecall = async () => {
+    const t = actionTarget
+    setActionTarget(null)
+    if (!t?.id) return
+    try {
+      await recallMessage(t.id)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('RECALL_TIMEOUT')) showToast('发出超过 2 分钟,不能撤回了')
+      else showToast('撤回失败,请重试')
+    }
+  }
+
+  /** 长按菜单:复制 */
+  const handleCopy = async () => {
+    const t = actionTarget
+    setActionTarget(null)
+    if (!t) return
+    try {
+      await navigator.clipboard.writeText(t.content)
+      showToast('已复制')
+    } catch {
+      showToast('复制失败,长按文字手动选择吧')
+    }
+  }
+
+  const canRecall = (it: ChatItem) =>
+    it.senderId === userId &&
+    it.status === 'sent' &&
+    it.id !== undefined &&
+    Date.now() - new Date(it.createdAt).getTime() < RECALL_WINDOW
 
   return (
     <div className="flex h-full flex-col">
@@ -133,6 +235,14 @@ export default function Chat() {
         )}
         <button
           type="button"
+          onClick={() => setAppearanceOpen(true)}
+          className="absolute bottom-2.5 left-4 text-lg"
+          aria-label="聊天外观"
+        >
+          🎨
+        </button>
+        <button
+          type="button"
           onClick={() => setSearchOpen(true)}
           className="absolute bottom-2.5 right-4 text-lg text-gray-400"
           aria-label="查找聊天记录"
@@ -142,7 +252,12 @@ export default function Chat() {
       </header>
 
       {/* 消息列表 */}
-      <div ref={listRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-3 py-3">
+      <div
+        ref={listRef}
+        onScroll={onScroll}
+        className="flex-1 overflow-y-auto px-3 py-3"
+        style={bgStyle}
+      >
         {loadingInitial ? (
           <p className="py-10 text-center text-sm text-gray-300">加载中…</p>
         ) : initialError ? (
@@ -180,8 +295,15 @@ export default function Chat() {
                 !prev ||
                 new Date(item.createdAt).getTime() - new Date(prev.createdAt).getTime() >
                   DIVIDER_GAP
+              const longPressable = item.type === 'text' || canRecall(item)
               return (
-                <div key={item.key} className="mb-2">
+                <div
+                  key={item.key}
+                  id={item.id !== undefined ? `msg-${item.id}` : undefined}
+                  className={`msg-in mb-2 rounded-2xl ${
+                    highlightId !== null && item.id === highlightId ? 'msg-highlight' : ''
+                  }`}
+                >
                   {showDivider && (
                     <p className="my-3 text-center text-xs text-gray-300">
                       {formatDivider(item.createdAt)}
@@ -190,6 +312,7 @@ export default function Chat() {
                   <MessageBubble
                     item={item}
                     mine={item.senderId === userId}
+                    bubble={bubble}
                     readLabel={
                       item.key === myLastKey &&
                       item.id !== undefined &&
@@ -197,17 +320,41 @@ export default function Chat() {
                     }
                     onRetry={() => retrySend(item.key)}
                     onPreview={(url) => setViewer(url)}
+                    onLongPress={longPressable ? () => setActionTarget(item) : undefined}
                   />
                 </div>
               )
             })}
+            {hasNewer && (
+              <button
+                type="button"
+                onClick={() => void loadNewer()}
+                className="mx-auto mt-1 block rounded-full bg-white px-4 py-1.5 text-xs text-gray-400"
+              >
+                查看更新的消息
+              </button>
+            )}
           </>
         )}
       </div>
 
+      {/* 历史浏览中:一键回到最新 */}
+      {mode === 'history' && (
+        <button
+          type="button"
+          onClick={() => {
+            stickRef.current = true
+            void backToLatest()
+          }}
+          className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50vw-13rem))] rounded-full bg-primary px-3.5 py-2 text-sm text-white shadow-lg"
+        >
+          ↓ 回到最新
+        </button>
+      )}
+
       {/* 输入栏 */}
       <form
-        onSubmit={handleSubmit}
+        onSubmit={(e) => void handleSubmit(e)}
         className="flex items-center gap-2 border-t border-line bg-white/85 backdrop-blur-md px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
       >
         <button
@@ -263,8 +410,63 @@ export default function Chat() {
           coupleId={couple!.id}
           userId={userId}
           partnerName={partner?.display_name ?? 'TA'}
+          onLocate={(id) => void locate(id)}
           onClose={() => setSearchOpen(false)}
         />
+      )}
+
+      {/* 聊天外观设置 */}
+      {appearanceOpen && (
+        <ChatAppearance
+          userId={userId}
+          onChanged={() => {
+            setBubble(getBubbleStyle())
+            setBgToken(getChatBgToken())
+          }}
+          onClose={() => setAppearanceOpen(false)}
+          onToast={showToast}
+        />
+      )}
+
+      {/* 长按操作菜单 */}
+      {actionTarget && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
+          onClick={() => setActionTarget(null)}
+        >
+          <div
+            className="mx-auto w-full max-w-md rounded-t-2xl bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="divide-y divide-line">
+              {actionTarget.type === 'text' && (
+                <button
+                  type="button"
+                  onClick={() => void handleCopy()}
+                  className="w-full py-3.5 text-center active:bg-soft"
+                >
+                  📋 复制
+                </button>
+              )}
+              {canRecall(actionTarget) && (
+                <button
+                  type="button"
+                  onClick={() => void handleRecall()}
+                  className="w-full py-3.5 text-center text-red-500 active:bg-soft"
+                >
+                  ↩️ 撤回
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="mt-2 w-full border-t border-line py-3.5 text-center text-gray-500"
+              onClick={() => setActionTarget(null)}
+            >
+              取消
+            </button>
+          </div>
+        </div>
       )}
 
       {/* 隐藏的图片选择器 */}
@@ -288,7 +490,7 @@ export default function Chat() {
 
       {/* 轻提示 */}
       {toast && (
-        <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center">
+        <div className="pointer-events-none fixed inset-x-0 top-16 z-[60] flex justify-center">
           <span className="rounded-full bg-gray-800/80 px-4 py-2 text-sm text-white">{toast}</span>
         </div>
       )}

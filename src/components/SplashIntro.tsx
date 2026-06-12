@@ -40,8 +40,9 @@ export default function SplashIntro({
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   useEffect(() => {
-    const t1 = setTimeout(() => setLeaving(true), reduce ? 700 : 3300)
-    const t2 = setTimeout(onDone, reduce ? 1100 : 3800)
+    // 文字约 3.1s 全部出齐,再停留约 1.2s 给人看清,然后淡出
+    const t1 = setTimeout(() => setLeaving(true), reduce ? 900 : 4300)
+    const t2 = setTimeout(onDone, reduce ? 1300 : 4800)
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)

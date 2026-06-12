@@ -81,6 +81,8 @@ export interface Message {
   content: string
   /** 客户端生成的幂等键,用于发送重试时去重 */
   client_id: string | null
+  /** 已撤回(内容已被清空) */
+  recalled: boolean
   created_at: string
 }
 
