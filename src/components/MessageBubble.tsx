@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { getSignedUrl } from '../lib/storage'
 import { BUBBLE_FONTS, BUBBLE_STYLES, bubbleCss, fontCss } from '../lib/prefs'
 import type { BubbleFont, BubbleStyle } from '../lib/prefs'
@@ -43,6 +44,72 @@ function ChatImage({ item, onPreview }: { item: ChatItem; onPreview: (url: strin
   )
 }
 
+/** 语音消息气泡:点击播放/暂停,宽度随时长 */
+function VoiceBubble({
+  item,
+  mine,
+  styleObj,
+}: {
+  item: ChatItem
+  mine: boolean
+  styleObj?: CSSProperties
+}) {
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  let path = ''
+  let dur = 0
+  try {
+    const parsed = JSON.parse(item.content) as { p?: string; d?: number }
+    path = parsed.p ?? ''
+    dur = parsed.d ?? 0
+  } catch {
+    // 旧数据或未上传完成
+  }
+
+  const toggle = async () => {
+    if (playing) {
+      audioRef.current?.pause()
+      return
+    }
+    if (!path) return
+    const url = await getSignedUrl('chat-images', path)
+    if (!url) return
+    const audio = new Audio(url)
+    audioRef.current = audio
+    audio.onended = () => setPlaying(false)
+    audio.onpause = () => setPlaying(false)
+    void audio.play()
+    setPlaying(true)
+  }
+
+  useEffect(() => {
+    return () => audioRef.current?.pause()
+  }, [])
+
+  return (
+    <button
+      type="button"
+      onClick={() => void toggle()}
+      className={`flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-base ${
+        mine ? 'rounded-br-sm' : 'rounded-bl-sm bg-white'
+      }`}
+      style={{ ...(mine ? styleObj : {}), width: 92 + Math.min(dur, 60) * 2 }}
+    >
+      <span>{playing ? '⏸' : '▶'}</span>
+      <span className="flex flex-1 items-center gap-0.5 overflow-hidden">
+        {[3, 7, 5, 9, 4, 8, 5].map((h, i) => (
+          <span
+            key={i}
+            className={`w-0.5 rounded-full ${playing ? 'animate-pulse' : ''}`}
+            style={{ height: h + 4, background: 'currentColor', opacity: 0.75 }}
+          />
+        ))}
+      </span>
+      <span className="shrink-0 text-sm">{dur}"</span>
+    </button>
+  )
+}
+
 /** 一条消息气泡:自己靠右(可自定义样式),对方靠左;支持长按菜单、撤回态、已读标注 */
 export default function MessageBubble({
   item,
@@ -53,6 +120,7 @@ export default function MessageBubble({
   onRetry,
   onPreview,
   onLongPress,
+  onDoubleTap,
 }: {
   item: ChatItem
   mine: boolean
@@ -65,8 +133,11 @@ export default function MessageBubble({
   onRetry: () => void
   onPreview: (url: string) => void
   onLongPress?: () => void
+  /** 双击对方气泡 → 拍一拍 */
+  onDoubleTap?: () => void
 }) {
   const pressTimer = useRef<number | undefined>(undefined)
+  const lastTapRef = useRef(0)
 
   // 已撤回:居中灰字提示,不再显示内容
   if (item.recalled) {
@@ -77,19 +148,43 @@ export default function MessageBubble({
     )
   }
 
+  // 拍一拍:居中系统提示行
+  if (item.type === 'nudge') {
+    return (
+      <p className="my-1 text-center text-xs text-gray-300">
+        {mine ? '你拍了拍 TA' : 'TA 拍了拍你'} 👋
+      </p>
+    )
+  }
+
   const startPress = () => {
     if (!onLongPress) return
     pressTimer.current = window.setTimeout(onLongPress, 480)
   }
   const cancelPress = () => window.clearTimeout(pressTimer.current)
+  /** 触屏双击检测(两次点按 < 300ms) */
+  const handleTap = () => {
+    if (!onDoubleTap) return
+    const now = Date.now()
+    if (now - lastTapRef.current < 300) {
+      lastTapRef.current = 0
+      onDoubleTap()
+    } else {
+      lastTapRef.current = now
+    }
+  }
 
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div className="max-w-[78%]">
         <div
           onTouchStart={startPress}
-          onTouchEnd={cancelPress}
+          onTouchEnd={() => {
+            cancelPress()
+            handleTap()
+          }}
           onTouchMove={cancelPress}
+          onDoubleClick={() => onDoubleTap?.()}
           onContextMenu={(e) => {
             if (onLongPress) {
               e.preventDefault()
@@ -97,7 +192,9 @@ export default function MessageBubble({
             }
           }}
         >
-          {item.type === 'text' ? (
+          {item.type === 'voice' ? (
+            <VoiceBubble item={item} mine={mine} styleObj={bubbleCss(bubble)} />
+          ) : item.type === 'text' ? (
             <div
               className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-base leading-relaxed ${
                 mine ? `rounded-br-sm ${bubble.anim ?? ''}` : 'rounded-bl-sm bg-white'

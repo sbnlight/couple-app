@@ -249,6 +249,63 @@ html.dark .rounded-2xl.bg-white {
   transform-origin: bottom right;
 }
 
+/* ---------- 全屏表情雨 ---------- */
+@keyframes effect-fall {
+  0% {
+    transform: translateY(-8vh) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(108vh) rotate(40deg);
+    opacity: 0.9;
+  }
+}
+
+/* ---------- 对方在聊天页的呼吸光点 ---------- */
+@keyframes presence-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(52, 211, 153, 0);
+  }
+}
+.presence-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #34d399;
+  animation: presence-pulse 1.8s ease-out infinite;
+}
+
+/* ---------- 收到拍一拍时的轻微抖动 ---------- */
+@keyframes chat-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+.chat-shake {
+  animation: chat-shake 0.45s ease;
+}
+
 /* ---------- 开场动画:双心相遇(SplashIntro.tsx) ---------- */
 @keyframes intro-fly-left {
   from {

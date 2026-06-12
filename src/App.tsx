@@ -5,6 +5,8 @@ import { RequireAuth, RequireCouple } from './components/Guard'
 import { configMissing } from './lib/supabase'
 import SplashIntro from './components/SplashIntro'
 import TabBar from './components/TabBar'
+import EffectHost from './components/EffectHost'
+import GlobalLive from './components/GlobalLive'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Pair from './pages/Pair'
@@ -24,6 +26,9 @@ function MainLayout() {
         <Outlet />
       </main>
       <TabBar />
+      {/* 全屏表情雨渲染器 + 全局互动监听(想你爱心雨/纪念日彩蛋) */}
+      <EffectHost />
+      <GlobalLive />
     </div>
   )
 }

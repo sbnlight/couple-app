@@ -55,7 +55,11 @@ Deno.serve(async (req) => {
       ? String(record.content).slice(0, 60)
       : record.type === 'image'
         ? '[图片]'
-        : '[表情包]'
+        : record.type === 'voice'
+          ? '[语音消息]'
+          : record.type === 'nudge'
+            ? '拍了拍你 👋'
+            : '[表情包]'
   const payload = JSON.stringify({
     title: sender?.display_name ?? '双人小屋',
     body: preview,

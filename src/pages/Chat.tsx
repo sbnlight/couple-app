@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ChangeEvent, FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useMessages } from '../hooks/useMessages'
@@ -6,11 +6,15 @@ import type { ChatItem } from '../hooks/useMessages'
 import { useReadStatus } from '../hooks/useReadStatus'
 import { CHAT_BGS, getBubbleFont, getBubbleStyle, getChatBgToken } from '../lib/prefs'
 import { getSignedUrl } from '../lib/storage'
+import { onLive, onPartnerInChat, sendLive, trackInChat } from '../lib/live'
+import { fireEffect, keywordEffect } from '../lib/effects'
+import { weatherForTz } from '../lib/weather'
 import MessageBubble from '../components/MessageBubble'
 import ChatPanel from '../components/ChatPanel'
 import ChatSearch from '../components/ChatSearch'
 import ChatAppearance from '../components/ChatAppearance'
 import PartnerClock from '../components/PartnerClock'
+import { moodValid } from '../components/MoodCard'
 
 /** 时间条文案:今天只显时分;昨天/今年/更早逐级加详 */
 function formatDivider(iso: string): string {
@@ -47,6 +51,8 @@ export default function Chat() {
     sendText,
     sendImage,
     sendSticker,
+    sendVoice,
+    sendNudge,
     retrySend,
     recallMessage,
     mode,
@@ -75,6 +81,153 @@ export default function Chat() {
   const fileRef = useRef<HTMLInputElement>(null)
   // 是否"贴在底部":贴底时新消息到达自动滚到底,翻历史时则不打扰
   const stickRef = useRef(true)
+
+  // ---- 互动状态:在场 / 正在输入 / 天气 / 抖动 / 录音 ----
+  const [partnerIn, setPartnerIn] = useState(false)
+  const [typingUntil, setTypingUntil] = useState(0)
+  const [, typingTick] = useState(0)
+  const [weather, setWeather] = useState<{ emoji: string; temp: number } | null>(null)
+  const [shake, setShake] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [recElapsed, setRecElapsed] = useState(0)
+  const lastTypingSentRef = useRef(0)
+  const prevMaxRef = useRef<number | null>(null)
+  const recRef = useRef<{
+    mr: MediaRecorder
+    chunks: Blob[]
+    start: number
+    stream: MediaStream
+  } | null>(null)
+  const recTimerRef = useRef<number | undefined>(undefined)
+
+  // 在场:进入聊天页让对方看到呼吸光点;同时订阅对方的在场与输入状态
+  useEffect(() => {
+    trackInChat(true)
+    const offPresence = onPartnerInChat(setPartnerIn)
+    const offTyping = onLive('typing', () => setTypingUntil(Date.now() + 3500))
+    return () => {
+      trackInChat(false)
+      offPresence()
+      offTyping()
+    }
+  }, [])
+
+  // "正在输入"过期自动消失
+  useEffect(() => {
+    if (typingUntil <= Date.now()) return
+    const t = setInterval(() => typingTick((x) => x + 1), 1000)
+    return () => clearInterval(t)
+  }, [typingUntil])
+  const partnerTyping = typingUntil > Date.now()
+
+  // 对方城市天气
+  useEffect(() => {
+    let cancelled = false
+    void weatherForTz(partner?.timezone ?? null).then((w) => {
+      if (!cancelled) setWeather(w)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [partner?.timezone])
+
+  // 新到消息的反应:对方文本命中关键词 → 表情雨;对方拍一拍 → 震动+抖动
+  useEffect(() => {
+    if (loadingInitial) return
+    const maxId = (() => {
+      for (let i = items.length - 1; i >= 0; i--) {
+        const id = items[i].id
+        if (id !== undefined) return id
+      }
+      return 0
+    })()
+    if (prevMaxRef.current === null) {
+      prevMaxRef.current = maxId
+      return
+    }
+    if (maxId <= prevMaxRef.current) return
+    const since = prevMaxRef.current
+    prevMaxRef.current = maxId
+    for (const it of items) {
+      if (it.id === undefined || it.id <= since) continue
+      if (it.senderId === userId) continue
+      if (Date.now() - new Date(it.createdAt).getTime() > 20_000) continue
+      if (it.type === 'text' && !it.recalled) {
+        const fx = keywordEffect(it.content)
+        if (fx) fireEffect(fx)
+      } else if (it.type === 'nudge') {
+        navigator.vibrate?.(200)
+        setShake(true)
+        setTimeout(() => setShake(false), 500)
+      }
+    }
+  }, [items, loadingInitial, userId])
+
+  // ---- 语音录制(按住说话) ----
+  const pickMime = () => {
+    if (typeof MediaRecorder === 'undefined') return null
+    for (const m of ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm']) {
+      if (MediaRecorder.isTypeSupported(m)) return m
+    }
+    return ''
+  }
+
+  const stopRec = (send: boolean) => {
+    const r = recRef.current
+    if (!r) return
+    window.clearInterval(recTimerRef.current)
+    const durSec = (Date.now() - r.start) / 1000
+    r.mr.onstop = () => {
+      r.stream.getTracks().forEach((t) => t.stop())
+      recRef.current = null
+      setRecording(false)
+      if (!send) return
+      if (durSec < 1) {
+        showToast('太短啦,按住说话')
+        return
+      }
+      const mime = r.mr.mimeType || 'audio/mp4'
+      const blob = new Blob(r.chunks, { type: mime })
+      const ext = mime.includes('mp4') ? 'm4a' : 'webm'
+      stickRef.current = true
+      sendVoice(blob, durSec, ext, mime)
+    }
+    try {
+      r.mr.stop()
+    } catch {
+      recRef.current = null
+      setRecording(false)
+    }
+  }
+
+  const startRec = async () => {
+    if (recording) return
+    if (mode === 'history') await backToLatest()
+    const mime = pickMime()
+    if (mime === null || !navigator.mediaDevices?.getUserMedia) {
+      showToast('这个浏览器不支持录音')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      const chunks: Blob[] = []
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data)
+      }
+      recRef.current = { mr, chunks, start: Date.now(), stream }
+      mr.start()
+      setRecording(true)
+      setRecElapsed(0)
+      recTimerRef.current = window.setInterval(() => {
+        const el = (Date.now() - (recRef.current?.start ?? Date.now())) / 1000
+        setRecElapsed(Math.floor(el))
+        if (el >= 60) stopRec(true) // 60 秒上限自动发送
+      }, 250)
+    } catch {
+      showToast('无法使用麦克风,请检查权限设置')
+    }
+  }
 
   // 自定义背景:解析签名 URL
   useLayoutEffect(() => {
@@ -157,6 +310,8 @@ export default function Chat() {
     // 历史浏览中发消息:先回到最新再发,避免消息"落"在历史窗口里
     if (mode === 'history') await backToLatest()
     stickRef.current = true
+    const fx = keywordEffect(draft)
+    if (fx) fireEffect(fx)
     sendText(draft)
     setDraft('')
   }
@@ -224,15 +379,27 @@ export default function Chat() {
     Date.now() - new Date(it.createdAt).getTime() < RECALL_WINDOW
 
   return (
-    <div className="flex h-full flex-col">
+    <div className={`flex h-full flex-col ${shake ? 'chat-shake' : ''}`}>
       <header className="relative border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
         <h1 className="text-base font-semibold text-primary-dark">
+          {partnerIn && <span className="presence-dot mr-1.5 align-middle" title="TA 正在聊天页" />}
           ❤ {couple?.name ?? '双人小屋'}
         </h1>
-        {partner?.timezone && (
-          <p className="text-xs text-gray-400">
-            <PartnerClock tz={partner.timezone} />
-          </p>
+        {partnerTyping ? (
+          <p className="text-xs text-primary-dark">对方正在输入…</p>
+        ) : (
+          (partner?.timezone || moodValid(partner)) && (
+            <p className="text-xs text-gray-400">
+              <PartnerClock tz={partner?.timezone ?? null} />
+              {weather && (
+                <>
+                  {' '}
+                  · {weather.emoji} {weather.temp}°C
+                </>
+              )}
+              {moodValid(partner) && <> · {moodValid(partner)}</>}
+            </p>
+          )
         )}
         <button
           type="button"
@@ -323,6 +490,14 @@ export default function Chat() {
                     onRetry={() => retrySend(item.key)}
                     onPreview={(url) => setViewer(url)}
                     onLongPress={longPressable ? () => setActionTarget(item) : undefined}
+                    onDoubleTap={
+                      item.senderId !== userId && item.id !== undefined
+                        ? () => {
+                            navigator.vibrate?.(60)
+                            sendNudge()
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               )
@@ -367,12 +542,32 @@ export default function Chat() {
         >
           📷
         </button>
+        <button
+          type="button"
+          onPointerDown={() => void startRec()}
+          onPointerUp={() => stopRec(true)}
+          onPointerCancel={() => stopRec(false)}
+          onPointerLeave={() => recording && stopRec(false)}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`select-none text-2xl leading-none ${recording ? 'scale-125' : ''}`}
+          style={{ touchAction: 'none' }}
+          aria-label="按住说话"
+        >
+          🎤
+        </button>
         <input
           className="min-w-0 flex-1 rounded-full border border-line bg-warmbg px-4 py-2 text-base outline-none focus:border-primary"
           placeholder="说点什么…"
           maxLength={2000}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            // 节流广播"正在输入"
+            if (e.target.value && Date.now() - lastTypingSentRef.current > 2000) {
+              lastTypingSentRef.current = Date.now()
+              sendLive('typing')
+            }
+          }}
           onFocus={() => setPanelOpen(false)}
         />
         <button
@@ -480,6 +675,17 @@ export default function Chat() {
         className="hidden"
         onChange={(e) => void handlePickImage(e)}
       />
+
+      {/* 录音中浮层 */}
+      {recording && (
+        <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-2 rounded-2xl bg-gray-800/85 px-8 py-6 text-white">
+            <span className="animate-pulse text-4xl">🎙</span>
+            <span className="font-mono text-lg">{recElapsed}s</span>
+            <span className="text-xs text-white/70">松开发送 · 最长 60 秒</span>
+          </div>
+        </div>
+      )}
 
       {/* 全屏看图 */}
       {viewer && (
