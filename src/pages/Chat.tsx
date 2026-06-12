@@ -122,7 +122,7 @@ export default function Chat() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="relative border-b border-line bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
+      <header className="relative border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
         <h1 className="text-base font-semibold text-primary-dark">
           ❤ {couple?.name ?? '双人小屋'}
         </h1>
@@ -208,7 +208,7 @@ export default function Chat() {
       {/* 输入栏 */}
       <form
         onSubmit={handleSubmit}
-        className="flex items-center gap-2 border-t border-line bg-white px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
+        className="flex items-center gap-2 border-t border-line bg-white/85 backdrop-blur-md px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
       >
         <button
           type="button"

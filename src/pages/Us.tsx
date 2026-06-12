@@ -16,12 +16,15 @@ import NotesPage from '../components/NotesPage'
 import {
   FONT_SIZES,
   THEMES,
+  THEME_MODES,
   applyFontSize,
   applyTheme,
+  applyThemeMode,
   getFontSize,
   getTheme,
+  getThemeMode,
 } from '../lib/prefs'
-import type { FontSize, ThemeId } from '../lib/prefs'
+import type { FontSize, ThemeId, ThemeMode } from '../lib/prefs'
 
 /** 单行文本编辑弹层(改昵称/小屋名共用) */
 function EditModal({
@@ -203,6 +206,7 @@ export default function Us() {
   const [toast, setToast] = useState('')
   const [fontSize, setFontSize] = useState<FontSize>(getFontSize)
   const [theme, setTheme] = useState<ThemeId>(getTheme)
+  const [mode, setMode] = useState<ThemeMode>(getThemeMode)
 
   const days = couple
     ? Math.floor((Date.now() - new Date(couple.created_at).getTime()) / 86_400_000) + 1
@@ -306,11 +310,11 @@ export default function Us() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-line bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
+      <header className="border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
         <h1 className="text-base font-semibold text-primary-dark">我们</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-6">
+      <div className="page-in flex-1 overflow-y-auto px-5 py-6">
         {/* ---- 小屋名片(纯展示,编辑入口在下方选项列表) ---- */}
         <div className="rounded-2xl bg-white p-5">
           <p className="text-center text-base font-semibold">{couple?.name ?? '双人小屋'}</p>
@@ -456,7 +460,28 @@ export default function Us() {
 
         {/* ---- 本机显示设置(各自手机独立,不影响对方) ---- */}
         <div className="mt-4 rounded-2xl bg-white p-5">
-          <p className="text-sm font-medium text-gray-500">字体大小</p>
+          <p className="text-sm font-medium text-gray-500">外观</p>
+          <div className="mt-3 flex gap-2">
+            {THEME_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => {
+                  applyThemeMode(m.id)
+                  setMode(m.id)
+                }}
+                className={`flex-1 rounded-xl border py-2 text-sm transition-colors ${
+                  mode === m.id
+                    ? 'border-primary bg-soft font-medium text-primary-dark'
+                    : 'border-line text-gray-500'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="mt-5 text-sm font-medium text-gray-500">字体大小</p>
           <div className="mt-3 flex gap-2">
             {FONT_SIZES.map((f) => (
               <button

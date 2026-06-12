@@ -122,7 +122,7 @@ export default function Ledger() {
   return (
     <div className="flex h-full flex-col">
       {/* 顶栏:月份切换 */}
-      <header className="flex items-center justify-center gap-4 border-b border-line bg-white px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header className="flex items-center justify-center gap-4 border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button type="button" onClick={() => changeMonth(-1)} className="px-2 text-gray-400">
           ◀
         </button>
@@ -139,7 +139,7 @@ export default function Ledger() {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="page-in flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
           <p className="py-10 text-center text-sm text-gray-300">加载中…</p>
         ) : error ? (
