@@ -41,6 +41,80 @@
   --c-soft: #f5f3ff;
 }
 
+/* ---------- 开场动画:双心相遇(SplashIntro.tsx) ---------- */
+@keyframes intro-fly-left {
+  from {
+    transform: translateX(-46vw) rotate(-24deg) scale(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0) rotate(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes intro-fly-right {
+  from {
+    transform: translateX(46vw) rotate(24deg) scale(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0) rotate(0) scale(1);
+    opacity: 1;
+  }
+}
+/* 两颗小心在碰撞瞬间消失,由合体大心接棒 */
+@keyframes intro-vanish {
+  to {
+    opacity: 0;
+  }
+}
+/* 合体大心:弹性放大 */
+@keyframes intro-pop {
+  0% {
+    transform: scale(0);
+  }
+  55% {
+    transform: scale(1.25);
+  }
+  75% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* 迸出的小心心:向四周飞散并淡出(--bx/--by 由组件内联指定) */
+@keyframes intro-burst {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--bx), var(--by)) scale(1.1);
+    opacity: 0;
+  }
+}
+/* 文字浮现 */
+@keyframes intro-rise {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* 通用表单控件样式 */
 @layer components {
   .input {
