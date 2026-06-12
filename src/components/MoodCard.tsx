@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../types/db'
+import { t } from '../lib/i18n'
 
 const MOOD_EMOJIS = ['😊', '🥰', '😴', '😢', '😡', '🤒', '🎉', '😪']
 
@@ -37,9 +38,9 @@ export default function MoodCard({
       if (error) throw error
       await onSaved()
       setEditing(false)
-      onToast(value ? '心情已更新,TA 能看到啦' : '已清除心情')
+      onToast(value ? t('心情已更新,TA 能看到啦') : t('已清除心情'))
     } catch {
-      onToast('保存失败,请重试')
+      onToast(t('保存失败,请重试'))
     } finally {
       setBusy(false)
     }
@@ -48,14 +49,14 @@ export default function MoodCard({
   return (
     <div className="mt-4 rounded-2xl bg-white p-5">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-500">今日心情</p>
+        <p className="text-sm font-medium text-gray-500">{t('今日心情')}</p>
         {current && !editing && (
           <button
             type="button"
             onClick={() => void save(null)}
             className="text-xs text-gray-300"
           >
-            清除
+            {t('清除')}
           </button>
         )}
       </div>
@@ -78,7 +79,7 @@ export default function MoodCard({
           {current ? (
             <span className="text-base">{current}</span>
           ) : (
-            <span className="text-sm text-gray-400">点击设置今天的心情,TA 会看到 →</span>
+            <span className="text-sm text-gray-400">{t('点击设置今天的心情,TA 会看到 →')}</span>
           )}
         </button>
       ) : (
@@ -99,7 +100,7 @@ export default function MoodCard({
             <input
               className="input min-w-0 flex-1 py-2"
               type="text"
-              placeholder="一句话心情,比如:好想吃火锅"
+              placeholder={t('一句话心情,比如:好想吃火锅')}
               maxLength={14}
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -110,7 +111,7 @@ export default function MoodCard({
               onClick={() => void save(`${emoji} ${text.trim()}`.trim())}
               className="btn-primary px-4 py-2"
             >
-              保存
+              {t('保存')}
             </button>
           </div>
         </div>

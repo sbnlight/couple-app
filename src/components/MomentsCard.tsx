@@ -4,6 +4,7 @@ import { prevUtcDay, utcToday } from '../lib/time'
 import { sendLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
 import type { Checkin } from '../types/db'
+import { t } from '../lib/i18n'
 
 /** 连续天数徽章:7🔥 / 30🏅 / 100💯 */
 const badgeOf = (n: number) => (n >= 100 ? ' 💯' : n >= 30 ? ' 🏅' : n >= 7 ? ' 🔥' : '')
@@ -102,9 +103,9 @@ export default function MomentsCard({
       // 对方如果正开着 App,立刻下一场爱心雨
       sendLive('miss')
       fireEffect(['💭', '💗'], 12)
-      onToast('已经告诉 TA 你在想 TA 了 💭')
+      onToast(t('已经告诉 TA 你在想 TA 了 💭'))
     } catch {
-      onToast('网络不太好,再试一次')
+      onToast(t('网络不太好,请重试'))
     } finally {
       setBusy(false)
     }
@@ -123,12 +124,12 @@ export default function MomentsCard({
       await load()
       if ([7, 30, 100, 365].includes(newStreak)) {
         fireEffect(['🔥', '🎉', '🏅'], 36)
-        onToast(`连续打卡 ${newStreak} 天!太厉害了 🎉`)
+        onToast(t('连续打卡 {n} 天!太厉害了 🎉', { n: newStreak }))
       } else {
-        onToast('打卡成功 ✅')
+        onToast(t('打卡成功 ✅'))
       }
     } catch {
-      onToast('网络不太好,再试一次')
+      onToast(t('网络不太好,请重试'))
     } finally {
       setBusy(false)
     }
@@ -136,7 +137,7 @@ export default function MomentsCard({
 
   return (
     <div className="mt-4 rounded-2xl bg-white p-5">
-      <p className="text-sm font-medium text-gray-500">今日小互动</p>
+      <p className="text-sm font-medium text-gray-500">{t('今日小互动')}</p>
       <div className={`mt-3 grid gap-3 ${missEnabled && checkinEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {missEnabled && (
           <button
@@ -146,7 +147,7 @@ export default function MomentsCard({
             className="rounded-xl bg-soft py-3 text-center active:opacity-70 disabled:opacity-50"
           >
             <span className="block text-2xl">💭</span>
-            <span className="mt-1 block text-sm font-medium text-primary-dark">想 TA</span>
+            <span className="mt-1 block text-sm font-medium text-primary-dark">{t('想 TA')}</span>
           </button>
         )}
         {checkinEnabled && (
@@ -160,7 +161,7 @@ export default function MomentsCard({
           >
             <span className="block text-2xl">{checkedToday ? '✅' : '📍'}</span>
             <span className="mt-1 block text-sm font-medium text-primary-dark">
-              {checkedToday ? '今日已打卡' : '每日打卡'}
+              {checkedToday ? t('今日已打卡') : t('每日打卡')}
             </span>
           </button>
         )}
@@ -168,15 +169,24 @@ export default function MomentsCard({
       <p className="mt-3 text-xs leading-relaxed text-gray-400">
         {missEnabled && (
           <>
-            今天:你想了 TA {missMine} 次,{partnerName}想了你 {missTheirs} 次
+            {t('今天:你想了 TA {a} 次,{name}想了你 {b} 次', {
+              a: missMine,
+              b: missTheirs,
+              name: partnerName,
+            })}
             {checkinEnabled && <br />}
           </>
         )}
         {checkinEnabled && (
           <>
-            打卡:你已连续 {streakMine} 天{badgeOf(streakMine)},{partnerName}已连续{' '}
-            {streakTheirs} 天{badgeOf(streakTheirs)}
-            {theirCheckedToday && ' · TA 今天已打卡'}
+            {t('打卡:你已连续 {a} 天{ab},{name}已连续 {b} 天{bb}', {
+              a: streakMine,
+              ab: badgeOf(streakMine),
+              b: streakTheirs,
+              bb: badgeOf(streakTheirs),
+              name: partnerName,
+            })}
+            {theirCheckedToday && t(' · TA 今天已打卡')}
           </>
         )}
       </p>

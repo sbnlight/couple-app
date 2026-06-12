@@ -466,6 +466,23 @@ const dict: Record<string, T2> = {
   '日元': ['JPY', '円'],
   '英镑': ['GBP', 'ポンド'],
 
+  /* ---- 重设密码 ---- */
+  '设置新密码': ['Set a new password', '新しいパスワード'],
+  '链接无效或已过期': ['Link invalid or expired', 'リンクが無効か期限切れ'],
+  '回登录页重新发起「忘记密码」': ['Go back and use "Forgot password" again', 'ログイン画面からやり直す'],
+  '密码已重设成功': ['Password reset successfully', 'パスワードを再設定しました'],
+  '进入小屋': ['Enter our home', '小屋へ'],
+  '确认重设': ['Reset', '再設定する'],
+
+  /* ---- 字体/外观项 ---- */
+  '默认': ['Default', 'デフォルト'],
+  '宋体雅致': ['Serif Elegant', '明朝体'],
+  '楷体手写': ['Kai Handwritten', '楷書体'],
+  '加粗有力': ['Bold', '太字'],
+  '微微倾斜': ['Italic', '斜体'],
+  '疏朗开阔': ['Wide Spacing', 'ゆったり'],
+  '打字机': ['Typewriter', 'タイプライター'],
+
   /* ---- 其他 ---- */
   '周日': ['Sun', '日'],
   '周一': ['Mon', '月'],
