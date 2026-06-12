@@ -8,6 +8,7 @@ import { useAnniversaries } from '../hooks/useAnniversaries'
 import Avatar from '../components/Avatar'
 import PartnerClock from '../components/PartnerClock'
 import MomentsCard from '../components/MomentsCard'
+import PushSettings from '../components/PushSettings'
 import AnniversaryManager from '../components/AnniversaryManager'
 import DailyQA from '../components/DailyQA'
 import WishList from '../components/WishList'
@@ -427,6 +428,15 @@ export default function Us() {
             </p>
           </div>
         )}
+
+        {/* ---- 新消息推送通知 ---- */}
+        <PushSettings
+          coupleId={couple!.id}
+          userId={profile!.id}
+          isIOS={isIOS}
+          isStandalone={isStandalone}
+          onToast={showToast}
+        />
 
         {/* ---- 本机显示设置(各自手机独立,不影响对方) ---- */}
         <div className="mt-4 rounded-2xl bg-white p-5">
