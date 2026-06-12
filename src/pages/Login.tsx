@@ -4,18 +4,19 @@ import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Splash } from '../components/Guard'
+import { t } from '../lib/i18n'
 
-/** 把 Supabase 的英文报错翻译成中文提示 */
+/** 把 Supabase 的英文报错翻译成本地化提示 */
 function translateAuthError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err)
-  if (msg.includes('Invalid login credentials')) return '邮箱或密码不正确'
-  if (msg.toLowerCase().includes('already registered')) return '该邮箱已注册,请直接登录'
-  if (msg.includes('at least 6 characters')) return '密码至少需要 6 位'
-  if (msg.includes('valid email') || msg.includes('invalid format')) return '请输入有效的邮箱地址'
-  if (msg.includes('rate limit') || msg.includes('security purposes')) return '操作太频繁,请稍等一会再试'
-  if (msg.includes('超时') || msg.includes('abort')) return '网络超时,请检查网络后重试'
-  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return '连不上服务器,请检查网络'
-  return `出错了:${msg}`
+  if (msg.includes('Invalid login credentials')) return t('邮箱或密码不正确')
+  if (msg.toLowerCase().includes('already registered')) return t('该邮箱已注册,请直接登录')
+  if (msg.includes('at least 6 characters')) return t('密码至少需要 6 位')
+  if (msg.includes('valid email') || msg.includes('invalid format')) return t('请输入有效的邮箱地址')
+  if (msg.includes('rate limit') || msg.includes('security purposes')) return t('操作太频繁,请稍等一会再试')
+  if (msg.includes('超时') || msg.includes('abort')) return t('网络超时,请检查网络后重试')
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return t('连不上服务器,请检查网络')
+  return t('出错了:{msg}', { msg })
 }
 
 type Mode = 'login' | 'signup' | 'forgot'
@@ -56,11 +57,11 @@ export default function Login() {
     setError('')
     setNotice('')
     if (mode === 'signup' && !displayName.trim()) {
-      setError('给自己起个昵称吧')
+      setError(t('给自己起个昵称吧'))
       return
     }
     if (mode === 'signup' && password !== password2) {
-      setError('两次输入的密码不一致,请检查')
+      setError(t('两次输入的密码不一致,请检查'))
       return
     }
     setSubmitting(true)
@@ -71,7 +72,7 @@ export default function Login() {
           redirectTo: `${window.location.origin}/reset-password`,
         })
         if (error) throw error
-        setNotice('重置邮件已发送,请到邮箱点击链接设置新密码。邮件可能要等一两分钟,也看看垃圾邮件箱')
+        setNotice(t('重置邮件已发送,请到邮箱点击链接设置新密码。邮件可能要等一两分钟,也看看垃圾邮件箱'))
         setCooldown(60)
       } else if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
@@ -83,7 +84,7 @@ export default function Login() {
         if (error) throw error
         // 若 Supabase 后台没有关闭邮箱验证,注册后不会直接返回会话
         if (!data.session) {
-          setNotice('注册成功,但项目开启了邮箱验证:请去邮箱点确认链接后回来登录')
+          setNotice(t('注册成功,但项目开启了邮箱验证:请去邮箱点确认链接后回来登录'))
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -104,9 +105,9 @@ export default function Login() {
     <div className="mx-auto flex h-full max-w-md flex-col justify-center px-8">
       <div className="mb-10 text-center">
         <div className="text-5xl">❤</div>
-        <h1 className="mt-3 text-2xl font-bold text-primary-dark">双人小屋</h1>
+        <h1 className="mt-3 text-2xl font-bold text-primary-dark">{t('双人小屋')}</h1>
         <p className="mt-1 text-sm text-gray-400">
-          {mode === 'forgot' ? '输入邮箱,找回你的密码' : '只属于我们两个人的地方'}
+          {mode === 'forgot' ? t('输入邮箱,找回你的密码') : t('只属于我们两个人的地方')}
         </p>
       </div>
 
@@ -115,7 +116,7 @@ export default function Login() {
           <input
             className="input"
             type="text"
-            placeholder="昵称(对方看到的名字)"
+            placeholder={t('昵称(对方看到的名字)')}
             maxLength={12}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
@@ -124,7 +125,7 @@ export default function Login() {
         <input
           className="input"
           type="email"
-          placeholder="邮箱"
+          placeholder={t('邮箱')}
           required
           autoComplete="email"
           value={email}
@@ -134,7 +135,7 @@ export default function Login() {
           <input
             className="input"
             type="password"
-            placeholder="密码(至少 6 位)"
+            placeholder={t('密码(至少 6 位)')}
             required
             minLength={6}
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -146,7 +147,7 @@ export default function Login() {
           <input
             className="input"
             type="password"
-            placeholder="再输入一次密码确认"
+            placeholder={t('再输入一次密码确认')}
             required
             minLength={6}
             autoComplete="new-password"
@@ -164,19 +165,19 @@ export default function Login() {
           className="btn-primary mt-2"
         >
           {submitting
-            ? '请稍候…'
+            ? t('请稍候…')
             : mode === 'forgot' && cooldown > 0
-              ? `已发送,${cooldown} 秒后可重发`
+              ? t('已发送,{n} 秒后可重发', { n: cooldown })
               : mode === 'login'
-                ? '登录'
+                ? t('登录')
                 : mode === 'signup'
-                  ? '注册'
-                  : '发送重置邮件'}
+                  ? t('注册')
+                  : t('发送重置邮件')}
         </button>
 
         {mode === 'forgot' && (
           <p className="text-center text-xs text-gray-400">
-            重置邮件每小时只能发送几封,发送后请耐心等待,不要反复点击
+            {t('重置邮件每小时只能发送几封,发送后请耐心等待,不要反复点击')}
           </p>
         )}
       </form>
@@ -185,16 +186,16 @@ export default function Login() {
         {mode === 'login' && (
           <>
             <button type="button" className="text-sm text-gray-400" onClick={() => switchMode('signup')}>
-              还没有账号?点这里注册
+              {t('还没有账号?点这里注册')}
             </button>
             <button type="button" className="text-sm text-gray-400" onClick={() => switchMode('forgot')}>
-              忘记密码?
+              {t('忘记密码?')}
             </button>
           </>
         )}
         {mode !== 'login' && (
           <button type="button" className="text-sm text-gray-400" onClick={() => switchMode('login')}>
-            返回登录
+            {t('返回登录')}
           </button>
         )}
       </div>

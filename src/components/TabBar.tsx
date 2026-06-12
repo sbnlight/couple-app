@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { t } from '../lib/i18n'
 
 /** 底部导航的三个 Tab(图标先用 emoji,M4 美化时再考虑换 SVG) */
 const tabs = [
@@ -36,7 +37,7 @@ export default function TabBar() {
             }
           >
             <span className="text-xl leading-none">{tab.icon}</span>
-            <span>{tab.label}</span>
+            <span>{t(tab.label)}</span>
           </NavLink>
         ))}
       </div>

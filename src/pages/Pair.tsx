@@ -4,17 +4,18 @@ import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { Splash } from '../components/Guard'
+import { t } from '../lib/i18n'
 
-/** 把配对 RPC 抛出的错误码翻译成中文提示 */
+/** 把配对 RPC 抛出的错误码翻译成本地化提示 */
 function translatePairError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err)
-  if (msg.includes('CODE_NOT_FOUND')) return '邀请码不存在,请核对后再试'
-  if (msg.includes('HOUSE_FULL')) return '这个小屋已经满员啦'
-  if (msg.includes('CANNOT_JOIN_SELF')) return '这是你自己的小屋,把邀请码发给对方吧'
-  if (msg.includes('ALREADY_PAIRED')) return '你已经在一个小屋里了,刷新一下试试'
+  if (msg.includes('CODE_NOT_FOUND')) return t('邀请码不存在,请核对后再试')
+  if (msg.includes('HOUSE_FULL')) return t('这个小屋已经满员啦')
+  if (msg.includes('CANNOT_JOIN_SELF')) return t('这是你自己的小屋,把邀请码发给对方吧')
+  if (msg.includes('ALREADY_PAIRED')) return t('你已经在一个小屋里了,刷新一下试试')
   if (msg.includes('超时') || msg.includes('abort') || msg.includes('Failed to fetch'))
-    return '网络不太好,请重试'
-  return `出错了:${msg}`
+    return t('网络不太好,请重试')
+  return t('出错了:{msg}', { msg })
 }
 
 /**
@@ -100,8 +101,8 @@ export default function Pair() {
         /* ---- 已建小屋,等待对方加入 ---- */
         <div className="text-center">
           <div className="text-5xl">🏠</div>
-          <h1 className="mt-3 text-xl font-bold text-primary-dark">小屋已建好</h1>
-          <p className="mt-1 text-sm text-gray-400">把邀请码发给 TA,等 TA 输入后就配对成功</p>
+          <h1 className="mt-3 text-xl font-bold text-primary-dark">{t('小屋已建好')}</h1>
+          <p className="mt-1 text-sm text-gray-400">{t('把邀请码发给 TA,等 TA 输入后就配对成功')}</p>
 
           <button
             type="button"
@@ -112,28 +113,28 @@ export default function Pair() {
               {couple.invite_code}
             </span>
             <span className="mt-2 block text-xs text-gray-400">
-              {copied ? '已复制 ✓' : '点击复制'}
+              {copied ? t('已复制 ✓') : t('点击复制')}
             </span>
           </button>
 
-          <p className="mt-6 animate-pulse text-sm text-gray-400">正在等待 TA 加入…</p>
+          <p className="mt-6 animate-pulse text-sm text-gray-400">{t('正在等待 TA 加入…')}</p>
         </div>
       ) : (
         /* ---- 还没有小屋:创建 或 凭码加入 ---- */
         <div>
           <div className="mb-8 text-center">
             <div className="text-5xl">🏠</div>
-            <h1 className="mt-3 text-xl font-bold text-primary-dark">建立我们的小屋</h1>
-            <p className="mt-1 text-sm text-gray-400">一个人创建小屋,另一个人凭邀请码加入</p>
+            <h1 className="mt-3 text-xl font-bold text-primary-dark">{t('建立我们的小屋')}</h1>
+            <p className="mt-1 text-sm text-gray-400">{t('一个人创建小屋,另一个人凭邀请码加入')}</p>
           </div>
 
           <button type="button" onClick={handleCreate} disabled={busy} className="btn-primary w-full">
-            {busy ? '请稍候…' : '创建小屋,获取邀请码'}
+            {busy ? t('请稍候…') : t('创建小屋,获取邀请码')}
           </button>
 
           <div className="my-6 flex items-center gap-3 text-xs text-gray-300">
             <div className="h-px flex-1 bg-line" />
-            或者
+            {t('或者')}
             <div className="h-px flex-1 bg-line" />
           </div>
 
@@ -141,7 +142,7 @@ export default function Pair() {
             <input
               className="input text-center font-mono text-xl tracking-[0.3em]"
               type="text"
-              placeholder="输入 6 位邀请码"
+              placeholder={t('输入 6 位邀请码')}
               maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -151,7 +152,7 @@ export default function Pair() {
               disabled={busy || code.trim().length < 6}
               className="btn-primary"
             >
-              加入 TA 的小屋
+              {t('加入 TA 的小屋')}
             </button>
           </form>
         </div>
@@ -164,7 +165,7 @@ export default function Pair() {
         className="mt-10 text-center text-sm text-gray-400 underline"
         onClick={() => void signOut()}
       >
-        退出登录,换个账号
+        {t('退出登录,换个账号')}
       </button>
     </div>
   )
