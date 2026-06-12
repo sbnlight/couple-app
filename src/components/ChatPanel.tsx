@@ -92,7 +92,7 @@ export default function ChatPanel({
   }
 
   return (
-    <div className="border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
+    <div className="border-t border-line bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
       {/* 标签切换 */}
       <div className="flex items-center gap-2 px-3 pt-2">
         <button

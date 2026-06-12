@@ -41,6 +41,113 @@
   --c-soft: #f5f3ff;
 }
 
+/* ---------- 深色模式 ----------
+   策略:深色中性底 + 用 color-mix 按当前主题色派生浅色块,
+   再覆写少量高频灰阶工具类,避免逐文件加 dark: 变体。 */
+:root {
+  --c-surface: #ffffff;
+}
+
+html.dark {
+  color-scheme: dark;
+  --c-bg: #161118;
+  --c-surface: #241c28;
+  --c-primary-light: color-mix(in srgb, var(--c-primary) 24%, #241c28);
+  --c-line: color-mix(in srgb, var(--c-primary) 14%, #2d2432);
+  --c-soft: color-mix(in srgb, var(--c-primary) 11%, #281f2d);
+}
+
+html.dark body {
+  color: #eae3e8;
+}
+html.dark .bg-white {
+  background-color: var(--c-surface);
+}
+html.dark .bg-white\/85 {
+  background-color: color-mix(in srgb, var(--c-surface) 88%, transparent);
+}
+html.dark .bg-gray-50 {
+  background-color: #2b2330;
+}
+html.dark .bg-gray-100 {
+  background-color: #332a39;
+}
+html.dark .bg-gray-200 {
+  background-color: #3c3242;
+}
+html.dark .text-gray-500 {
+  color: #b4a9b2;
+}
+html.dark .text-gray-400 {
+  color: #998e97;
+}
+html.dark .text-gray-300 {
+  color: #716772;
+}
+html.dark .text-green-600 {
+  color: #4ade80;
+}
+html.dark .text-amber-600 {
+  color: #fbbf24;
+}
+html.dark .border-red-200 {
+  border-color: #7f2d3a;
+}
+html.dark .ring-gray-700 {
+  --tw-ring-color: #e5dde3;
+}
+
+/* ---------- 质感:卡片柔影 ---------- */
+.rounded-2xl.bg-white {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.03),
+    0 8px 24px -16px var(--c-primary-dark);
+}
+html.dark .rounded-2xl.bg-white {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+/* ---------- 微交互 ---------- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.page-in {
+  animation: fade-up 0.28s ease-out both;
+}
+@keyframes msg-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.msg-in {
+  animation: msg-pop 0.18s ease-out both;
+}
+/* 定位到某条消息时的高亮闪烁 */
+@keyframes msg-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  30% {
+    background-color: var(--c-primary-light);
+  }
+}
+.msg-highlight {
+  animation: msg-flash 2s ease;
+}
+
 /* ---------- 开场动画:双心相遇(SplashIntro.tsx) ---------- */
 @keyframes intro-fly-left {
   from {
@@ -248,7 +355,22 @@
     @apply rounded-xl border border-line bg-white px-4 py-3 text-base outline-none transition-colors focus:border-primary;
   }
   .btn-primary {
-    @apply rounded-xl bg-primary py-3 text-base font-medium text-white transition-colors active:bg-primary-dark disabled:opacity-50;
+    @apply rounded-xl py-3 text-base font-medium text-white disabled:opacity-50;
+    background-image: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark));
+    transition: filter 0.15s ease;
+  }
+  .btn-primary:not(:disabled):active {
+    filter: brightness(0.9);
+  }
+}
+
+/* 所有按钮:按下轻微回弹 */
+@layer base {
+  button {
+    transition: transform 0.12s ease;
+  }
+  button:not(:disabled):active {
+    transform: scale(0.96);
   }
 }
 
