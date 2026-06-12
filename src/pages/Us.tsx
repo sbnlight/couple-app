@@ -276,16 +276,32 @@ export default function Us() {
     if (window.confirm('确定要退出登录吗?')) void signOut()
   }
 
-  /** 手动检查更新:让 service worker 拉取新版本后整页刷新 */
+  /**
+   * 手动检查更新:有新版本才重启应用(重启时开场动画会标注"已更新");
+   * 已是最新则只提示,不打断使用。
+   */
   const handleCheckUpdate = async () => {
-    showToast('正在获取最新版本…')
+    showToast('正在检查更新…')
     try {
       const reg = await navigator.serviceWorker?.getRegistration()
-      if (reg) await reg.update()
+      if (!reg) {
+        showToast('当前已是最新版本 ✓')
+        return
+      }
+      await reg.update()
+      // update() 之后出现 installing/waiting 即代表拉到了新版本
+      const hasNew = Boolean(reg.installing || reg.waiting)
+      if (hasNew) {
+        // 给重启后的开场动画留个标记,显示"已更新"
+        sessionStorage.setItem('just-updated', '1')
+        showToast('发现新版本,正在更新…')
+        setTimeout(() => window.location.reload(), 1200)
+      } else {
+        showToast('当前已是最新版本 ✓')
+      }
     } catch {
-      // 获取失败也直接刷新,刷新本身就会带回最新页面
+      showToast('检查失败,请稍后再试')
     }
-    setTimeout(() => window.location.reload(), 800)
   }
 
   return (
