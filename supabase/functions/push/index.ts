@@ -16,7 +16,8 @@ const supabase = createClient(
 )
 
 webpush.setVapidDetails(
-  'mailto:sbn252608@gmail.com',
+  // VAPID 规范要求一个联系方式;可在 Secrets 里配 VAPID_SUBJECT 覆盖
+  Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@example.com',
   Deno.env.get('VAPID_PUBLIC_KEY')!,
   Deno.env.get('VAPID_PRIVATE_KEY')!,
 )

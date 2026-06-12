@@ -7,6 +7,8 @@ dev-dist/
 .env
 .env.*
 *.local
+# 配置模板不含真实密钥,允许提交
+!.env.example
 
 # 日志与系统文件
 *.log
