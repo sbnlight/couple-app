@@ -151,6 +151,104 @@ html.dark .rounded-2xl.bg-white {
   animation: msg-flash 2s ease;
 }
 
+/* ---------- 动态气泡 ---------- */
+@keyframes bubble-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+.bubble-flow {
+  background-size: 240% 240%;
+  animation: bubble-flow 3.5s ease infinite;
+}
+@keyframes bubble-hue {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+.bubble-hue {
+  animation:
+    bubble-flow 3.5s ease infinite,
+    bubble-hue 7s linear infinite;
+}
+@keyframes bubble-neon-pink {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(251, 113, 133, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(251, 113, 133, 0.95);
+  }
+}
+.bubble-neon-pink {
+  animation: bubble-neon-pink 2.2s ease-in-out infinite;
+}
+@keyframes bubble-neon-cyan {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(34, 211, 238, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.95);
+  }
+}
+.bubble-neon-cyan {
+  animation: bubble-neon-cyan 2.2s ease-in-out infinite;
+}
+@keyframes bubble-neon-violet {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(167, 139, 250, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(167, 139, 250, 0.95);
+  }
+}
+.bubble-neon-violet {
+  animation: bubble-neon-violet 2.2s ease-in-out infinite;
+}
+@keyframes bubble-neon-gold {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(251, 191, 36, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.95);
+  }
+}
+.bubble-neon-gold {
+  animation: bubble-neon-gold 2.2s ease-in-out infinite;
+}
+/* 心跳气泡:轻微缩放脉动 */
+@keyframes bubble-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.035);
+  }
+  24% {
+    transform: scale(1);
+  }
+  36% {
+    transform: scale(1.03);
+  }
+  48% {
+    transform: scale(1);
+  }
+}
+.bubble-beat {
+  animation: bubble-beat 1.8s ease-in-out infinite;
+  transform-origin: bottom right;
+}
+
 /* ---------- 开场动画:双心相遇(SplashIntro.tsx) ---------- */
 @keyframes intro-fly-left {
   from {
