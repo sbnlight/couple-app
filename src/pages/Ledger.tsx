@@ -5,6 +5,7 @@ import { categoryIcon, currencySymbol, useExpenses } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import ExpenseForm from '../components/ExpenseForm'
 import type { Expense } from '../types/db'
+import { t } from '../lib/i18n'
 
 const ymNow = () => {
   const d = new Date()
@@ -13,11 +14,11 @@ const ymNow = () => {
 
 const fmtMoney = (n: number) => n.toFixed(2)
 
-/** '2026-06-10' → '6月10日 周三' */
+/** '2026-06-10' → '6月10日 周三'(随语言本地化) */
 function fmtDay(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number)
   const wd = '日一二三四五六'[new Date(y, m - 1, d).getDay()]
-  return `${m}月${d}日 周${wd}`
+  return `${t('{m}月{d}日', { m, d })} ${t(`周${wd}`)}`
 }
 
 /** 近 6 个月支出趋势(按货币分线) */
@@ -180,8 +181,10 @@ export default function Ledger() {
     const prev = s.values[4]
     if (prev <= 0 || cur <= 0) return null
     const pct = Math.round(((cur - prev) / prev) * 100)
-    if (pct === 0) return `${s.currency} 支出与上月持平`
-    return `${s.currency} 支出比上月${pct > 0 ? `多 ${pct}%  ↗` : `少 ${-pct}%  ↘`}`
+    if (pct === 0) return t('{c} 支出与上月持平', { c: s.currency })
+    return pct > 0
+      ? t('{c} 支出比上月多 {n}%  ↗', { c: s.currency, n: pct })
+      : t('{c} 支出比上月少 {n}%  ↘', { c: s.currency, n: -pct })
   }, [trend])
 
   // 汇总:不同货币不能直接相加,按货币分别统计
@@ -258,7 +261,7 @@ export default function Ledger() {
   }
 
   const nameOf = (payerId: string) =>
-    payerId === userId ? (profile?.display_name ?? '我') : (partner?.display_name ?? 'TA')
+    payerId === userId ? (profile?.display_name ?? t('我')) : (partner?.display_name ?? t('TA'))
 
   return (
     <div className="flex h-full flex-col">
@@ -268,7 +271,7 @@ export default function Ledger() {
           ◀
         </button>
         <h1 className="text-base font-semibold text-primary-dark">
-          {yy}年{mm}月
+          {t('{y}年{m}月', { y: yy, m: mm })}
         </h1>
         <button
           type="button"
@@ -282,16 +285,16 @@ export default function Ledger() {
 
       <div className="page-in flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
-          <p className="py-10 text-center text-sm text-gray-300">加载中…</p>
+          <p className="py-10 text-center text-sm text-gray-300">{t('加载中…')}</p>
         ) : error ? (
           <div className="flex flex-col items-center gap-3 py-10">
-            <p className="text-sm text-gray-400">账单加载失败</p>
+            <p className="text-sm text-gray-400">{t('账单加载失败')}</p>
             <button
               type="button"
               onClick={() => void reload()}
               className="rounded-full border border-primary px-4 py-1.5 text-sm text-primary-dark"
             >
-              重新加载
+              {t('重新加载')}
             </button>
           </div>
         ) : (
@@ -304,7 +307,9 @@ export default function Ledger() {
                   <div className="flex items-end justify-between">
                     <div>
                       <p className="text-sm text-gray-400">
-                        本月支出{summaries.length > 1 && `(${s.currency})`}
+                        {summaries.length > 1
+                          ? t('本月支出({c})', { c: s.currency })
+                          : t('本月支出')}
                       </p>
                       <p className="mt-1 text-2xl font-bold">
                         {sym}
@@ -313,8 +318,7 @@ export default function Ledger() {
                     </div>
                     {s.income > 0 && (
                       <p className="text-sm text-green-600">
-                        收入 +{sym}
-                        {fmtMoney(s.income)}
+                        {t('收入 +{s}', { s: `${sym}${fmtMoney(s.income)}` })}
                       </p>
                     )}
                   </div>
@@ -331,11 +335,11 @@ export default function Ledger() {
                       <div className="mt-1.5 flex justify-between text-xs text-gray-400">
                         <span>
                           <span className="mr-1 inline-block h-2 w-2 rounded-full bg-primary" />
-                          {profile?.display_name ?? '我'} {sym}
+                          {profile?.display_name ?? t('我')} {sym}
                           {fmtMoney(s.mineExpense)}
                         </span>
                         <span>
-                          {partner?.display_name ?? 'TA'} {sym}
+                          {partner?.display_name ?? t('TA')} {sym}
                           {fmtMoney(s.expense - s.mineExpense)}
                           <span className="ml-1 inline-block h-2 w-2 rounded-full bg-gray-300" />
                         </span>
@@ -343,9 +347,10 @@ export default function Ledger() {
 
                       {/* 共同 / 个人 */}
                       <p className="mt-2 text-xs text-gray-400">
-                        👫 共同 {sym}
-                        {fmtMoney(s.sharedExpense)} · 🙋 个人 {sym}
-                        {fmtMoney(s.expense - s.sharedExpense)}
+                        {t('👫 共同 {a} · 🙋 个人 {b}', {
+                          a: `${sym}${fmtMoney(s.sharedExpense)}`,
+                          b: `${sym}${fmtMoney(s.expense - s.sharedExpense)}`,
+                        })}
                       </p>
 
                       {/* 分类占比 */}
@@ -378,7 +383,7 @@ export default function Ledger() {
             {trend && trend.series.length > 0 && (
               <div className="mb-3 rounded-2xl bg-white p-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-500">📈 近半年支出趋势</p>
+                  <p className="text-sm font-medium text-gray-500">{t('📈 近半年支出趋势')}</p>
                   <span className="flex gap-3 text-xs text-gray-400">
                     {trend.series.map((s, i) => (
                       <span key={s.currency} className="flex items-center gap-1">
@@ -398,7 +403,7 @@ export default function Ledger() {
 
                 {isCurrentMonth && summaries[0] && summaries[0].expense > 0 && (
                   <>
-                    <p className="mb-2 mt-4 text-sm font-medium text-gray-500">本月分类占比</p>
+                    <p className="mb-2 mt-4 text-sm font-medium text-gray-500">{t('本月分类占比')}</p>
                     <Donut cats={summaries[0].cats} total={summaries[0].expense} />
                   </>
                 )}
@@ -410,7 +415,7 @@ export default function Ledger() {
               <div className="flex flex-col items-center gap-2 py-16 text-gray-300">
                 <span className="text-4xl">📒</span>
                 <p className="text-sm">
-                  {isCurrentMonth ? '本月还没有记账,点右下角记一笔吧' : '这个月没有账目'}
+                  {isCurrentMonth ? t('本月还没有记账,点右下角记一笔吧') : t('这个月没有账目')}
                 </p>
               </div>
             ) : (
@@ -418,7 +423,7 @@ export default function Ledger() {
                 <div key={day} className="mt-4">
                   <p className="mb-1.5 px-1 text-xs text-gray-400">
                     {fmtDay(day)}
-                    {daySubtotal(list) && ` · 支出 ${daySubtotal(list)}`}
+                    {daySubtotal(list) && ` · ${t('支出')} ${daySubtotal(list)}`}
                   </p>
                   <div className="divide-y divide-line overflow-hidden rounded-2xl bg-white">
                     {list.map((e) => {
@@ -435,17 +440,18 @@ export default function Ledger() {
                           <span className="text-xl">{categoryIcon(e.category)}</span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm">
-                              {e.note || e.category}
+                              {e.note || t(e.category)}
                               {e.scope === 'personal' && (
                                 <span className="ml-1.5 rounded bg-gray-100 px-1 py-0.5 text-[0.65rem] text-gray-400">
-                                  个人
+                                  {t('个人')}
                                 </span>
                               )}
                             </span>
                             <span className="block text-xs text-gray-400">
-                              {nameOf(e.payer_id)}
-                              {e.kind === 'income' ? '收' : '付'}
-                              {mine && ' · 点击可修改'}
+                              {e.kind === 'income'
+                                ? t('{name}收', { name: nameOf(e.payer_id) })
+                                : t('{name}付', { name: nameOf(e.payer_id) })}
+                              {mine && t(' · 点击可修改')}
                             </span>
                           </span>
                           <span
@@ -474,7 +480,7 @@ export default function Ledger() {
         onClick={() => setFormOpen(true)}
         className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50vw-13rem))] rounded-full bg-primary px-5 py-3 font-medium text-white shadow-lg active:bg-primary-dark"
       >
-        ＋ 记一笔
+        {t('＋ 记一笔')}
       </button>
 
       {(formOpen || editTarget) && (

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Note } from '../types/db'
+import { t } from '../lib/i18n'
 
 /** 解锁时间快捷选项 */
 const UNLOCK_OPTIONS = [
@@ -101,7 +102,7 @@ export default function NotesPage({
   }
 
   const remove = async (n: Note) => {
-    if (!window.confirm('撕掉这张纸条?')) return
+    if (!window.confirm(t('撕掉这张纸条?'))) return
     const { error } = await supabase.from('notes').delete().eq('id', n.id)
     if (!error) await load()
   }
@@ -115,29 +116,34 @@ export default function NotesPage({
         <button type="button" onClick={onClose} className="px-1 text-2xl text-gray-400">
           ‹
         </button>
-        <h1 className="flex-1 text-base font-semibold text-primary-dark">留言小纸条</h1>
+        <h1 className="flex-1 text-base font-semibold text-primary-dark">{t('留言小纸条')}</h1>
         <button
           type="button"
           onClick={() => setWriting(true)}
           className="rounded-full bg-primary px-3 py-1.5 text-sm text-white"
         >
-          ✍ 写纸条
+          {t('✍ 写纸条')}
         </button>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
-          <p className="py-10 text-center text-sm text-gray-300">加载中…</p>
+          <p className="py-10 text-center text-sm text-gray-300">{t('加载中…')}</p>
         ) : (
           <>
             {/* 待开启悬念 */}
             {lockedCnt > 0 && (
               <div className="mb-4 rounded-2xl border-2 border-dashed border-primary bg-soft p-4 text-center">
                 <p className="text-sm text-primary-dark">
-                  🔒 {partnerName}给你留了 {lockedCnt} 张纸条还没到开启时间
+                  {t('🔒 {name}给你留了 {n} 张纸条还没到开启时间', {
+                    name: partnerName,
+                    n: lockedCnt,
+                  })}
                 </p>
                 {nextUnlock && (
-                  <p className="mt-1 text-xs text-gray-400">最近一张 {fmtTime(nextUnlock)} 开启</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {t('最近一张 {t} 开启', { t: fmtTime(nextUnlock) })}
+                  </p>
                 )}
               </div>
             )}
@@ -145,12 +151,16 @@ export default function NotesPage({
             {/* 收到的(已解锁) */}
             {received.length > 0 && (
               <>
-                <p className="mb-1.5 px-1 text-xs text-gray-400">收到的纸条</p>
+                <p className="mb-1.5 px-1 text-xs text-gray-400">{t('收到的纸条')}</p>
                 {received.map((n) => (
                   <div key={n.id} className="mb-3 rounded-2xl bg-white p-4">
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{n.content}</p>
                     <p className="mt-2 text-xs text-gray-300">
-                      {partnerName} · {fmtTime(n.created_at)} 写下 · {fmtTime(n.unlock_at)} 开启
+                      {t('{name} · {a} 写下 · {b} 开启', {
+                        name: partnerName,
+                        a: fmtTime(n.created_at),
+                        b: fmtTime(n.unlock_at),
+                      })}
                     </p>
                   </div>
                 ))}
@@ -160,7 +170,7 @@ export default function NotesPage({
             {/* 我写的 */}
             {sent.length > 0 && (
               <>
-                <p className="mb-1.5 mt-2 px-1 text-xs text-gray-400">我写的纸条</p>
+                <p className="mb-1.5 mt-2 px-1 text-xs text-gray-400">{t('我写的纸条')}</p>
                 {sent.map((n) => {
                   const locked = new Date(n.unlock_at).getTime() > Date.now()
                   return (
@@ -168,10 +178,12 @@ export default function NotesPage({
                       <p className="whitespace-pre-wrap text-sm leading-relaxed">{n.content}</p>
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-300">
                         <span>
-                          {locked ? `🔒 ${fmtTime(n.unlock_at)} 对 TA 开启` : '✅ TA 已可查看'}
+                          {locked
+                            ? t('🔒 {t} 对 TA 开启', { t: fmtTime(n.unlock_at) })
+                            : t('✅ TA 已可查看')}
                         </span>
                         <button type="button" onClick={() => void remove(n)} className="px-1">
-                          撕掉
+                          {t('撕掉')}
                         </button>
                       </div>
                     </div>
@@ -183,7 +195,7 @@ export default function NotesPage({
             {received.length === 0 && sent.length === 0 && lockedCnt === 0 && (
               <div className="flex flex-col items-center gap-2 py-16 text-gray-300">
                 <span className="text-4xl">💌</span>
-                <p className="text-sm">写一张定时开启的小纸条,给 TA 一个惊喜吧</p>
+                <p className="text-sm">{t('写一张定时开启的小纸条,给 TA 一个惊喜吧')}</p>
               </div>
             )}
           </>
@@ -201,17 +213,19 @@ export default function NotesPage({
             onClick={(e) => e.stopPropagation()}
             className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
           >
-            <p className="mb-3 text-center text-sm font-medium text-gray-500">写给 {partnerName}</p>
+            <p className="mb-3 text-center text-sm font-medium text-gray-500">
+              {t('写给 {name}', { name: partnerName })}
+            </p>
             <textarea
               className="input w-full resize-none"
               rows={4}
               maxLength={500}
-              placeholder="写点想对 TA 说的话…"
+              placeholder={t('写点想对 TA 说的话…')}
               autoFocus
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
             />
-            <p className="mt-3 text-sm font-medium text-gray-500">何时开启</p>
+            <p className="mt-3 text-sm font-medium text-gray-500">{t('何时开启')}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {UNLOCK_OPTIONS.map((o) => (
                 <button
@@ -224,7 +238,7 @@ export default function NotesPage({
                       : 'bg-gray-100 text-gray-400'
                   }`}
                 >
-                  {o.label}
+                  {t(o.label)}
                 </button>
               ))}
             </div>
@@ -241,7 +255,7 @@ export default function NotesPage({
               disabled={busy || !draft.trim() || (unlockOpt === 'custom' && !computeUnlockAt())}
               className="btn-primary mt-4 w-full"
             >
-              {busy ? '封存中…' : '封存纸条 💌'}
+              {busy ? t('封存中…') : t('封存纸条 💌')}
             </button>
           </form>
         </div>

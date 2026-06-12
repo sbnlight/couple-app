@@ -9,6 +9,7 @@ import {
 } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import type { Expense } from '../types/db'
+import { t } from '../lib/i18n'
 
 function todayStr() {
   const d = new Date()
@@ -59,15 +60,15 @@ export default function ExpenseForm({
     if (busy) return
     const num = Number(amount)
     if (!amount || Number.isNaN(num) || num <= 0) {
-      setErr('请输入正确的金额')
+      setErr(t('请输入正确的金额'))
       return
     }
     if (num >= 100_000_000) {
-      setErr('金额超出范围了')
+      setErr(t('金额超出范围了'))
       return
     }
     if (!spentAt) {
-      setErr('请选择日期')
+      setErr(t('请选择日期'))
       return
     }
     setBusy(true)
@@ -85,20 +86,20 @@ export default function ExpenseForm({
       saveDefaultCurrency(currency) // 记住这次的货币作为下次默认
       onClose()
     } catch {
-      setErr('保存失败,请检查网络后重试')
+      setErr(t('保存失败,请检查网络后重试'))
       setBusy(false)
     }
   }
 
   const handleDelete = async () => {
     if (!onDelete || busy) return
-    if (!window.confirm('删除这笔记账?')) return
+    if (!window.confirm(t('删除这笔记账?'))) return
     setBusy(true)
     try {
       await onDelete()
       onClose()
     } catch {
-      setErr('删除失败,请重试')
+      setErr(t('删除失败,请重试'))
       setBusy(false)
     }
   }
@@ -117,14 +118,14 @@ export default function ExpenseForm({
             onClick={() => switchKind('expense')}
             className={`flex-1 rounded-full py-1 ${kind === 'expense' ? 'bg-white font-medium text-primary-dark shadow-sm' : 'text-gray-400'}`}
           >
-            支出
+            {t('支出')}
           </button>
           <button
             type="button"
             onClick={() => switchKind('income')}
             className={`flex-1 rounded-full py-1 ${kind === 'income' ? 'bg-white font-medium text-green-600 shadow-sm' : 'text-gray-400'}`}
           >
-            收入
+            {t('收入')}
           </button>
         </div>
 
@@ -137,7 +138,7 @@ export default function ExpenseForm({
           >
             {CURRENCIES.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.symbol} {c.label}
+                {c.symbol} {t(c.label)}
               </option>
             ))}
           </select>
@@ -167,28 +168,28 @@ export default function ExpenseForm({
                   : 'border-line text-gray-500'
               }`}
             >
-              {c.icon} {c.id}
+              {c.icon} {t(c.id)}
             </button>
           ))}
         </div>
 
         {/* 共同 / 个人 */}
         <div className="mt-4 flex items-center gap-3">
-          <span className="w-12 shrink-0 text-sm text-gray-400">范围</span>
+          <span className="w-12 shrink-0 text-sm text-gray-400">{t('范围')}</span>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setScope('shared')}
               className={`rounded-full px-4 py-1.5 text-sm ${scope === 'shared' ? 'bg-soft font-medium text-primary-dark' : 'bg-gray-100 text-gray-400'}`}
             >
-              👫 两人共同
+              {t('👫 两人共同')}
             </button>
             <button
               type="button"
               onClick={() => setScope('personal')}
               className={`rounded-full px-4 py-1.5 text-sm ${scope === 'personal' ? 'bg-soft font-medium text-primary-dark' : 'bg-gray-100 text-gray-400'}`}
             >
-              🙋 我个人的
+              {t('🙋 我个人的')}
             </button>
           </div>
         </div>
@@ -196,7 +197,7 @@ export default function ExpenseForm({
         {/* 日期 + 备注 */}
         <div className="mt-4 flex flex-col gap-3">
           <label className="flex items-center gap-3">
-            <span className="w-12 shrink-0 text-sm text-gray-400">日期</span>
+            <span className="w-12 shrink-0 text-sm text-gray-400">{t('日期')}</span>
             <input
               className="input flex-1 py-2"
               type="date"
@@ -206,11 +207,11 @@ export default function ExpenseForm({
             />
           </label>
           <label className="flex items-center gap-3">
-            <span className="w-12 shrink-0 text-sm text-gray-400">备注</span>
+            <span className="w-12 shrink-0 text-sm text-gray-400">{t('备注')}</span>
             <input
               className="input flex-1 py-2"
               type="text"
-              placeholder="选填,比如:晚饭、地铁"
+              placeholder={t('选填,比如:晚饭、地铁')}
               maxLength={50}
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -228,11 +229,11 @@ export default function ExpenseForm({
               disabled={busy}
               className="flex-1 rounded-xl border border-red-200 py-3 text-red-500 disabled:opacity-50"
             >
-              删除
+              {t('删除')}
             </button>
           )}
           <button type="submit" disabled={busy} className="btn-primary flex-[2]">
-            {busy ? '保存中…' : '保存'}
+            {busy ? t('保存中…') : t('保存')}
           </button>
         </div>
       </form>

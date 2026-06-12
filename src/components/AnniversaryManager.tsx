@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { daysUntil } from '../lib/time'
 import type { Anniversary, Couple } from '../types/db'
+import { t } from '../lib/i18n'
 
 /** 纪念日 / 见面日管理(底部弹层) */
 export default function AnniversaryManager({
@@ -39,9 +40,9 @@ export default function AnniversaryManager({
       if (error) throw error
       await onCoupleChanged()
       setMeetDate(value ?? '')
-      onToast(value ? '见面日期已设置 ✈️' : '已清除见面日期')
+      onToast(value ? t('见面日期已设置 ✈️') : t('已清除见面日期'))
     } catch {
-      onToast('保存失败,请重试')
+      onToast(t('保存失败,请重试'))
     } finally {
       setBusy(false)
     }
@@ -56,26 +57,26 @@ export default function AnniversaryManager({
       setTitle('')
       setDate('')
     } catch {
-      onToast('添加失败,请重试')
+      onToast(t('添加失败,请重试'))
     } finally {
       setBusy(false)
     }
   }
 
   const handleRemove = async (id: number) => {
-    if (!window.confirm('删除这个纪念日?')) return
+    if (!window.confirm(t('删除这个纪念日?'))) return
     try {
       await onRemove(id)
     } catch {
-      onToast('删除失败,请重试')
+      onToast(t('删除失败,请重试'))
     }
   }
 
   const fmtDays = (d: string) => {
     const n = daysUntil(d)
-    if (n > 0) return `还有 ${n} 天`
-    if (n === 0) return '就是今天 🎉'
-    return `第 ${-n + 1} 天`
+    if (n > 0) return t('还有 {n} 天', { n })
+    if (n === 0) return t('就是今天 🎉')
+    return t('第 {n} 天', { n: -n + 1 })
   }
 
   return (
@@ -84,10 +85,10 @@ export default function AnniversaryManager({
         className="mx-auto max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="mb-4 text-center text-sm font-medium text-gray-500">纪念日与见面日</p>
+        <p className="mb-4 text-center text-sm font-medium text-gray-500">{t('纪念日与见面日')}</p>
 
         {/* 下次见面 */}
-        <p className="text-sm font-medium text-gray-500">✈️ 下次见面</p>
+        <p className="text-sm font-medium text-gray-500">{t('✈️ 下次见面')}</p>
         <div className="mt-2 flex gap-2">
           <input
             className="input min-w-0 flex-1 py-2"
@@ -101,7 +102,7 @@ export default function AnniversaryManager({
             onClick={() => void saveMeetDate(meetDate)}
             className="btn-primary px-4 py-2"
           >
-            保存
+            {t('保存')}
           </button>
           {couple.next_meet_date && (
             <button
@@ -110,13 +111,13 @@ export default function AnniversaryManager({
               onClick={() => void saveMeetDate(null)}
               className="shrink-0 text-sm text-gray-400"
             >
-              清除
+              {t('清除')}
             </button>
           )}
         </div>
 
         {/* 纪念日列表 */}
-        <p className="mt-5 text-sm font-medium text-gray-500">🎀 纪念日</p>
+        <p className="mt-5 text-sm font-medium text-gray-500">{t('🎀 纪念日')}</p>
         <div className="mt-2 divide-y divide-line">
           {anniversaries.map((a) => (
             <div key={a.id} className="flex items-center gap-2 py-2.5">
@@ -137,7 +138,7 @@ export default function AnniversaryManager({
           ))}
           {anniversaries.length === 0 && (
             <p className="py-3 text-sm text-gray-300">
-              还没有纪念日,比如「在一起的日子」「TA 的生日」
+              {t('还没有纪念日,比如「在一起的日子」「TA 的生日」')}
             </p>
           )}
         </div>
@@ -147,7 +148,7 @@ export default function AnniversaryManager({
           <input
             className="input min-w-0 flex-[1.2] py-2"
             type="text"
-            placeholder="名称,如:在一起"
+            placeholder={t('名称,如:在一起')}
             maxLength={12}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -163,7 +164,7 @@ export default function AnniversaryManager({
             disabled={busy || !title.trim() || !date}
             className="btn-primary px-4 py-2"
           >
-            添加
+            {t('添加')}
           </button>
         </form>
 
@@ -172,7 +173,7 @@ export default function AnniversaryManager({
           className="mt-5 w-full border-t border-line py-3 text-center text-gray-500"
           onClick={onClose}
         >
-          完成
+          {t('完成')}
         </button>
       </div>
     </div>
