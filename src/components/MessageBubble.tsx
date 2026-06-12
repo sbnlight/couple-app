@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getSignedUrl } from '../lib/storage'
-import { BUBBLE_STYLES } from '../lib/prefs'
-import type { BubbleStyle } from '../lib/prefs'
+import { BUBBLE_FONTS, BUBBLE_STYLES, bubbleCss, fontCss } from '../lib/prefs'
+import type { BubbleFont, BubbleStyle } from '../lib/prefs'
 import type { ChatItem } from '../hooks/useMessages'
 
 /** 图片/表情包消息:待发送时用本地预览,已落库则取私有桶签名 URL */
@@ -48,6 +48,7 @@ export default function MessageBubble({
   item,
   mine,
   bubble = BUBBLE_STYLES[0],
+  font = BUBBLE_FONTS[0],
   readLabel = false,
   onRetry,
   onPreview,
@@ -57,6 +58,8 @@ export default function MessageBubble({
   mine: boolean
   /** 自己气泡的样式(本机偏好) */
   bubble?: BubbleStyle
+  /** 自己文字的字体(本机偏好) */
+  font?: BubbleFont
   /** 是否在这条消息下方显示「已读」(只用于自己最新一条已被对方读过的消息) */
   readLabel?: boolean
   onRetry: () => void
@@ -97,9 +100,9 @@ export default function MessageBubble({
           {item.type === 'text' ? (
             <div
               className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-base leading-relaxed ${
-                mine ? 'rounded-br-sm' : 'rounded-bl-sm bg-white'
+                mine ? `rounded-br-sm ${bubble.anim ?? ''}` : 'rounded-bl-sm bg-white'
               }`}
-              style={mine ? { background: bubble.bg, color: bubble.text } : undefined}
+              style={mine ? { ...bubbleCss(bubble), ...fontCss(font) } : undefined}
             >
               {item.content}
             </div>

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useMessages } from '../hooks/useMessages'
 import type { ChatItem } from '../hooks/useMessages'
 import { useReadStatus } from '../hooks/useReadStatus'
-import { CHAT_BGS, getBubbleStyle, getChatBgToken } from '../lib/prefs'
+import { CHAT_BGS, getBubbleFont, getBubbleStyle, getChatBgToken } from '../lib/prefs'
 import { getSignedUrl } from '../lib/storage'
 import MessageBubble from '../components/MessageBubble'
 import ChatPanel from '../components/ChatPanel'
@@ -67,6 +67,7 @@ export default function Chat() {
 
   // 聊天外观(本机偏好)
   const [bubble, setBubble] = useState(getBubbleStyle)
+  const [bubbleFont, setBubbleFont] = useState(getBubbleFont)
   const [bgToken, setBgToken] = useState(getChatBgToken)
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null)
 
@@ -313,6 +314,7 @@ export default function Chat() {
                     item={item}
                     mine={item.senderId === userId}
                     bubble={bubble}
+                    font={bubbleFont}
                     readLabel={
                       item.key === myLastKey &&
                       item.id !== undefined &&
@@ -421,6 +423,7 @@ export default function Chat() {
           userId={userId}
           onChanged={() => {
             setBubble(getBubbleStyle())
+            setBubbleFont(getBubbleFont())
             setBgToken(getChatBgToken())
           }}
           onClose={() => setAppearanceOpen(false)}
