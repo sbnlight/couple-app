@@ -1,8 +1,59 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { currencySymbol } from '../hooks/useExpenses'
 import { prevUtcDay } from '../lib/time'
+import { fireEffect } from '../lib/effects'
 import { t } from '../lib/i18n'
+
+/** 数字从 0 滚动增长(进入该页时触发) */
+function CountUp({ value, run }: { value: number; run: boolean }) {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    if (!run) return
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / 1100)
+      setN(Math.round(value * (1 - Math.pow(1 - p, 3))))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [run, value])
+  return <>{n}</>
+}
+
+/** 全屏缓缓上浮的装饰(爱心/星星/彩纸等) */
+function FloatLayer({ items }: { items: string[] }) {
+  const drops = Array.from({ length: 12 }, (_, i) => ({
+    key: i,
+    e: items[i % items.length],
+    left: (i * 37 + 11) % 100,
+    dur: 7 + (i % 5),
+    delay: -(i * 1.3),
+    size: 15 + (i % 4) * 7,
+    op: 0.25 + (i % 3) * 0.12,
+  }))
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {drops.map((d) => (
+        <span
+          key={d.key}
+          className="absolute bottom-0"
+          style={{
+            ...({ '--o': d.op } as CSSProperties),
+            left: `${d.left}%`,
+            fontSize: d.size,
+            animation: `year-drift ${d.dur}s linear ${d.delay}s infinite`,
+          }}
+        >
+          {d.e}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 interface Stats {
   days: number
@@ -156,58 +207,127 @@ export default function YearReport({
     })()
   }, [coupleId, userId, year, coupleCreatedAt])
 
-  const slide = 'flex h-full snap-start flex-col items-center justify-center gap-4 px-10 text-center'
-  const big = 'text-5xl font-bold text-primary-dark'
-  const label = 'text-sm text-gray-500 leading-relaxed'
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState(0)
+  const [seen, setSeen] = useState<Set<number>>(() => new Set([0]))
+  const LAST = 4
+
+  // 滚到哪一页:触发数字滚动 + 逐行渐入;首末页撒花
+  useEffect(() => {
+    if (!stats) return
+    const root = containerRef.current
+    if (!root) return
+    const sections = root.querySelectorAll('section[data-idx]')
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting && e.intersectionRatio > 0.6) {
+            const idx = Number((e.target as HTMLElement).dataset.idx)
+            setActive(idx)
+            setSeen((prev) => {
+              if (prev.has(idx)) return prev
+              if (idx === 0 || idx === LAST) fireEffect(['🎉', '🎊', '💕', '✨'], 36)
+              return new Set(prev).add(idx)
+            })
+          }
+        }
+      },
+      { root, threshold: [0.6] },
+    )
+    sections.forEach((s) => io.observe(s))
+    return () => io.disconnect()
+  }, [stats])
+
+  const label = 'text-sm leading-relaxed text-white/90'
+  const big =
+    'year-num text-7xl font-extrabold text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.18)]'
+  const slide =
+    'relative flex h-full snap-start snap-always flex-col items-center justify-center gap-4 overflow-hidden px-10 text-center'
+  /** 逐行渐入:进入该页才播,带阶梯延迟 */
+  const reveal = (idx: number, i: number): { className: string; style: CSSProperties } =>
+    seen.has(idx)
+      ? { className: 'year-rise', style: { animationDelay: `${0.1 + i * 0.13}s` } }
+      : { className: 'opacity-0', style: {} }
+  const glass = 'rounded-2xl border border-white/40 bg-white/25 px-4 py-2 backdrop-blur-md'
 
   const msgsTheirs = stats ? stats.msgsTotal - stats.msgsMine : 0
   const talker =
-    stats && stats.msgsTotal > 0
-      ? stats.msgsMine >= msgsTheirs
-        ? myName
-        : partnerName
-      : null
-
+    stats && stats.msgsTotal > 0 ? (stats.msgsMine >= msgsTheirs ? myName : partnerName) : null
   const fmtMoneyMap = (m: Map<string, number>) =>
     [...m.entries()].map(([c, v]) => `${currencySymbol(c)}${v.toFixed(0)}`).join(' + ')
 
   return (
-    <div className="fixed inset-0 z-50 mx-auto h-full max-w-md snap-y snap-mandatory overflow-y-auto bg-warmbg">
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-50 mx-auto h-full max-w-md snap-y snap-mandatory overflow-y-auto"
+    >
       <button
         type="button"
         onClick={onClose}
-        className="fixed right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/15 text-white"
+        className="fixed right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm"
         aria-label="关闭"
       >
         ✕
       </button>
 
+      {/* 侧边进度点 */}
+      {stats && (
+        <div className="fixed right-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full bg-white transition-all duration-300 ${
+                active === i ? 'h-4 opacity-100' : 'w-1.5 opacity-40'
+              }`}
+              style={{ width: 6 }}
+            />
+          ))}
+        </div>
+      )}
+
       {!stats ? (
-        <div className={slide}>
-          <span className="animate-pulse text-4xl">📊</span>
+        <div
+          className={slide}
+          style={{ background: 'linear-gradient(165deg, #fb7185, #db2777)' }}
+        >
+          <span className="year-pulse text-5xl">📊</span>
           <p className={label}>{t('正在为你们整理这一年…')}</p>
         </div>
       ) : (
         <>
           {/* 封面 */}
           <section
+            data-idx="0"
             className={slide}
-            style={{ background: 'linear-gradient(165deg, #fff1f2, #ffe4e6 55%, #fce7f3)' }}
+            style={{ background: 'linear-gradient(165deg, #fb7185, #e11d48 60%, #9d174d)' }}
           >
-            <span className="text-6xl">❤️</span>
-            <p className="text-3xl font-bold text-primary-dark">{t('我们的 {y}', { y: year })}</p>
-            <p className={label}>{t('这是我们在一起的第 {n} 天', { n: stats.days })}</p>
-            <p className="mt-8 animate-bounce text-xs text-gray-400">{t('上滑查看 ↓')}</p>
+            <FloatLayer items={['❤️', '💕', '✨', '💖', '🎊']} />
+            <span className="year-pulse text-7xl drop-shadow-lg">❤️</span>
+            <p {...reveal(0, 1)} className={`${reveal(0, 1).className} text-4xl font-extrabold text-white drop-shadow`}>
+              {t('我们的 {y}', { y: year })}
+            </p>
+            <p {...reveal(0, 2)} className={`${reveal(0, 2).className} ${label}`}>
+              {t('这是我们在一起的第 {n} 天', { n: stats.days })}
+            </p>
+            <p className="absolute bottom-12 animate-bounce text-xs text-white/80">
+              {t('上滑查看 ↓')}
+            </p>
           </section>
 
           {/* 聊天 */}
           <section
+            data-idx="1"
             className={slide}
-            style={{ background: 'linear-gradient(165deg, #fef3c7, #ffe4e6)' }}
+            style={{ background: 'linear-gradient(165deg, #fbbf24, #fb923c 55%, #db2777)' }}
           >
-            <p className={label}>{t('这一年,我们说了')}</p>
-            <p className={big}>{stats.msgsTotal}</p>
-            <p className={label}>
+            <FloatLayer items={['💬', '💌', '🗨️', '✨']} />
+            <p {...reveal(1, 0)} className={`${reveal(1, 0).className} ${label}`}>
+              {t('这一年,我们说了')}
+            </p>
+            <p className={big}>
+              <CountUp value={stats.msgsTotal} run={seen.has(1)} />
+            </p>
+            <p {...reveal(1, 2)} className={`${reveal(1, 2).className} ${label}`}>
               {t('条悄悄话')}
               <br />
               {t('{me} {a} 条 · {ta} {b} 条', {
@@ -220,7 +340,7 @@ export default function YearReport({
               {t('还有 {n} 张照片的瞬间', { n: stats.imgs })}
             </p>
             {talker && (
-              <p className="rounded-full bg-white/70 px-4 py-1.5 text-sm text-primary-dark">
+              <p {...reveal(1, 3)} className={`${reveal(1, 3).className} ${glass} text-sm font-medium text-white`}>
                 {t('🏆 年度话痨担当:{name}', { name: talker })}
               </p>
             )}
@@ -228,12 +348,18 @@ export default function YearReport({
 
           {/* 互动 */}
           <section
+            data-idx="2"
             className={slide}
-            style={{ background: 'linear-gradient(165deg, #e0f2fe, #fce7f3)' }}
+            style={{ background: 'linear-gradient(165deg, #38bdf8, #6366f1 60%, #a21caf)' }}
           >
-            <p className={label}>{t('想念发生了')}</p>
-            <p className={big}>{stats.missMine + stats.missTheirs}</p>
-            <p className={label}>
+            <FloatLayer items={['💭', '💗', '📍', '🔥']} />
+            <p {...reveal(2, 0)} className={`${reveal(2, 0).className} ${label}`}>
+              {t('想念发生了')}
+            </p>
+            <p className={big}>
+              <CountUp value={stats.missMine + stats.missTheirs} run={seen.has(2)} />
+            </p>
+            <p {...reveal(2, 2)} className={`${reveal(2, 2).className} ${label}`}>
               {t('次')}
               <br />
               {t('{me}想了 {a} 次 · {ta}想了 {b} 次', {
@@ -243,7 +369,7 @@ export default function YearReport({
                 b: stats.missTheirs,
               })}
             </p>
-            <p className={label}>
+            <p {...reveal(2, 3)} className={`${reveal(2, 3).className} ${glass} ${label}`}>
               {t('打卡共 {n} 天', { n: stats.checkinsTotal })}
               <br />
               {t('最长连续:{me} {a} 天 · {ta} {b} 天', {
@@ -257,36 +383,49 @@ export default function YearReport({
 
           {/* 记账 */}
           <section
+            data-idx="3"
             className={slide}
-            style={{ background: 'linear-gradient(165deg, #dcfce7, #fef9c3)' }}
+            style={{ background: 'linear-gradient(165deg, #34d399, #0d9488 60%, #f59e0b)' }}
           >
-            <p className={label}>{t('我们一起记下了')}</p>
-            <p className={big}>{stats.expenseCount}</p>
-            <p className={label}>
-              {t('笔生活的痕迹')}
-              <br />
-              {stats.expense.size > 0 && (
-                <>
-                  {t('支出 {s}', { s: fmtMoneyMap(stats.expense) })}
-                  <br />
-                </>
-              )}
-              {stats.income.size > 0 && <>{t('收入 {s}', { s: fmtMoneyMap(stats.income) })}</>}
+            <FloatLayer items={['💰', '🧾', '✨', '🪙']} />
+            <p {...reveal(3, 0)} className={`${reveal(3, 0).className} ${label}`}>
+              {t('我们一起记下了')}
             </p>
+            <p className={big}>
+              <CountUp value={stats.expenseCount} run={seen.has(3)} />
+            </p>
+            <p {...reveal(3, 2)} className={`${reveal(3, 2).className} ${label}`}>
+              {t('笔生活的痕迹')}
+            </p>
+            {(stats.expense.size > 0 || stats.income.size > 0) && (
+              <p {...reveal(3, 3)} className={`${reveal(3, 3).className} ${glass} ${label}`}>
+                {stats.expense.size > 0 && (
+                  <>
+                    {t('支出 {s}', { s: fmtMoneyMap(stats.expense) })}
+                    {stats.income.size > 0 && <br />}
+                  </>
+                )}
+                {stats.income.size > 0 && <>{t('收入 {s}', { s: fmtMoneyMap(stats.income) })}</>}
+              </p>
+            )}
           </section>
 
           {/* 愿望与尾声 */}
           <section
+            data-idx="4"
             className={slide}
-            style={{ background: 'linear-gradient(165deg, #ede9fe, #ffe4e6)' }}
+            style={{ background: 'linear-gradient(165deg, #a78bfa, #7c3aed 55%, #db2777)' }}
           >
-            <span className="text-5xl">🌠</span>
-            <p className={label}>
+            <FloatLayer items={['🌠', '⭐', '💫', '💕', '🎊']} />
+            <span {...reveal(4, 0)} className={`${reveal(4, 0).className} year-pulse text-6xl drop-shadow`}>
+              🌠
+            </span>
+            <p {...reveal(4, 1)} className={`${reveal(4, 1).className} ${glass} ${label}`}>
               {t('愿望清单实现了 {a}/{b} 个', { a: stats.wishesDone, b: stats.wishesTotal })}
               <br />
               {t('留下了 {n} 张小纸条', { n: stats.notes })}
             </p>
-            <p className="mt-6 text-lg font-semibold text-primary-dark">
+            <p {...reveal(4, 2)} className={`${reveal(4, 2).className} mt-6 text-xl font-bold text-white drop-shadow`}>
               {t('新的一年,继续把日子过成诗 ❤')}
             </p>
           </section>
