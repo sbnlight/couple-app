@@ -276,6 +276,146 @@ html.dark .rounded-2xl.bg-white {
 .bubble-glitch {
   animation: bubble-glitch 2.4s steps(1) infinite;
 }
+/* 果冻弹弹:整只气泡轻微挤压回弹 */
+@keyframes bubble-jelly {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.04, 0.96);
+  }
+  60% {
+    transform: scale(0.98, 1.02);
+  }
+}
+.bubble-jelly {
+  animation: bubble-jelly 2.6s ease-in-out infinite;
+  transform-origin: bottom right;
+}
+
+/* ---------- 挂件持续动画(让气泡「活」起来) ---------- */
+@keyframes deco-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.deco-float {
+  animation: deco-float 2.4s ease-in-out infinite;
+}
+@keyframes deco-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(-6deg);
+  }
+}
+.deco-bob {
+  animation: deco-bob 1.6s ease-in-out infinite;
+}
+@keyframes deco-twinkle {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+.deco-twinkle {
+  animation: deco-twinkle 1.5s ease-in-out infinite;
+}
+@keyframes deco-swing {
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+.deco-swing {
+  animation: deco-swing 2s ease-in-out infinite;
+  transform-origin: top center;
+}
+@keyframes deco-wag {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(18deg);
+  }
+}
+.deco-wag {
+  animation: deco-wag 0.7s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+@keyframes deco-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.deco-spin {
+  animation: deco-spin 4s linear infinite;
+}
+@keyframes deco-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.3);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+.deco-pop {
+  animation: deco-pop 1.4s ease-in-out infinite;
+}
+@keyframes deco-rise {
+  0% {
+    transform: translateY(4px);
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+}
+.deco-rise {
+  animation: deco-rise 2s ease-in infinite;
+}
+
+/* 系统「减少动态效果」时,关掉气泡与挂件动画 */
+@media (prefers-reduced-motion: reduce) {
+  .bubble-jelly,
+  .bubble-beat,
+  .bubble-flow,
+  .bubble-hue,
+  .deco-float,
+  .deco-bob,
+  .deco-twinkle,
+  .deco-swing,
+  .deco-wag,
+  .deco-spin,
+  .deco-pop,
+  .deco-rise {
+    animation: none !important;
+  }
+}
 
 /* ---------- 全屏表情雨 ---------- */
 @keyframes effect-fall {
