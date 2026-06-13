@@ -20,3 +20,31 @@ alter table if exists public.profiles
 -- 3) 每日一问的多图回答(最多 9 张图片路径)
 alter table if exists public.daily_answers
   add column if not exists image_paths text[];
+
+-- 4) 今日心情(对方在聊天顶栏 / 我们页可见)—— 缺它则心情存不进、语音也无关
+alter table if exists public.profiles
+  add column if not exists mood text;
+alter table if exists public.profiles
+  add column if not exists mood_at timestamptz;
+
+-- 5) 消息类型放开到 语音/拍一拍(否则发语音、拍一拍会被旧约束拒绝 → 发送失败)
+do $$
+declare r record;
+begin
+  for r in
+    select conname from pg_constraint
+    where conrelid = 'public.messages'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%type%'
+  loop
+    execute format('alter table public.messages drop constraint %I', r.conname);
+  end loop;
+end $$;
+alter table public.messages add constraint messages_type_check
+  check (type in ('text', 'image', 'sticker', 'voice', 'nudge'));
+
+-- 6) 引用回复:被引用的消息 id + 去规范化的预览文本(自包含,渲染不用再查)
+alter table if exists public.messages
+  add column if not exists reply_to bigint;
+alter table if exists public.messages
+  add column if not exists reply_preview text;
