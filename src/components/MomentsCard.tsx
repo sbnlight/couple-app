@@ -28,7 +28,6 @@ function streakOf(days: Set<string>): number {
 export default function MomentsCard({
   coupleId,
   userId,
-  partnerName,
   onToast,
   missEnabled = true,
   checkinEnabled = true,
@@ -172,7 +171,7 @@ export default function MomentsCard({
             {t('今天:你想了 TA {a} 次,{name}想了你 {b} 次', {
               a: missMine,
               b: missTheirs,
-              name: partnerName,
+              name: t('TA'),
             })}
             {checkinEnabled && <br />}
           </>
@@ -184,7 +183,7 @@ export default function MomentsCard({
               ab: badgeOf(streakMine),
               b: streakTheirs,
               bb: badgeOf(streakTheirs),
-              name: partnerName,
+              name: t('TA'),
             })}
             {theirCheckedToday && t(' · TA 今天已打卡')}
           </>
