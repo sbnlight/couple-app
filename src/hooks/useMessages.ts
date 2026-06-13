@@ -22,6 +22,8 @@ export interface ChatItem {
   previewUrl?: string
   /** 已撤回 */
   recalled?: boolean
+  /** 引用回复的预览文本 */
+  replyPreview?: string | null
 }
 
 /** 本地待发队列里的一条 */
@@ -38,6 +40,9 @@ interface PendingMsg {
   voiceDur?: number
   voiceExt?: string
   voiceMime?: string
+  /** 引用回复 */
+  replyTo?: number
+  replyPreview?: string
 }
 
 const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
@@ -49,7 +54,14 @@ const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
 function savePending(coupleId: string, list: PendingMsg[]) {
   const texts = list
     .filter((p) => p.type !== 'image' && p.type !== 'voice')
-    .map(({ localId, type, content, createdAt }) => ({ localId, type, content, createdAt }))
+    .map(({ localId, type, content, createdAt, replyTo, replyPreview }) => ({
+      localId,
+      type,
+      content,
+      createdAt,
+      replyTo,
+      replyPreview,
+    }))
   try {
     localStorage.setItem(pendingKey(coupleId), JSON.stringify(texts))
   } catch {
@@ -298,6 +310,8 @@ export function useMessages(coupleId: string, userId: string) {
                 type: msg.type,
                 content,
                 client_id: msg.localId,
+                reply_to: msg.replyTo ?? null,
+                reply_preview: msg.replyPreview ?? null,
               })
               .select()
               .single()
@@ -322,9 +336,9 @@ export function useMessages(coupleId: string, userId: string) {
     [coupleId, userId, mergeServer],
   )
 
-  /** 发送文本消息(乐观更新:立即上屏,后台投递) */
+  /** 发送文本消息(乐观更新:立即上屏,后台投递);可带引用回复 */
   const sendText = useCallback(
-    (text: string) => {
+    (text: string, reply?: { id: number; preview: string }) => {
       const t = text.trim()
       if (!t) return
       const p: PendingMsg = {
@@ -333,6 +347,8 @@ export function useMessages(coupleId: string, userId: string) {
         content: t,
         createdAt: new Date().toISOString(),
         status: 'sending',
+        replyTo: reply?.id,
+        replyPreview: reply?.preview,
       }
       setPending((prev) => {
         const next = [...prev, p]
@@ -510,6 +526,7 @@ export function useMessages(coupleId: string, userId: string) {
       createdAt: m.created_at,
       status: 'sent' as const,
       recalled: m.recalled,
+      replyPreview: m.reply_preview,
     })),
     ...pending.map((p) => ({
       key: p.localId,
@@ -519,6 +536,7 @@ export function useMessages(coupleId: string, userId: string) {
       createdAt: p.createdAt,
       status: p.status,
       previewUrl: p.previewUrl,
+      replyPreview: p.replyPreview,
     })),
   ]
 

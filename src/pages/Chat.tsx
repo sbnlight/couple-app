@@ -70,8 +70,24 @@ export default function Chat() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
-  const [actionTarget, setActionTarget] = useState<ChatItem | null>(null)
+  const [actionTarget, setActionTarget] = useState<{ item: ChatItem; rect: DOMRect } | null>(
+    null,
+  )
+  const [replyTarget, setReplyTarget] = useState<ChatItem | null>(null)
   const [highlightId, setHighlightId] = useState<number | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  /** 一条消息的简短预览(引用栏/引用框用) */
+  const previewOf = (it: ChatItem) =>
+    it.type === 'text'
+      ? it.content.slice(0, 40)
+      : it.type === 'image'
+        ? t('🖼 [图片]')
+        : it.type === 'sticker'
+          ? t('⭐ [表情包]')
+          : it.type === 'voice'
+            ? t('🎤 [语音]')
+            : t('消息')
 
   // 聊天外观(本机偏好)
   const [bubble, setBubble] = useState(getBubbleStyle)
@@ -314,8 +330,13 @@ export default function Chat() {
     stickRef.current = true
     const fx = keywordEffect(draft)
     if (fx) fireEffect(fx)
-    sendText(draft)
+    const reply =
+      replyTarget?.id !== undefined
+        ? { id: replyTarget.id, preview: previewOf(replyTarget) }
+        : undefined
+    sendText(draft, reply)
     setDraft('')
+    setReplyTarget(null)
   }
 
   const handlePickImage = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -347,13 +368,13 @@ export default function Chat() {
     setTimeout(() => setHighlightId(null), 2200)
   }
 
-  /** 长按菜单:撤回 */
+  /** 菜单:撤回 */
   const handleRecall = async () => {
-    const target = actionTarget
+    const it = actionTarget?.item
     setActionTarget(null)
-    if (!target?.id) return
+    if (!it?.id) return
     try {
-      await recallMessage(target.id)
+      await recallMessage(it.id)
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('RECALL_TIMEOUT')) showToast(t('发出超过 2 分钟,不能撤回了'))
@@ -361,17 +382,26 @@ export default function Chat() {
     }
   }
 
-  /** 长按菜单:复制 */
+  /** 菜单:复制 */
   const handleCopy = async () => {
-    const target = actionTarget
+    const it = actionTarget?.item
     setActionTarget(null)
-    if (!target) return
+    if (!it) return
     try {
-      await navigator.clipboard.writeText(target.content)
+      await navigator.clipboard.writeText(it.content)
       showToast(t('已复制'))
     } catch {
       showToast(t('复制失败,长按文字手动选择吧'))
     }
+  }
+
+  /** 菜单:引用回复 */
+  const handleQuote = () => {
+    const it = actionTarget?.item
+    setActionTarget(null)
+    if (!it) return
+    setReplyTarget(it)
+    setTimeout(() => inputRef.current?.focus(), 0)
   }
 
   const canRecall = (it: ChatItem) =>
@@ -491,7 +521,9 @@ export default function Chat() {
                     }
                     onRetry={() => retrySend(item.key)}
                     onPreview={(url) => setViewer(url)}
-                    onLongPress={longPressable ? () => setActionTarget(item) : undefined}
+                    onLongPress={
+                      longPressable ? (rect) => setActionTarget({ item, rect }) : undefined
+                    }
                     onDoubleTap={
                       item.senderId !== userId && item.id !== undefined
                         ? () => {
@@ -531,6 +563,18 @@ export default function Chat() {
         </button>
       )}
 
+      {/* 引用编辑栏 */}
+      {replyTarget && (
+        <div className="flex items-center gap-2 border-t border-line bg-white/85 px-3 py-1.5 text-xs text-gray-500 backdrop-blur-md">
+          <span className="min-w-0 flex-1 truncate border-l-2 border-primary pl-2">
+            {t('引用')}: {previewOf(replyTarget)}
+          </span>
+          <button type="button" onClick={() => setReplyTarget(null)} className="px-1 text-gray-400">
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 输入栏 */}
       <form
         onSubmit={(e) => void handleSubmit(e)}
@@ -558,6 +602,7 @@ export default function Chat() {
           🎤
         </button>
         <input
+          ref={inputRef}
           className="min-w-0 flex-1 rounded-full border border-line bg-warmbg px-4 py-2 text-base outline-none focus:border-primary"
           placeholder={t('说点什么…')}
           maxLength={2000}
@@ -628,44 +673,48 @@ export default function Chat() {
         />
       )}
 
-      {/* 长按操作菜单 */}
+      {/* 长按操作菜单:在气泡上方(空间不够则下方)弹出 */}
       {actionTarget && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
-          onClick={() => setActionTarget(null)}
-        >
-          <div
-            className="mx-auto w-full max-w-md rounded-t-2xl bg-white pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="divide-y divide-line">
-              {actionTarget.type === 'text' && (
+        <div className="fixed inset-0 z-50" onClick={() => setActionTarget(null)}>
+          {(() => {
+            const r = actionTarget.rect
+            const below = r.top < 110
+            const top = below ? r.bottom + 8 : r.top - 8
+            const left = Math.min(Math.max(r.left + r.width / 2, 80), window.innerWidth - 80)
+            return (
+              <div
+                className="absolute flex items-stretch overflow-hidden rounded-xl bg-gray-800/95 text-sm text-white shadow-xl backdrop-blur-sm"
+                style={{ left, top, transform: `translate(-50%, ${below ? '0' : '-100%'})` }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {actionTarget.item.type === 'text' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleCopy()}
+                    className="px-4 py-2.5 active:bg-white/15"
+                  >
+                    {t('复制')}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => void handleCopy()}
-                  className="w-full py-3.5 text-center active:bg-soft"
+                  onClick={handleQuote}
+                  className="border-l border-white/15 px-4 py-2.5 active:bg-white/15"
                 >
-                  {t('📋 复制')}
+                  {t('引用')}
                 </button>
-              )}
-              {canRecall(actionTarget) && (
-                <button
-                  type="button"
-                  onClick={() => void handleRecall()}
-                  className="w-full py-3.5 text-center text-red-500 active:bg-soft"
-                >
-                  {t('↩️ 撤回')}
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              className="mt-2 w-full border-t border-line py-3.5 text-center text-gray-500"
-              onClick={() => setActionTarget(null)}
-            >
-              {t('取消')}
-            </button>
-          </div>
+                {canRecall(actionTarget.item) && (
+                  <button
+                    type="button"
+                    onClick={() => void handleRecall()}
+                    className="border-l border-white/15 px-4 py-2.5 text-red-300 active:bg-white/15"
+                  >
+                    {t('撤回')}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 

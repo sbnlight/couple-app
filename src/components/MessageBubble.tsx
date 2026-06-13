@@ -266,11 +266,13 @@ export default function MessageBubble({
   readLabel?: boolean
   onRetry: () => void
   onPreview: (url: string) => void
-  onLongPress?: () => void
+  /** 长按气泡 → 弹出菜单,带气泡屏幕位置用于定位弹窗 */
+  onLongPress?: (rect: DOMRect) => void
   /** 双击对方气泡 → 拍一拍 */
   onDoubleTap?: () => void
 }) {
   const pressTimer = useRef<number | undefined>(undefined)
+  const pressElRef = useRef<HTMLElement | null>(null)
   const lastTapRef = useRef(0)
 
   // 已撤回:居中灰字提示,不再显示内容
@@ -291,9 +293,12 @@ export default function MessageBubble({
     )
   }
 
-  const startPress = () => {
+  const startPress = (el: HTMLElement) => {
     if (!onLongPress) return
-    pressTimer.current = window.setTimeout(onLongPress, 480)
+    pressElRef.current = el
+    pressTimer.current = window.setTimeout(() => {
+      if (pressElRef.current) onLongPress(pressElRef.current.getBoundingClientRect())
+    }, 480)
   }
   const cancelPress = () => window.clearTimeout(pressTimer.current)
   /** 触屏双击检测(两次点按 < 300ms) */
@@ -312,7 +317,7 @@ export default function MessageBubble({
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div className="max-w-[78%]">
         <div
-          onTouchStart={startPress}
+          onTouchStart={(e) => startPress(e.currentTarget)}
           onTouchEnd={() => {
             cancelPress()
             handleTap()
@@ -322,7 +327,7 @@ export default function MessageBubble({
           onContextMenu={(e) => {
             if (onLongPress) {
               e.preventDefault()
-              onLongPress()
+              onLongPress(e.currentTarget.getBoundingClientRect())
             }
           }}
         >
@@ -338,6 +343,15 @@ export default function MessageBubble({
                 }`}
                 style={mine ? { ...bubbleCss(bubble), ...fontCss(font) } : undefined}
               >
+                {item.replyPreview && (
+                  <div
+                    className={`mb-1 max-w-full truncate border-l-2 pl-2 text-xs ${
+                      mine ? 'border-white/50 opacity-80' : 'border-primary/50 text-gray-400'
+                    }`}
+                  >
+                    {item.replyPreview}
+                  </div>
+                )}
                 {item.content}
               </div>
               {mine && renderDecos(bubble.deco)}

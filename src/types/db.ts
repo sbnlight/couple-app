@@ -90,6 +90,9 @@ export interface Message {
   client_id: string | null
   /** 已撤回(内容已被清空) */
   recalled: boolean
+  /** 引用回复:被引用消息 id + 预览文本 */
+  reply_to: number | null
+  reply_preview: string | null
   created_at: string
 }
 
