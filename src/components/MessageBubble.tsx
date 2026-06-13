@@ -76,6 +76,19 @@ function Topper({ type, color }: { type: NonNullable<BubbleStyle['topper']>; col
       )
     case 'halo':
       return <>{center(<svg width="34" height="14"><ellipse cx="17" cy="8" rx="13" ry="4.5" fill="none" stroke={color} strokeWidth="3" /></svg>, -13)}</>
+    case 'wings': {
+      // 双层羽毛翼,从两侧上方探出
+      const wing = (
+        <svg width="30" height="22" viewBox="0 0 30 22">
+          <path d="M29 21 Q5 20 1 2 Q13 10 29 21 Z" fill={color} />
+          <path d="M29 21 Q13 16 9 6 Q17 13 29 21 Z" fill={color} opacity="0.65" />
+        </svg>
+      )
+      return [
+        place(wing, { left: -8, top: -12 }, 'wl'),
+        place(wing, { right: -8, top: -12, transform: 'scaleX(-1)' }, 'wr'),
+      ]
+    }
     default:
       return null
   }

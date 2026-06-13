@@ -96,11 +96,21 @@ export interface BubbleStyle {
     | 'antenna'
     | 'sprout'
     | 'halo'
+    | 'wings'
   /** 顶饰/尾巴的颜色;不填则用气泡主色 */
   accent?: string
 }
 
 export const BUBBLE_STYLES: BubbleStyle[] = [
+  // ---- 臻品:高级光效 + 羽翼(每款精修) ----
+  { group: '臻品', id: 'lux-ring', label: '流光彩环', bg: 'linear-gradient(135deg, #2e1065, #1e1b4b)', text: '#ede9fe', radius: '18px', extraClass: 'bubble-ring' },
+  { group: '臻品', id: 'lux-aura', label: '梦境光晕', bg: 'linear-gradient(135deg, #ffffff, #fdf2f8)', text: '#9d174d', radius: '20px', extraClass: 'bubble-aura' },
+  { group: '臻品', id: 'lux-neon-cyan', label: '冰蓝霓虹', bg: 'linear-gradient(135deg, #0e7490, #155e75)', text: '#cffafe', radius: '16px', border: '1.5px solid #67e8f9', extraClass: 'bubble-neon-cyan-x' },
+  { group: '臻品', id: 'lux-neon-pink', label: '热恋霓虹', bg: 'linear-gradient(135deg, #9d174d, #831843)', text: '#fce7f3', radius: '16px', border: '1.5px solid #f9a8d4', extraClass: 'bubble-neon-pink-x' },
+  { group: '臻品', id: 'lux-angel', label: '天使之翼', bg: 'linear-gradient(135deg, #eff6ff, #ede9fe)', text: '#4338ca', accent: '#fef3c7', topper: 'wings', tail: true, radius: '20px', shadow: '0 4px 18px -6px rgba(167,139,250,0.7)' },
+  { group: '臻品', id: 'lux-darkwing', label: '暗夜之翼', bg: 'linear-gradient(135deg, #450a0a, #18181b)', text: '#fecaca', accent: '#b91c1c', topper: 'wings', tail: true, radius: '16px', shadow: '0 4px 18px -6px rgba(220,38,38,0.7)' },
+  { group: '臻品', id: 'lux-frost', label: '霜蓝之翼', bg: 'linear-gradient(135deg, #1e3a8a, #1e293b)', text: '#dbeafe', accent: '#93c5fd', topper: 'wings', tail: true, radius: '16px', shadow: '0 4px 18px -6px rgba(96,165,250,0.7)' },
+  { group: '臻品', id: 'lux-gold', label: '鎏金描边', bg: 'linear-gradient(135deg, #292524, #1c1917)', text: '#fde68a', radius: '14px', border: '2px solid #d4af37', shadow: '0 0 14px -2px rgba(212,175,55,0.6), inset 0 0 8px rgba(212,175,55,0.25)' },
   // ---- 创意造型:纯 CSS/SVG 手绘外形(气泡长出耳朵/角/皇冠+对话尾巴尖,不靠 emoji) ----
   { group: '创意造型', id: 'art-cat', label: '猫耳朵', bg: '#fcd9b6', text: '#7c2d12', accent: '#fcd9b6', topper: 'cat', tail: true, radius: '20px' },
   { group: '创意造型', id: 'art-bear', label: '小熊耳', bg: '#d8a679', text: '#ffffff', accent: '#d8a679', topper: 'bear', tail: true, radius: '22px' },
@@ -357,7 +367,20 @@ const TWOHEARTS = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/
 const PLUS_STARS = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M14 10v8M10 14h8' stroke='%23f472b6' stroke-opacity='.14' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M42 38v6M39 41h6' stroke='%2360a5fa' stroke-opacity='.13' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E")`
 const ECG_LINE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='48'%3E%3Cpath d='M0 24h28l6-12 8 24 6-12h12l6-8 8 16 6-8h40' fill='none' stroke='%23fb7185' stroke-opacity='.13' stroke-width='1.6'/%3E%3C/svg%3E")`
 
+// 臻景所需的精绘 SVG(花瓣/星点/love 涂鸦/海鸥)
+const SAKURA_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='%23f9a8d4' fill-opacity='.42'%3E%3Cellipse cx='14' cy='16' rx='4' ry='7' transform='rotate(32 14 16)'/%3E%3Cellipse cx='46' cy='42' rx='3' ry='5.5' transform='rotate(-22 46 42)'/%3E%3Cellipse cx='30' cy='54' rx='2.6' ry='4.6' transform='rotate(12 30 54)'/%3E%3C/g%3E%3C/svg%3E")`
+const STARS_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cg fill='white'%3E%3Ccircle cx='10' cy='12' r='1.2' opacity='.9'/%3E%3Ccircle cx='44' cy='30' r='.8' opacity='.6'/%3E%3Ccircle cx='72' cy='16' r='1.4' opacity='.85'/%3E%3Ccircle cx='24' cy='62' r='1' opacity='.7'/%3E%3Ccircle cx='58' cy='72' r='1.2' opacity='.6'/%3E%3Ccircle cx='82' cy='52' r='.9' opacity='.8'/%3E%3C/g%3E%3C/svg%3E")`
+const LOVE_DOODLE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='100'%3E%3Cpath d='M20 28c-4-5-12-3-12 4 0 6 12 12 12 12s12-6 12-12c0-7-8-9-12-4z' fill='none' stroke='%23fb7185' stroke-opacity='.45' stroke-width='1.4'/%3E%3Cpath d='M118 74c-3-4-9-2-9 3 0 5 9 9 9 9s9-4 9-9c0-5-6-7-9-3z' fill='none' stroke='%23a78bfa' stroke-opacity='.4' stroke-width='1.4'/%3E%3Ctext x='52' y='44' font-family='cursive' font-size='22' fill='%23f9a8d4' fill-opacity='.5'%3Elove%3C/text%3E%3Ctext x='30' y='90' font-family='cursive' font-size='17' fill='%23fda4af' fill-opacity='.42'%3Eyou%3C/text%3E%3C/svg%3E")`
+const GULLS_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='70'%3E%3Cg fill='none' stroke='%23475569' stroke-opacity='.45' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M14 18q6-6 12 0 6-6 12 0'/%3E%3Cpath d='M70 40q5-5 10 0 5-5 10 0'/%3E%3C/g%3E%3C/svg%3E")`
+
 export const CHAT_BGS: ChatBgPreset[] = [
+  // ---- 臻景:高清场景(多层渐变 + 精绘 SVG) ----
+  { group: '臻景', id: 'lux-sunset', label: '落日海滩', css: 'radial-gradient(circle at 50% 56%, #fff7d6 0 3.5%, transparent 5%), radial-gradient(circle at 50% 56%, rgba(255,228,160,.9), transparent 26%), linear-gradient(180deg, transparent 64%, rgba(255,255,255,.16) 65%, transparent 67%, rgba(255,255,255,.1) 73%, transparent 75%), linear-gradient(180deg, #ffb27a, #ff7e8a 34%, #d8537e 56%, #6d3b8e 100%)' },
+  { group: '臻景', id: 'lux-sakura', label: '樱花飞舞', css: `${SAKURA_BG} 0 0 / 64px repeat, linear-gradient(180deg, #ffe3ef, #f3e1f7 50%, #dde7fb)` },
+  { group: '臻景', id: 'lux-galaxy', label: '星河入梦', css: `${STARS_BG} 0 0 / 90px repeat, radial-gradient(circle at 78% 16%, #fdf6c8 0 12px, rgba(253,246,200,.3) 14px, transparent 22px), linear-gradient(180deg, #1b1247, #2e1d57 55%, #0e1030)` },
+  { group: '臻景', id: 'lux-love', label: '喜欢你', css: `${LOVE_DOODLE} 0 0 / 150px repeat, linear-gradient(180deg, #1a141d, #241a28)` },
+  { group: '臻景', id: 'lux-rain', label: '烟雨', css: 'repeating-linear-gradient(102deg, rgba(255,255,255,.07) 0 1px, transparent 1px 8px), linear-gradient(180deg, #33414f, #1d2730)' },
+  { group: '臻景', id: 'lux-seaside', label: '晴海白鸥', css: `${GULLS_BG} 0 14px / 130px repeat, radial-gradient(60px 30px at 24% 26%, rgba(255,255,255,.95), transparent 70%), radial-gradient(52px 26px at 62% 18%, rgba(255,255,255,.85), transparent 70%), linear-gradient(180deg, #bfe8ff, #7cc0ec 58%, #dff3ff)` },
   // ---- 渐变 ----
   { group: '渐变', id: 'default', label: '默认', css: '' },
   { group: '渐变', id: 'blush', label: '绯雾', css: 'linear-gradient(165deg, #fff1f2 0%, #ffe4e6 45%, #fce7f3 100%)' },
