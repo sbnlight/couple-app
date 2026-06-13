@@ -19,13 +19,15 @@ export function renderDecos(deco: BubbleDeco[] | undefined, scale = 1) {
     <span
       key={i}
       className="pointer-events-none absolute z-10 leading-none"
-      style={{
-        ...DECO_POS[d.pos],
-        fontSize: (d.size ?? 18) * scale,
-        transform: d.rot ? `rotate(${d.rot}deg)` : undefined,
-      }}
+      style={{ ...DECO_POS[d.pos], fontSize: (d.size ?? 18) * scale }}
     >
-      {d.emoji}
+      {/* 外层定位+静态旋转,内层跑持续动画,两者互不干扰 */}
+      <span
+        className={d.anim ? `inline-block deco-${d.anim}` : 'inline-block'}
+        style={{ transform: d.rot ? `rotate(${d.rot}deg)` : undefined }}
+      >
+        {d.emoji}
+      </span>
     </span>
   ))
 }

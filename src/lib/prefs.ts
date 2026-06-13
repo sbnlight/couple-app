@@ -56,6 +56,8 @@ export interface BubbleDeco {
   pos: 'tl' | 'tr' | 'bl' | 'br'
   size?: number
   rot?: number
+  /** 挂件持续动画(让气泡「活」起来):见 index.css 的 deco-* */
+  anim?: 'float' | 'twinkle' | 'swing' | 'wag' | 'bob' | 'spin' | 'pop' | 'rise'
 }
 
 export interface BubbleStyle {
@@ -83,30 +85,43 @@ export interface BubbleStyle {
 }
 
 export const BUBBLE_STYLES: BubbleStyle[] = [
-  // ---- 萌宠挂件:小动物在气泡边探头 ----
-  { group: '萌宠挂件', id: 'pet-cat', label: '猫猫探头', bg: '#fff7ed', text: '#9a3412', border: '1.5px solid #fdba74', deco: [{ emoji: '🐱', pos: 'tr', size: 22, rot: 12 }, { emoji: '🐾', pos: 'bl', size: 13, rot: -15 }] },
-  { group: '萌宠挂件', id: 'pet-bunny', label: '兔兔蹲守', bg: '#fdf2f8', text: '#be185d', border: '1.5px solid #f9a8d4', deco: [{ emoji: '🐰', pos: 'tr', size: 22 }, { emoji: '🥕', pos: 'bl', size: 13, rot: 30 }] },
-  { group: '萌宠挂件', id: 'pet-bear', label: '小熊抱抱', bg: '#fef3c7', text: '#92400e', border: '1.5px solid #fcd34d', deco: [{ emoji: '🐻', pos: 'br', size: 22, rot: -8 }, { emoji: '🍯', pos: 'tl', size: 13 }] },
-  { group: '萌宠挂件', id: 'pet-shiba', label: '柴犬歪头', bg: '#fffbeb', text: '#b45309', border: '1.5px solid #fde68a', deco: [{ emoji: '🐶', pos: 'tl', size: 22, rot: -12 }, { emoji: '🦴', pos: 'br', size: 13, rot: 20 }] },
-  { group: '萌宠挂件', id: 'pet-pig', label: '猪猪软糯', bg: 'linear-gradient(135deg, #fce7f3, #fbcfe8)', text: '#9d174d', radius: '22px 22px 22px 22px', deco: [{ emoji: '🐷', pos: 'br', size: 22 }, { emoji: '💗', pos: 'tl', size: 12 }] },
-  { group: '萌宠挂件', id: 'pet-shark', label: '鲨鲨咬住', bg: '#e0f2fe', text: '#075985', border: '1.5px solid #7dd3fc', deco: [{ emoji: '🦈', pos: 'tl', size: 24, rot: 18 }, { emoji: '💦', pos: 'br', size: 13 }] },
-  { group: '萌宠挂件', id: 'pet-chick', label: '小鸡叽叽', bg: '#fefce8', text: '#854d0e', border: '1.5px solid #fef08a', deco: [{ emoji: '🐥', pos: 'tr', size: 21 }, { emoji: '🌾', pos: 'bl', size: 13, rot: -20 }] },
-  { group: '萌宠挂件', id: 'pet-frog', label: '蛙蛙偷看', bg: '#f0fdf4', text: '#166534', border: '1.5px solid #86efac', deco: [{ emoji: '🐸', pos: 'bl', size: 21 }, { emoji: '🪷', pos: 'tr', size: 13 }] },
-  { group: '萌宠挂件', id: 'pet-seal', label: '海豹趴趴', bg: '#ecfeff', text: '#155e75', border: '1.5px solid #a5f3fc', deco: [{ emoji: '🦭', pos: 'br', size: 22, rot: -10 }, { emoji: '🫧', pos: 'tl', size: 13 }] },
-  { group: '萌宠挂件', id: 'pet-ghost', label: '幽灵飘飘', bg: 'linear-gradient(135deg, #3f3f46, #27272a)', text: '#e4e4e7', deco: [{ emoji: '👻', pos: 'tr', size: 22, rot: 10 }, { emoji: '✨', pos: 'bl', size: 12 }] },
-  { group: '萌宠挂件', id: 'pet-devil', label: '小恶魔', bg: 'linear-gradient(135deg, #450a0a, #1c1917)', text: '#fca5a5', deco: [{ emoji: '😈', pos: 'br', size: 21 }, { emoji: '🔥', pos: 'tl', size: 13 }] },
-  { group: '萌宠挂件', id: 'pet-angel', label: '小天使', bg: 'linear-gradient(135deg, #eff6ff, #e0e7ff)', text: '#3730a3', border: '1.5px solid #c7d2fe', deco: [{ emoji: '😇', pos: 'tr', size: 21 }, { emoji: '☁️', pos: 'bl', size: 14 }] },
-  // ---- 少女装饰 ----
-  { group: '少女装饰', id: 'deco-ribbon', label: '蝴蝶结', bg: '#fff1f2', text: '#be123c', border: '1.5px solid #fda4af', deco: [{ emoji: '🎀', pos: 'tl', size: 20, rot: -15 }] },
-  { group: '少女装饰', id: 'deco-sakura', label: '樱花飞舞', bg: 'linear-gradient(135deg, #fdf2f8, #fce7f3)', text: '#9d174d', deco: [{ emoji: '🌸', pos: 'tr', size: 18, rot: 15 }, { emoji: '🌸', pos: 'bl', size: 12, rot: -20 }] },
-  { group: '少女装饰', id: 'deco-star', label: '星星魔法', bg: 'linear-gradient(135deg, #fef9c3, #fde68a)', text: '#854d0e', deco: [{ emoji: '⭐', pos: 'tl', size: 16, rot: -10 }, { emoji: '✨', pos: 'br', size: 15 }] },
-  { group: '少女装饰', id: 'deco-butterfly', label: '蝴蝶停驻', bg: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', text: '#6d28d9', deco: [{ emoji: '🦋', pos: 'tr', size: 19, rot: 20 }] },
-  { group: '少女装饰', id: 'deco-music', label: '音符飘扬', bg: '#f8fafc', text: '#334155', border: '1.5px solid #cbd5e1', deco: [{ emoji: '🎵', pos: 'tr', size: 16, rot: 10 }, { emoji: '🎶', pos: 'bl', size: 13, rot: -10 }] },
-  { group: '少女装饰', id: 'deco-hearts', label: '爱心爆棚', bg: 'linear-gradient(135deg, #ffe4e6, #fecdd3)', text: '#be123c', deco: [{ emoji: '💕', pos: 'tl', size: 16, rot: -12 }, { emoji: '💖', pos: 'br', size: 16, rot: 12 }, { emoji: '💗', pos: 'tr', size: 12 }] },
-  { group: '少女装饰', id: 'deco-berry', label: '草莓甜心', bg: '#fff1f2', text: '#b91c1c', border: '1.5px solid #fecaca', deco: [{ emoji: '🍓', pos: 'br', size: 18, rot: 15 }] },
-  { group: '少女装饰', id: 'deco-peachy', label: '蜜桃乌龙', bg: 'linear-gradient(135deg, #fff7ed, #ffedd5)', text: '#c2410c', deco: [{ emoji: '🍑', pos: 'br', size: 18 }, { emoji: '🧋', pos: 'tl', size: 14, rot: -10 }] },
-  { group: '少女装饰', id: 'deco-rainbow', label: '彩虹之上', bg: 'linear-gradient(135deg, #fef2f2, #eff6ff)', text: '#475569', deco: [{ emoji: '🌈', pos: 'tl', size: 18 }, { emoji: '☁️', pos: 'br', size: 14 }] },
-  { group: '少女装饰', id: 'deco-moon', label: '月夜星辰', bg: 'linear-gradient(135deg, #1e1b4b, #312e81)', text: '#e0e7ff', deco: [{ emoji: '🌙', pos: 'tr', size: 17, rot: 15 }, { emoji: '⭐', pos: 'bl', size: 12 }] },
+  // ---- 灵动:整只气泡 + 挂件一起动起来 ----
+  { group: '灵动', id: 'live-jelly', label: '果冻弹弹', bg: 'linear-gradient(135deg, #fda4af, #fb7185)', text: '#ffffff', radius: '22px', extraClass: 'bubble-jelly', deco: [{ emoji: '🍮', pos: 'tr', size: 18, anim: 'bob' }] },
+  { group: '灵动', id: 'live-bounce', label: '蹦跶小球', bg: 'linear-gradient(135deg, #fdba74, #fb923c)', text: '#ffffff', radius: '999px', deco: [{ emoji: '🏀', pos: 'tr', size: 20, anim: 'bob' }, { emoji: '✨', pos: 'bl', size: 12, anim: 'twinkle' }] },
+  { group: '灵动', id: 'live-meteor', label: '流星划过', bg: 'linear-gradient(135deg, #312e81, #1e1b4b)', text: '#e0e7ff', extraClass: 'bubble-flow', deco: [{ emoji: '🌠', pos: 'tr', size: 20, anim: 'float' }, { emoji: '⭐', pos: 'bl', size: 11, anim: 'twinkle' }] },
+  { group: '灵动', id: 'live-bubbletea', label: '波波奶茶', bg: 'linear-gradient(135deg, #e7c6a8, #a47148)', text: '#fff7ed', radius: '8px 8px 18px 18px', deco: [{ emoji: '🧋', pos: 'tr', size: 20, anim: 'swing' }, { emoji: '🫧', pos: 'bl', size: 12, anim: 'rise' }] },
+  { group: '灵动', id: 'live-cloud', label: '棉花云朵', bg: 'linear-gradient(135deg, #e0f2fe, #ffffff)', text: '#0369a1', radius: '999px', border: '1.5px solid #bae6fd', extraClass: 'bubble-jelly', deco: [{ emoji: '☁️', pos: 'tl', size: 18, anim: 'float' }, { emoji: '💧', pos: 'br', size: 12, anim: 'rise' }] },
+  { group: '灵动', id: 'live-fire', label: '燃烧吧', bg: 'linear-gradient(135deg, #f59e0b, #ef4444)', text: '#fff7ed', anim: 'bubble-flow', deco: [{ emoji: '🔥', pos: 'tr', size: 20, anim: 'twinkle' }] },
+  { group: '灵动', id: 'live-party', label: '派对气球', bg: 'linear-gradient(135deg, #f0abfc, #d946ef)', text: '#ffffff', radius: '20px', deco: [{ emoji: '🎈', pos: 'tr', size: 20, anim: 'float' }, { emoji: '🎉', pos: 'bl', size: 15, anim: 'pop' }] },
+  { group: '灵动', id: 'live-snow', label: '飘雪精灵', bg: 'linear-gradient(135deg, #e0f2fe, #c7d2fe)', text: '#3730a3', deco: [{ emoji: '❄️', pos: 'tl', size: 15, anim: 'spin' }, { emoji: '⛄', pos: 'br', size: 18, anim: 'bob' }] },
+  { group: '灵动', id: 'live-loveletter', label: '飞吻信封', bg: 'linear-gradient(135deg, #fecdd3, #fb7185)', text: '#ffffff', radius: '6px', deco: [{ emoji: '💌', pos: 'tr', size: 19, anim: 'bob' }, { emoji: '💋', pos: 'bl', size: 13, anim: 'pop' }] },
+  { group: '灵动', id: 'live-galaxy', label: '旋转星系', bg: 'linear-gradient(135deg, #6d28d9, #4338ca, #6d28d9)', text: '#ede9fe', anim: 'bubble-flow', deco: [{ emoji: '🪐', pos: 'tr', size: 20, anim: 'spin' }, { emoji: '✨', pos: 'bl', size: 12, anim: 'twinkle' }] },
+  { group: '灵动', id: 'live-heartbeat', label: '砰砰心跳', bg: 'linear-gradient(135deg, var(--c-primary), var(--c-primary-dark))', text: '#ffffff', anim: 'bubble-beat', deco: [{ emoji: '💓', pos: 'tr', size: 18, anim: 'pop' }] },
+  { group: '灵动', id: 'live-blossom', label: '花瓣纷飞', bg: 'linear-gradient(135deg, #fdf2f8, #fbcfe8)', text: '#9d174d', deco: [{ emoji: '🌸', pos: 'tl', size: 14, rot: -10, anim: 'spin' }, { emoji: '🌷', pos: 'br', size: 16, anim: 'swing' }, { emoji: '🌸', pos: 'tr', size: 11, anim: 'float' }] },
+  // ---- 萌宠挂件:小动物在气泡边探头(会动) ----
+  { group: '萌宠挂件', id: 'pet-cat', label: '猫猫探头', bg: '#fff7ed', text: '#9a3412', border: '1.5px solid #fdba74', deco: [{ emoji: '🐱', pos: 'tr', size: 22, rot: 12, anim: 'bob' }, { emoji: '🐾', pos: 'bl', size: 13, rot: -15, anim: 'twinkle' }] },
+  { group: '萌宠挂件', id: 'pet-bunny', label: '兔兔蹲守', bg: '#fdf2f8', text: '#be185d', border: '1.5px solid #f9a8d4', deco: [{ emoji: '🐰', pos: 'tr', size: 22, anim: 'bob' }, { emoji: '🥕', pos: 'bl', size: 13, rot: 30, anim: 'swing' }] },
+  { group: '萌宠挂件', id: 'pet-bear', label: '小熊抱抱', bg: '#fef3c7', text: '#92400e', border: '1.5px solid #fcd34d', deco: [{ emoji: '🐻', pos: 'br', size: 22, rot: -8, anim: 'swing' }, { emoji: '🍯', pos: 'tl', size: 13, anim: 'float' }] },
+  { group: '萌宠挂件', id: 'pet-shiba', label: '柴犬歪头', bg: '#fffbeb', text: '#b45309', border: '1.5px solid #fde68a', deco: [{ emoji: '🐶', pos: 'tl', size: 22, rot: -12, anim: 'swing' }, { emoji: '🦴', pos: 'br', size: 13, rot: 20, anim: 'wag' }] },
+  { group: '萌宠挂件', id: 'pet-pig', label: '猪猪软糯', bg: 'linear-gradient(135deg, #fce7f3, #fbcfe8)', text: '#9d174d', radius: '22px 22px 22px 22px', deco: [{ emoji: '🐷', pos: 'br', size: 22, anim: 'bob' }, { emoji: '💗', pos: 'tl', size: 12, anim: 'pop' }] },
+  { group: '萌宠挂件', id: 'pet-shark', label: '鲨鲨咬住', bg: '#e0f2fe', text: '#075985', border: '1.5px solid #7dd3fc', deco: [{ emoji: '🦈', pos: 'tl', size: 24, rot: 18, anim: 'wag' }, { emoji: '💦', pos: 'br', size: 13, anim: 'twinkle' }] },
+  { group: '萌宠挂件', id: 'pet-chick', label: '小鸡叽叽', bg: '#fefce8', text: '#854d0e', border: '1.5px solid #fef08a', deco: [{ emoji: '🐥', pos: 'tr', size: 21, anim: 'bob' }, { emoji: '🌾', pos: 'bl', size: 13, rot: -20, anim: 'swing' }] },
+  { group: '萌宠挂件', id: 'pet-frog', label: '蛙蛙偷看', bg: '#f0fdf4', text: '#166534', border: '1.5px solid #86efac', deco: [{ emoji: '🐸', pos: 'bl', size: 21, anim: 'bob' }, { emoji: '🪷', pos: 'tr', size: 13, anim: 'float' }] },
+  { group: '萌宠挂件', id: 'pet-seal', label: '海豹趴趴', bg: '#ecfeff', text: '#155e75', border: '1.5px solid #a5f3fc', deco: [{ emoji: '🦭', pos: 'br', size: 22, rot: -10, anim: 'swing' }, { emoji: '🫧', pos: 'tl', size: 13, anim: 'rise' }] },
+  { group: '萌宠挂件', id: 'pet-ghost', label: '幽灵飘飘', bg: 'linear-gradient(135deg, #3f3f46, #27272a)', text: '#e4e4e7', deco: [{ emoji: '👻', pos: 'tr', size: 22, rot: 10, anim: 'float' }, { emoji: '✨', pos: 'bl', size: 12, anim: 'twinkle' }] },
+  { group: '萌宠挂件', id: 'pet-devil', label: '小恶魔', bg: 'linear-gradient(135deg, #450a0a, #1c1917)', text: '#fca5a5', deco: [{ emoji: '😈', pos: 'br', size: 21, anim: 'bob' }, { emoji: '🔥', pos: 'tl', size: 13, anim: 'twinkle' }] },
+  { group: '萌宠挂件', id: 'pet-angel', label: '小天使', bg: 'linear-gradient(135deg, #eff6ff, #e0e7ff)', text: '#3730a3', border: '1.5px solid #c7d2fe', deco: [{ emoji: '😇', pos: 'tr', size: 21, anim: 'float' }, { emoji: '☁️', pos: 'bl', size: 14, anim: 'swing' }] },
+  // ---- 少女装饰(会动) ----
+  { group: '少女装饰', id: 'deco-ribbon', label: '蝴蝶结', bg: '#fff1f2', text: '#be123c', border: '1.5px solid #fda4af', deco: [{ emoji: '🎀', pos: 'tl', size: 20, rot: -15, anim: 'swing' }] },
+  { group: '少女装饰', id: 'deco-sakura', label: '樱花飞舞', bg: 'linear-gradient(135deg, #fdf2f8, #fce7f3)', text: '#9d174d', deco: [{ emoji: '🌸', pos: 'tr', size: 18, rot: 15, anim: 'spin' }, { emoji: '🌸', pos: 'bl', size: 12, rot: -20, anim: 'float' }] },
+  { group: '少女装饰', id: 'deco-star', label: '星星魔法', bg: 'linear-gradient(135deg, #fef9c3, #fde68a)', text: '#854d0e', deco: [{ emoji: '⭐', pos: 'tl', size: 16, rot: -10, anim: 'twinkle' }, { emoji: '✨', pos: 'br', size: 15, anim: 'twinkle' }] },
+  { group: '少女装饰', id: 'deco-butterfly', label: '蝴蝶停驻', bg: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', text: '#6d28d9', deco: [{ emoji: '🦋', pos: 'tr', size: 19, rot: 20, anim: 'float' }] },
+  { group: '少女装饰', id: 'deco-music', label: '音符飘扬', bg: '#f8fafc', text: '#334155', border: '1.5px solid #cbd5e1', deco: [{ emoji: '🎵', pos: 'tr', size: 16, rot: 10, anim: 'rise' }, { emoji: '🎶', pos: 'bl', size: 13, rot: -10, anim: 'float' }] },
+  { group: '少女装饰', id: 'deco-hearts', label: '爱心爆棚', bg: 'linear-gradient(135deg, #ffe4e6, #fecdd3)', text: '#be123c', deco: [{ emoji: '💕', pos: 'tl', size: 16, rot: -12, anim: 'pop' }, { emoji: '💖', pos: 'br', size: 16, rot: 12, anim: 'pop' }, { emoji: '💗', pos: 'tr', size: 12, anim: 'rise' }] },
+  { group: '少女装饰', id: 'deco-berry', label: '草莓甜心', bg: '#fff1f2', text: '#b91c1c', border: '1.5px solid #fecaca', deco: [{ emoji: '🍓', pos: 'br', size: 18, rot: 15, anim: 'bob' }] },
+  { group: '少女装饰', id: 'deco-peachy', label: '蜜桃乌龙', bg: 'linear-gradient(135deg, #fff7ed, #ffedd5)', text: '#c2410c', deco: [{ emoji: '🍑', pos: 'br', size: 18, anim: 'bob' }, { emoji: '🧋', pos: 'tl', size: 14, rot: -10, anim: 'swing' }] },
+  { group: '少女装饰', id: 'deco-rainbow', label: '彩虹之上', bg: 'linear-gradient(135deg, #fef2f2, #eff6ff)', text: '#475569', deco: [{ emoji: '🌈', pos: 'tl', size: 18, anim: 'float' }, { emoji: '☁️', pos: 'br', size: 14, anim: 'float' }] },
+  { group: '少女装饰', id: 'deco-moon', label: '月夜星辰', bg: 'linear-gradient(135deg, #1e1b4b, #312e81)', text: '#e0e7ff', deco: [{ emoji: '🌙', pos: 'tr', size: 17, rot: 15, anim: 'swing' }, { emoji: '⭐', pos: 'bl', size: 12, anim: 'twinkle' }] },
   // ---- 异形边框 ----
   { group: '异形边框', id: 'shape-pill', label: '胶囊', bg: 'linear-gradient(135deg, var(--c-primary), var(--c-primary-dark))', text: '#ffffff', radius: '999px' },
   { group: '异形边框', id: 'shape-drop', label: '水滴', bg: 'linear-gradient(135deg, #7dd3fc, #3b82f6)', text: '#ffffff', radius: '28px 28px 6px 28px' },
