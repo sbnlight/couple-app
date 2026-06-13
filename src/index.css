@@ -399,6 +399,95 @@ html.dark .rounded-2xl.bg-white {
   animation: deco-rise 2s ease-in infinite;
 }
 
+/* ---------- 臻品气泡:高级光效(均在气泡盒内,不占横向空间) ---------- */
+/* 流光彩环:旋转的柔焦彩虹描边 */
+.bubble-ring {
+  position: relative;
+}
+.bubble-ring::before {
+  content: '';
+  position: absolute;
+  inset: -3.5px;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    #f472b6,
+    #facc15,
+    #34d399,
+    #38bdf8,
+    #a78bfa,
+    #f472b6
+  );
+  filter: blur(2px);
+  animation: deco-spin 4s linear infinite;
+}
+/* 梦境光晕:气泡背后缓缓变幻的柔光 */
+.bubble-aura {
+  position: relative;
+}
+.bubble-aura::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(244, 114, 182, 0.7),
+    rgba(167, 139, 250, 0.45) 45%,
+    transparent 72%
+  );
+  filter: blur(8px);
+  animation: bubble-aura-shift 5s ease-in-out infinite;
+}
+@keyframes bubble-aura-shift {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: blur(8px) hue-rotate(0deg);
+  }
+  50% {
+    transform: scale(1.12);
+    filter: blur(11px) hue-rotate(40deg);
+  }
+}
+/* 强霓虹:多层辉光呼吸 */
+.bubble-neon-cyan-x {
+  animation: neon-cyan-x 2s ease-in-out infinite;
+}
+@keyframes neon-cyan-x {
+  0%,
+  100% {
+    box-shadow:
+      0 0 6px rgba(34, 211, 238, 0.7),
+      0 0 14px rgba(34, 211, 238, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(34, 211, 238, 1),
+      0 0 26px rgba(34, 211, 238, 0.8),
+      0 0 40px rgba(34, 211, 238, 0.4);
+  }
+}
+.bubble-neon-pink-x {
+  animation: neon-pink-x 2s ease-in-out infinite;
+}
+@keyframes neon-pink-x {
+  0%,
+  100% {
+    box-shadow:
+      0 0 6px rgba(244, 114, 182, 0.7),
+      0 0 14px rgba(244, 114, 182, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(244, 114, 182, 1),
+      0 0 26px rgba(244, 114, 182, 0.8),
+      0 0 40px rgba(236, 72, 153, 0.4);
+  }
+}
+
 /* ---------- 年度报告:漂浮装饰 + 逐行渐入 + 数字发光 ---------- */
 @keyframes year-drift {
   0% {
@@ -467,7 +556,11 @@ html.dark .rounded-2xl.bg-white {
   .deco-wag,
   .deco-spin,
   .deco-pop,
-  .deco-rise {
+  .deco-rise,
+  .bubble-ring::before,
+  .bubble-aura::before,
+  .bubble-neon-cyan-x,
+  .bubble-neon-pink-x {
     animation: none !important;
   }
 }
