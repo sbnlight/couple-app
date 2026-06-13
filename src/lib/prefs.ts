@@ -80,11 +80,41 @@ export interface BubbleStyle {
   textShadow?: string
   /** 额外效果类(玻璃拟态/手绘/像素/故障等) */
   extraClass?: string
-  /** 角落挂件 */
+  /** 角落挂件(emoji) */
   deco?: BubbleDeco[]
+  /** 气泡小尾巴尖(对话气泡感) */
+  tail?: boolean
+  /** SVG 手绘顶饰:气泡「长出」耳朵/角/皇冠等(非 emoji) */
+  topper?:
+    | 'cat'
+    | 'bear'
+    | 'bunny'
+    | 'fox'
+    | 'panda'
+    | 'devil'
+    | 'crown'
+    | 'antenna'
+    | 'sprout'
+    | 'halo'
+  /** 顶饰/尾巴的颜色;不填则用气泡主色 */
+  accent?: string
 }
 
 export const BUBBLE_STYLES: BubbleStyle[] = [
+  // ---- 创意造型:纯 CSS/SVG 手绘外形(气泡长出耳朵/角/皇冠+对话尾巴尖,不靠 emoji) ----
+  { group: '创意造型', id: 'art-cat', label: '猫耳朵', bg: '#fcd9b6', text: '#7c2d12', accent: '#fcd9b6', topper: 'cat', tail: true, radius: '20px' },
+  { group: '创意造型', id: 'art-bear', label: '小熊耳', bg: '#d8a679', text: '#ffffff', accent: '#d8a679', topper: 'bear', tail: true, radius: '22px' },
+  { group: '创意造型', id: 'art-bunny', label: '兔耳朵', bg: '#fbcfe8', text: '#9d174d', accent: '#fbcfe8', topper: 'bunny', tail: true, radius: '22px' },
+  { group: '创意造型', id: 'art-fox', label: '狐狸耳', bg: '#fb923c', text: '#ffffff', accent: '#fb923c', topper: 'fox', tail: true, radius: '18px' },
+  { group: '创意造型', id: 'art-panda', label: '熊猫头', bg: '#ffffff', text: '#374151', accent: '#1f2937', topper: 'panda', tail: true, radius: '22px', border: '1.5px solid #e5e7eb' },
+  { group: '创意造型', id: 'art-devil', label: '小恶魔', bg: 'linear-gradient(135deg, #7c3aed, #4c1d95)', text: '#ffffff', accent: '#dc2626', topper: 'devil', tail: true, radius: '16px' },
+  { group: '创意造型', id: 'art-crown', label: '小皇冠', bg: '#fef3c7', text: '#92400e', accent: '#f59e0b', topper: 'crown', tail: true, radius: '14px' },
+  { group: '创意造型', id: 'art-king', label: '黑金国王', bg: 'linear-gradient(135deg, #1e293b, #0f172a)', text: '#fde68a', accent: '#fbbf24', topper: 'crown', tail: true, radius: '12px' },
+  { group: '创意造型', id: 'art-antenna', label: '天线宝宝', bg: '#6ee7b7', text: '#065f46', accent: '#059669', topper: 'antenna', tail: true, radius: '20px' },
+  { group: '创意造型', id: 'art-sprout', label: '冒芽芽', bg: '#dcfce7', text: '#166534', accent: '#22c55e', topper: 'sprout', tail: true, radius: '20px' },
+  { group: '创意造型', id: 'art-halo', label: '小天使', bg: 'linear-gradient(135deg, #e0f2fe, #ede9fe)', text: '#4338ca', accent: '#facc15', topper: 'halo', tail: true, radius: '22px' },
+  { group: '创意造型', id: 'art-speech', label: '经典对话', bg: '#ffffff', text: '#111827', accent: '#ffffff', tail: true, radius: '16px', border: '2px solid #111827', shadow: '2px 2px 0 #111827' },
+  { group: '创意造型', id: 'art-speech-pink', label: '粉漫对话', bg: '#fff1f2', text: '#9f1239', accent: '#fff1f2', tail: true, radius: '16px', border: '2px solid #fb7185' },
   // ---- 灵动:整只气泡 + 挂件一起动起来 ----
   { group: '灵动', id: 'live-jelly', label: '果冻弹弹', bg: 'linear-gradient(135deg, #fda4af, #fb7185)', text: '#ffffff', radius: '22px', extraClass: 'bubble-jelly', deco: [{ emoji: '🍮', pos: 'tr', size: 18, anim: 'bob' }] },
   { group: '灵动', id: 'live-bounce', label: '蹦跶小球', bg: 'linear-gradient(135deg, #fdba74, #fb923c)', text: '#ffffff', radius: '999px', deco: [{ emoji: '🏀', pos: 'tr', size: 20, anim: 'bob' }, { emoji: '✨', pos: 'bl', size: 12, anim: 'twinkle' }] },
