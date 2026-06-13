@@ -17,7 +17,7 @@ import {
   saveChatBgToken,
 } from '../lib/prefs'
 import { t } from '../lib/i18n'
-import { renderDecos } from './MessageBubble'
+import { renderBubbleArt, renderDecos } from './MessageBubble'
 
 type Page = 'menu' | 'bubble' | 'bg' | 'font'
 
@@ -159,6 +159,7 @@ export default function ChatAppearance({
                       {t('你好呀')}
                     </span>
                     {renderDecos(b.deco, 0.85)}
+                    {renderBubbleArt(b)}
                   </span>
                   <span className="text-xs text-gray-500">{t(b.label)}</span>
                 </button>

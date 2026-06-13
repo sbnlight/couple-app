@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { getSignedUrl } from '../lib/storage'
 import { BUBBLE_FONTS, BUBBLE_STYLES, bubbleCss, fontCss } from '../lib/prefs'
 import type { BubbleDeco, BubbleFont, BubbleStyle } from '../lib/prefs'
@@ -10,6 +10,98 @@ const DECO_POS: Record<BubbleDeco['pos'], CSSProperties> = {
   tr: { top: -11, right: -7 },
   bl: { bottom: -9, left: -7 },
   br: { bottom: -9, right: -7 },
+}
+
+/** SVG 手绘顶饰:气泡「长出」耳朵/角/皇冠等(纯矢量,非 emoji) */
+function Topper({ type, color }: { type: NonNullable<BubbleStyle['topper']>; color: string }) {
+  const place = (node: ReactNode, style: CSSProperties, key: string) => (
+    <span key={key} className="pointer-events-none absolute" style={style}>
+      {node}
+    </span>
+  )
+  // 两侧耳朵/角:左上 + 右上(右侧水平镜像)
+  const pair = (node: ReactNode, topPx: number) => [
+    place(node, { left: 6, top: topPx }, 'l'),
+    place(node, { right: 6, top: topPx, transform: 'scaleX(-1)' }, 'r'),
+  ]
+  const center = (node: ReactNode, topPx: number) =>
+    place(node, { left: '50%', top: topPx, transform: 'translateX(-50%)' }, 'c')
+
+  switch (type) {
+    case 'cat':
+      return <>{pair(<svg width="18" height="16"><path d="M2 16 L5 1 L17 14 Z" fill={color} /></svg>, -9)}</>
+    case 'fox':
+      return <>{pair(<svg width="15" height="18"><path d="M2 18 L4 1 L14 16 Z" fill={color} /><path d="M5 15 L6 6 L11 14 Z" fill="#ffffff" opacity="0.85" /></svg>, -11)}</>
+    case 'bear':
+      return <>{pair(<svg width="16" height="14"><circle cx="8" cy="8" r="7" fill={color} /></svg>, -7)}</>
+    case 'panda':
+      return <>{pair(<svg width="16" height="14"><circle cx="8" cy="8" r="7" fill={color} /></svg>, -7)}</>
+    case 'bunny':
+      return (
+        <>
+          {place(<svg width="12" height="24"><ellipse cx="6" cy="12" rx="4.5" ry="11" fill={color} /></svg>, { left: 8, top: -18, transform: 'rotate(-12deg)' }, 'l')}
+          {place(<svg width="12" height="24"><ellipse cx="6" cy="12" rx="4.5" ry="11" fill={color} /></svg>, { right: 8, top: -18, transform: 'rotate(12deg)' }, 'r')}
+        </>
+      )
+    case 'devil':
+      return <>{pair(<svg width="12" height="16"><path d="M3 16 Q2 5 10 1 Q6 7 9 16 Z" fill={color} /></svg>, -10)}</>
+    case 'crown':
+      return <>{center(<svg width="42" height="18"><path d="M2 17 L2 6 L12 12 L21 1 L30 12 L40 6 L40 17 Z" fill={color} /></svg>, -12)}</>
+    case 'antenna':
+      return (
+        <>
+          {center(
+            <svg width="32" height="16">
+              <path d="M10 16 Q8 6 5 3" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" />
+              <circle cx="5" cy="3" r="2.5" fill={color} />
+              <path d="M22 16 Q24 6 27 3" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" />
+              <circle cx="27" cy="3" r="2.5" fill={color} />
+            </svg>,
+            -12,
+          )}
+        </>
+      )
+    case 'sprout':
+      return (
+        <>
+          {center(
+            <svg width="20" height="16">
+              <path d="M10 16 L10 6" stroke={color} strokeWidth="2" strokeLinecap="round" />
+              <path d="M10 9 Q3 8 3 2 Q9 2 10 9 Z" fill={color} />
+              <path d="M10 11 Q17 10 17 4 Q11 4 10 11 Z" fill={color} />
+            </svg>,
+            -12,
+          )}
+        </>
+      )
+    case 'halo':
+      return <>{center(<svg width="34" height="14"><ellipse cx="17" cy="8" rx="13" ry="4.5" fill="none" stroke={color} strokeWidth="3" /></svg>, -13)}</>
+    default:
+      return null
+  }
+}
+
+/** 气泡手绘装饰:顶饰 + 对话尾巴尖(给自己的气泡用) */
+export function renderBubbleArt(bubble: BubbleStyle) {
+  const accent = bubble.accent ?? 'var(--c-primary)'
+  return (
+    <>
+      {bubble.topper && <Topper type={bubble.topper} color={accent} />}
+      {bubble.tail && (
+        <span
+          className="pointer-events-none absolute"
+          style={{
+            right: -5,
+            bottom: 4,
+            width: 0,
+            height: 0,
+            borderTop: '8px solid transparent',
+            borderLeft: `9px solid ${accent}`,
+          }}
+        />
+      )}
+    </>
+  )
 }
 
 /** 渲染气泡角落的 emoji 挂件 */
@@ -236,6 +328,7 @@ export default function MessageBubble({
                 {item.content}
               </div>
               {mine && renderDecos(bubble.deco)}
+              {mine && renderBubbleArt(bubble)}
             </div>
           ) : (
             <ChatImage item={item} onPreview={onPreview} />
