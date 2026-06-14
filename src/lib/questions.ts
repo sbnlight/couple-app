@@ -193,9 +193,14 @@ const QUESTIONS_JA = [
 
 import { getLang } from './i18n'
 
-/** 按 UTC 日期取当天的问题(顺序轮换;两人各看各的语言,题序一致) */
-export function questionForDate(utcDate: string): string {
-  const days = Math.floor(Date.parse(`${utcDate}T00:00:00Z`) / 86_400_000)
+/**
+ * 按「今天」的日期串(YYYY-MM-DD)取当天的问题。
+ * dayStr 由共用换日时区算出(todayInTz(dayTz)),两人一致 → 同一道题;
+ * 内部把日期串当作 UTC 解析只是为了得到稳定的整数题号,与显示时区无关。
+ * 两人各看各的语言,但题序一致。
+ */
+export function questionForDate(dayStr: string): string {
+  const days = Math.floor(Date.parse(`${dayStr}T00:00:00Z`) / 86_400_000)
   const idx = days % QUESTIONS.length
   const lang = getLang()
   return lang === 'zh' ? QUESTIONS[idx] : lang === 'ja' ? QUESTIONS_JA[idx] : QUESTIONS_EN[idx]

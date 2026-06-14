@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Couple } from '../types/db'
+import { DAY_TIMEZONES } from '../lib/time'
 import { t } from '../lib/i18n'
+
+/** 读取小屋共用的「换日时区」(缺省 UTC) */
+export function dayTzOf(couple: Couple | null): string {
+  const v = couple?.feature_flags?.day_tz
+  return typeof v === 'string' ? v : 'UTC'
+}
 
 /** 可开关的互动功能定义 */
 export const FEATURE_DEFS = [
@@ -51,6 +58,27 @@ export default function FeatureToggles({
     }
   }
 
+  const setDayTz = async (tz: string) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const next = { ...(couple.feature_flags ?? {}), day_tz: tz }
+      const { error } = await supabase
+        .from('couples')
+        .update({ feature_flags: next })
+        .eq('id', couple.id)
+      if (error) throw error
+      await onChanged()
+      onToast(t('换日时区已更新'))
+    } catch {
+      onToast(t('保存失败,请重试'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const curTz = dayTzOf(couple)
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40" onClick={onClose}>
       <div
@@ -91,9 +119,34 @@ export default function FeatureToggles({
           })}
         </div>
 
+        {/* 换日时区(两人共用) */}
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-sm font-medium text-gray-600">{t('「今天」的时区')}</p>
+          <p className="mb-2 text-xs text-gray-400">
+            {t('决定每日一问 / 打卡几点换新一天(两人共用)')}
+          </p>
+          <div className="grid max-h-52 grid-cols-2 gap-2 overflow-y-auto pr-1">
+            {DAY_TIMEZONES.map((z) => (
+              <button
+                key={z.id}
+                type="button"
+                disabled={busy}
+                onClick={() => void setDayTz(z.id)}
+                className={`rounded-xl border py-2 text-xs transition-colors disabled:opacity-60 ${
+                  curTz === z.id
+                    ? 'border-primary bg-soft font-medium text-primary-dark'
+                    : 'border-line text-gray-500'
+                }`}
+              >
+                {t(z.label)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button
           type="button"
-          className="mt-2 w-full border-t border-line py-3 text-center text-gray-500"
+          className="mt-4 w-full border-t border-line py-3 text-center text-gray-500"
           onClick={onClose}
         >
           {t('完成')}

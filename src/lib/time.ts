@@ -53,14 +53,34 @@ export function prevUtcDay(day: string): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 }
 
-/** 可选的「换日时区」(两人共用,决定每日一问/打卡几点翻新一天) */
+/** 可选的「换日时区」(两人共用,决定每日一问/打卡几点翻新一天);默认 UTC */
 export const DAY_TIMEZONES: { id: string; label: string }[] = [
   { id: 'UTC', label: 'UTC(默认)' },
-  { id: 'Asia/Shanghai', label: '北京时间' },
-  { id: 'America/Los_Angeles', label: '美西(洛杉矶)' },
-  { id: 'America/New_York', label: '美东(纽约)' },
-  { id: 'Asia/Tokyo', label: '日本(东京)' },
-  { id: 'Europe/London', label: '英国(伦敦)' },
+  { id: 'Pacific/Midway', label: 'UTC-11 中途岛' },
+  { id: 'Pacific/Honolulu', label: 'UTC-10 夏威夷' },
+  { id: 'America/Anchorage', label: 'UTC-9 阿拉斯加' },
+  { id: 'America/Los_Angeles', label: 'UTC-8 美西·洛杉矶' },
+  { id: 'America/Denver', label: 'UTC-7 美山区·丹佛' },
+  { id: 'America/Chicago', label: 'UTC-6 美中·芝加哥' },
+  { id: 'America/New_York', label: 'UTC-5 美东·纽约' },
+  { id: 'America/Halifax', label: 'UTC-4 大西洋' },
+  { id: 'America/Sao_Paulo', label: 'UTC-3 圣保罗' },
+  { id: 'Atlantic/South_Georgia', label: 'UTC-2 南乔治亚' },
+  { id: 'Atlantic/Azores', label: 'UTC-1 亚速尔' },
+  { id: 'Europe/London', label: 'UTC+0 伦敦' },
+  { id: 'Europe/Paris', label: 'UTC+1 巴黎·柏林' },
+  { id: 'Europe/Athens', label: 'UTC+2 雅典·开罗' },
+  { id: 'Europe/Moscow', label: 'UTC+3 莫斯科' },
+  { id: 'Asia/Dubai', label: 'UTC+4 迪拜' },
+  { id: 'Asia/Karachi', label: 'UTC+5 卡拉奇' },
+  { id: 'Asia/Kolkata', label: 'UTC+5:30 印度' },
+  { id: 'Asia/Dhaka', label: 'UTC+6 达卡' },
+  { id: 'Asia/Bangkok', label: 'UTC+7 曼谷' },
+  { id: 'Asia/Shanghai', label: 'UTC+8 北京' },
+  { id: 'Asia/Tokyo', label: 'UTC+9 东京' },
+  { id: 'Australia/Sydney', label: 'UTC+10 悉尼' },
+  { id: 'Pacific/Noumea', label: 'UTC+11 努美阿' },
+  { id: 'Pacific/Auckland', label: 'UTC+12 奥克兰' },
 ]
 
 /**
@@ -95,13 +115,20 @@ function tzOffsetMs(date: Date, tz: string): number {
   return asUTC - date.getTime()
 }
 
-/** 指定时区下「今天零点」对应的 UTC ISO(用于按日的时间戳统计边界) */
+/**
+ * 指定时区下「今天零点」对应的 UTC ISO 时刻(按日的时间戳统计边界用)。
+ * 例:Asia/Shanghai 的今天 2026-06-13 → 返回 2026-06-12T16:00:00Z。
+ * 二次校正:先用 UTC 午夜估算偏移得到近似 UTC 时刻,再用该近似时刻的偏移
+ * 重算一次,消除 DST 切换日「本地午夜与 UTC 午夜分属不同偏移」的 1 小时误差。
+ */
 export function dayStartUtcISO(tz: string | null | undefined): string {
   const day = todayInTz(tz)
   if (!tz || tz === 'UTC') return `${day}T00:00:00.000Z`
   try {
-    const guess = new Date(`${day}T00:00:00Z`)
-    return new Date(guess.getTime() - tzOffsetMs(guess, tz)).toISOString()
+    const base = Date.parse(`${day}T00:00:00Z`)
+    let utc = base - tzOffsetMs(new Date(base), tz)
+    utc = base - tzOffsetMs(new Date(utc), tz)
+    return new Date(utc).toISOString()
   } catch {
     return `${day}T00:00:00.000Z`
   }

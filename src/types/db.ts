@@ -22,8 +22,8 @@ export interface Couple {
   member_b: string | null
   /** 下次见面日期(倒数日) */
   next_meet_date: string | null
-  /** 互动功能开关(小屋级共享):缺省开启,显式 false 为关闭 */
-  feature_flags: Record<string, boolean> | null
+  /** 小屋级共享设置:功能开关(布尔,缺省开启)+ 换日时区 day_tz(字符串) */
+  feature_flags: Record<string, boolean | string> | null
   created_at: string
 }
 
