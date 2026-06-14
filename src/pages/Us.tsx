@@ -14,7 +14,7 @@ import DailyQA from '../components/DailyQA'
 import WishList from '../components/WishList'
 import NotesPage from '../components/NotesPage'
 import YearReport from '../components/YearReport'
-import FeatureToggles, { featureOn } from '../components/FeatureToggles'
+import FeatureToggles, { dayTzOf, featureOn } from '../components/FeatureToggles'
 import MoodCard, { moodValid } from '../components/MoodCard'
 import { LANGS, getLang, setLang, t } from '../lib/i18n'
 import {
@@ -384,6 +384,7 @@ export default function Us() {
             coupleId={couple!.id}
             userId={profile!.id}
             partnerName={partner?.display_name ?? t('TA')}
+            dayTz={dayTzOf(couple)}
             onToast={showToast}
             missEnabled={featureOn(couple, 'miss')}
             checkinEnabled={featureOn(couple, 'checkin')}
@@ -674,6 +675,7 @@ export default function Us() {
           coupleId={couple!.id}
           userId={profile!.id}
           partnerName={partner?.display_name ?? 'TA'}
+          dayTz={dayTzOf(couple)}
           onClose={() => setFeature(null)}
         />
       )}

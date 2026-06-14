@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
 import { getSignedUrl } from '../lib/storage'
 import { questionForDate } from '../lib/questions'
-import { utcToday } from '../lib/time'
+import { todayInTz } from '../lib/time'
 import { fireEffect } from '../lib/effects'
 import type { DailyAnswer } from '../types/db'
 import { t } from '../lib/i18n'
@@ -41,14 +41,17 @@ export default function DailyQA({
   coupleId,
   userId,
   partnerName,
+  dayTz,
   onClose,
 }: {
   coupleId: string
   userId: string
   partnerName: string
+  /** 两人共用的换日时区(决定「今天」) */
+  dayTz: string
   onClose: () => void
 }) {
-  const today = utcToday()
+  const today = todayInTz(dayTz)
   const question = questionForDate(today)
   const MAX_IMGS = 9
   const [draft, setDraft] = useState('')

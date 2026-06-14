@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { prevUtcDay, utcToday } from '../lib/time'
+import { dayStartUtcISO, prevUtcDay, todayInTz } from '../lib/time'
 import { sendLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
 import type { Checkin } from '../types/db'
@@ -9,9 +9,9 @@ import { t } from '../lib/i18n'
 /** 连续天数徽章:7🔥 / 30🏅 / 100💯 */
 const badgeOf = (n: number) => (n >= 100 ? ' 💯' : n >= 30 ? ' 🏅' : n >= 7 ? ' 🔥' : '')
 
-/** 从打卡日期集合算连续天数(今天没打就从昨天往前数) */
-function streakOf(days: Set<string>): number {
-  let cur = utcToday()
+/** 从打卡日期集合算连续天数(今天没打就从昨天往前数);today 为共用时区下的今天 */
+function streakOf(days: Set<string>, today: string): number {
+  let cur = today
   if (!days.has(cur)) cur = prevUtcDay(cur)
   let n = 0
   while (days.has(cur)) {
@@ -28,6 +28,7 @@ function streakOf(days: Set<string>): number {
 export default function MomentsCard({
   coupleId,
   userId,
+  dayTz,
   onToast,
   missEnabled = true,
   checkinEnabled = true,
@@ -35,6 +36,8 @@ export default function MomentsCard({
   coupleId: string
   userId: string
   partnerName: string
+  /** 两人共用的换日时区(决定「今天」) */
+  dayTz: string
   onToast: (msg: string) => void
   /** 功能开关(小屋级):关闭的部分不显示 */
   missEnabled?: boolean
@@ -49,13 +52,13 @@ export default function MomentsCard({
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const today = utcToday()
+    const today = todayInTz(dayTz)
     const [missRes, checkRes] = await Promise.all([
       supabase
         .from('misses')
         .select('user_id')
         .eq('couple_id', coupleId)
-        .gte('created_at', `${today}T00:00:00Z`),
+        .gte('created_at', dayStartUtcISO(dayTz)),
       // 取最近 120 天的打卡记录用于算连续天数
       supabase
         .from('checkins')
@@ -75,10 +78,10 @@ export default function MomentsCard({
       const theirs = new Set(rows.filter((r) => r.user_id !== userId).map((r) => r.day))
       setCheckedToday(mine.has(today))
       setTheirCheckedToday(theirs.has(today))
-      setStreakMine(streakOf(mine))
-      setStreakTheirs(streakOf(theirs))
+      setStreakMine(streakOf(mine, today))
+      setStreakTheirs(streakOf(theirs, today))
     }
-  }, [coupleId, userId])
+  }, [coupleId, userId, dayTz])
 
   useEffect(() => {
     void load()
@@ -117,7 +120,7 @@ export default function MomentsCard({
     try {
       const { error } = await supabase
         .from('checkins')
-        .insert({ couple_id: coupleId, user_id: userId, day: utcToday() })
+        .insert({ couple_id: coupleId, user_id: userId, day: todayInTz(dayTz) })
       if (error) throw error
       const newStreak = streakMine + 1
       await load()
