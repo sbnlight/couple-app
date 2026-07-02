@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { categoryIcon, currencySymbol, useExpenses } from '../hooks/useExpenses'
+import { categoryIcon, currencySymbol, CURRENCIES, useExpenses } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import ExpenseForm from '../components/ExpenseForm'
 import type { Expense } from '../types/db'
@@ -35,7 +35,8 @@ function TrendChart({ yms, series }: TrendData) {
   const H = 120
   const PAD = 16
   const max = Math.max(1, ...series.flatMap((s) => s.values))
-  const x = (i: number) => PAD + (i * (W - 2 * PAD)) / (yms.length - 1)
+  // 防除零:只有一个点时分母用 1(实际 yms 恒为 6,这里仅稳健兜底)
+  const x = (i: number) => PAD + (i * (W - 2 * PAD)) / Math.max(1, yms.length - 1)
   const y = (v: number) => H - 24 - (v / max) * (H - 42)
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
@@ -116,12 +117,14 @@ interface CurSummary {
   income: number
   mineExpense: number
   sharedExpense: number
+  /** 共同支出里我付的部分(用于 AA 结算) */
+  mySharedExpense: number
   cats: [string, number][]
 }
 
 /** 记账页:月度汇总(按货币分组)+ 按日流水 + 记一笔 */
 export default function Ledger() {
-  const { couple, session, profile, partner } = useAuth()
+  const { couple, session, profile, partner, refresh } = useAuth()
   // 本页在 RequireCouple 守卫内,couple/session 必然存在
   const userId = session!.user.id
   const [month, setMonth] = useState(ymNow)
@@ -137,6 +140,45 @@ export default function Ledger() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
+  }
+
+  // 月度预算(小屋级共享,存 feature_flags):budget_cur 货币 + budget_amt 金额
+  const flags = couple?.feature_flags ?? {}
+  const budgetCur = typeof flags.budget_cur === 'string' ? flags.budget_cur : ''
+  const budgetAmt = Number(flags.budget_amt) || 0
+  const [budgetOpen, setBudgetOpen] = useState(false)
+  const [budgetInput, setBudgetInput] = useState('')
+  const [budgetCurInput, setBudgetCurInput] = useState(budgetCur || 'CNY')
+
+  const saveBudget = async (amt: number | null, cur: string) => {
+    if (!couple) return
+    try {
+      // 读最新 flags 再合并,避免覆盖对方同时改的其他设置(同 FeatureToggles 的做法)
+      const { data } = await supabase
+        .from('couples')
+        .select('feature_flags')
+        .eq('id', couple.id)
+        .single()
+      const fresh = (data?.feature_flags as Record<string, unknown> | null) ?? {}
+      const next = { ...fresh }
+      if (amt && amt > 0) {
+        next.budget_amt = String(amt)
+        next.budget_cur = cur
+      } else {
+        delete next.budget_amt
+        delete next.budget_cur
+      }
+      const { error } = await supabase
+        .from('couples')
+        .update({ feature_flags: next })
+        .eq('id', couple.id)
+      if (error) throw error
+      await refresh()
+      setBudgetOpen(false)
+      showToast(amt && amt > 0 ? t('预算已设置') : t('已取消预算'))
+    } catch {
+      showToast(t('保存失败,请重试'))
+    }
   }
 
   // 近 6 个月支出趋势(记账有增删改时跟着 expenses 一起刷新)
@@ -201,13 +243,21 @@ export default function Ledger() {
         income: number
         mineExpense: number
         sharedExpense: number
+        mySharedExpense: number
         cats: Map<string, number>
       }
     >()
     for (const e of expenses) {
       let b = map.get(e.currency)
       if (!b) {
-        b = { expense: 0, income: 0, mineExpense: 0, sharedExpense: 0, cats: new Map() }
+        b = {
+          expense: 0,
+          income: 0,
+          mineExpense: 0,
+          sharedExpense: 0,
+          mySharedExpense: 0,
+          cats: new Map(),
+        }
         map.set(e.currency, b)
       }
       const amt = Number(e.amount)
@@ -217,7 +267,10 @@ export default function Ledger() {
       }
       b.expense += amt
       if (e.payer_id === userId) b.mineExpense += amt
-      if (e.scope === 'shared') b.sharedExpense += amt
+      if (e.scope === 'shared') {
+        b.sharedExpense += amt
+        if (e.payer_id === userId) b.mySharedExpense += amt
+      }
       b.cats.set(e.category, (b.cats.get(e.category) ?? 0) + amt)
     }
     return [...map.entries()]
@@ -227,6 +280,7 @@ export default function Ledger() {
         income: b.income,
         mineExpense: b.mineExpense,
         sharedExpense: b.sharedExpense,
+        mySharedExpense: b.mySharedExpense,
         cats: [...b.cats.entries()].sort((a, c) => c[1] - a[1]),
       }))
       .sort((a, b) => b.expense - a.expense)
@@ -273,8 +327,8 @@ export default function Ledger() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* 顶栏:月份切换 */}
-      <header className="flex items-center justify-center gap-4 border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      {/* 顶栏:月份切换 + 预算入口 */}
+      <header className="relative flex items-center justify-center gap-4 border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button type="button" onClick={() => changeMonth(-1)} className="px-2 text-gray-400">
           ◀
         </button>
@@ -288,6 +342,17 @@ export default function Ledger() {
           className="px-2 text-gray-400 disabled:opacity-30"
         >
           ▶
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setBudgetInput(budgetAmt > 0 ? String(budgetAmt) : '')
+            setBudgetCurInput(budgetCur || 'CNY')
+            setBudgetOpen(true)
+          }}
+          className="absolute right-3 bottom-3 text-xs text-gray-400"
+        >
+          {t('💰 预算')}
         </button>
       </header>
 
@@ -334,6 +399,35 @@ export default function Ledger() {
                     )}
                   </div>
 
+                  {/* 月度预算进度(仅当月、且是设了预算的那种货币) */}
+                  {isCurrentMonth && budgetAmt > 0 && s.currency === budgetCur && (
+                    <div className="mt-3">
+                      <div className="h-2.5 overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className={`h-full rounded-full ${
+                            s.expense > budgetAmt ? 'bg-rose-400' : 'bg-emerald-400'
+                          }`}
+                          style={{ width: `${Math.min(100, (s.expense / budgetAmt) * 100)}%` }}
+                        />
+                      </div>
+                      <p
+                        className={`mt-1 text-xs ${
+                          s.expense > budgetAmt ? 'text-rose-500' : 'text-gray-400'
+                        }`}
+                      >
+                        {s.expense > budgetAmt
+                          ? t('⚠️ 已超预算 {a}(预算 {b})', {
+                              a: `${sym}${fmtMoney(s.expense - budgetAmt)}`,
+                              b: `${sym}${fmtMoney(budgetAmt)}`,
+                            })
+                          : t('预算 {b} · 还剩 {a}', {
+                              b: `${sym}${fmtMoney(budgetAmt)}`,
+                              a: `${sym}${fmtMoney(budgetAmt - s.expense)}`,
+                            })}
+                      </p>
+                    </div>
+                  )}
+
                   {s.expense > 0 && (
                     <>
                       {/* 双方支出对比条 */}
@@ -363,6 +457,41 @@ export default function Ledger() {
                           b: `${sym}${fmtMoney(s.expense - s.sharedExpense)}`,
                         })}
                       </p>
+
+                      {/* AA 结算:共同支出各出一半,算谁该补给谁 */}
+                      {s.sharedExpense > 0 &&
+                        (() => {
+                          // 我付的共同 - 应付一半 = 我垫的净额;>0 对方补我,<0 我补对方
+                          const net = s.mySharedExpense - s.sharedExpense / 2
+                          const abs = Math.abs(net)
+                          if (abs < 0.005)
+                            return (
+                              <p className="mt-1.5 rounded-lg bg-soft px-2.5 py-1.5 text-xs text-primary-dark">
+                                {t('🤝 共同开销已 AA 平摊,谁也不欠谁')}
+                              </p>
+                            )
+                          const meName = profile?.display_name ?? t('我')
+                          const taName = partner?.display_name ?? t('TA')
+                          return (
+                            <p className="mt-1.5 rounded-lg bg-soft px-2.5 py-1.5 text-xs text-primary-dark">
+                              {net > 0
+                                ? t('🤝 AA 结算:{who} 该补给你 {amt}', {
+                                    who: taName,
+                                    amt: `${sym}${fmtMoney(abs)}`,
+                                  })
+                                : t('🤝 AA 结算:你该补给 {who} {amt}', {
+                                    who: taName,
+                                    amt: `${sym}${fmtMoney(abs)}`,
+                                  })}
+                              <span className="ml-1 text-gray-400">
+                                {t('({me}已付共同 {paid})', {
+                                  me: meName,
+                                  paid: `${sym}${fmtMoney(s.mySharedExpense)}`,
+                                })}
+                              </span>
+                            </p>
+                          )
+                        })()}
 
                       {/* 分类占比 */}
                       <div className="mt-3 space-y-2">
@@ -505,6 +634,62 @@ export default function Ledger() {
             setEditTarget(null)
           }}
         />
+      )}
+
+      {/* 月度预算设置 */}
+      {budgetOpen && (
+        <div
+          className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40"
+          onClick={() => setBudgetOpen(false)}
+        >
+          <div
+            className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-1 text-center text-sm font-medium text-gray-500">{t('月度预算')}</p>
+            <p className="mb-3 text-center text-xs text-gray-300">
+              {t('两人共享;当月支出超过预算会提醒(按选定货币)')}
+            </p>
+            <div className="flex gap-2">
+              <select
+                className="input py-2.5"
+                value={budgetCurInput}
+                onChange={(e) => setBudgetCurInput(e.target.value)}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.symbol} {c.code}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="input min-w-0 flex-1 py-2.5"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                placeholder={t('每月预算金额')}
+                value={budgetInput}
+                onChange={(e) => setBudgetInput(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void saveBudget(Number(budgetInput), budgetCurInput)}
+              className="btn-primary mt-3 w-full py-2.5"
+            >
+              {t('保存预算')}
+            </button>
+            {budgetAmt > 0 && (
+              <button
+                type="button"
+                onClick={() => void saveBudget(null, budgetCurInput)}
+                className="mt-2 w-full py-2 text-center text-sm text-gray-400"
+              >
+                {t('取消预算')}
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* 轻提示 */}
