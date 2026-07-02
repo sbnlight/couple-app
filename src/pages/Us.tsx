@@ -18,6 +18,8 @@ import FeatureToggles, { dayTzOf, featureOn } from '../components/FeatureToggles
 import MoodCard, { moodValid } from '../components/MoodCard'
 import TwoCityCard from '../components/TwoCityCard'
 import Thumbkiss from '../components/Thumbkiss'
+import LoveTree from '../components/LoveTree'
+import MindQuiz from '../components/MindQuiz'
 import { LANGS, getLang, setLang, t } from '../lib/i18n'
 import {
   FONT_SIZES,
@@ -215,7 +217,7 @@ export default function Us() {
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
   /** 当前打开的功能页 */
   const [feature, setFeature] = useState<
-    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | 'touch' | null
+    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | 'touch' | 'quiz' | null
   >(null)
   const [showPwModal, setShowPwModal] = useState(false)
   const anniversaries = useAnniversaries(couple!.id)
@@ -450,6 +452,9 @@ export default function Us() {
           />
         )}
 
+        {/* ---- 共同养成:爱情树 ---- */}
+        <LoveTree coupleId={couple!.id} daysTogether={days} />
+
         {/* ---- 功能入口 ---- */}
         <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
           <button
@@ -458,6 +463,14 @@ export default function Us() {
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
             <span>{t('💗 实时触碰')}</span>
+            <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeature('quiz')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>{t('🎯 默契大考验')}</span>
             <span className="text-gray-300">›</span>
           </button>
           {featureOn(couple, 'daily_qa') && (
@@ -738,6 +751,15 @@ export default function Us() {
 
       {/* 功能页(全屏覆盖) */}
       {feature === 'touch' && <Thumbkiss onClose={() => setFeature(null)} />}
+      {feature === 'quiz' && (
+        <MindQuiz
+          coupleId={couple!.id}
+          userId={profile!.id}
+          partnerName={partner?.display_name ?? t('TA')}
+          dayTz={dayTzOf(couple)}
+          onClose={() => setFeature(null)}
+        />
+      )}
       {feature === 'qa' && (
         <DailyQA
           coupleId={couple!.id}

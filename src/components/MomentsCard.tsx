@@ -56,7 +56,7 @@ export default function MomentsCard({
   const [streakTheirs, setStreakTheirs] = useState(0)
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<number> => {
     const today = todayInTz(dayTz)
     const [missRes, checkRes] = await Promise.all([
       supabase
@@ -77,15 +77,18 @@ export default function MomentsCard({
       setMissMine(rows.filter((r) => r.user_id === userId).length)
       setMissTheirs(rows.filter((r) => r.user_id !== userId).length)
     }
+    let mineStreak = 0
     if (checkRes.data) {
       const rows = checkRes.data as Checkin[]
       const mine = new Set(rows.filter((r) => r.user_id === userId).map((r) => r.day))
       const theirs = new Set(rows.filter((r) => r.user_id !== userId).map((r) => r.day))
       setCheckedToday(mine.has(today))
       setTheirCheckedToday(theirs.has(today))
-      setStreakMine(streakOf(mine, today))
+      mineStreak = streakOf(mine, today)
+      setStreakMine(mineStreak)
       setStreakTheirs(streakOf(theirs, today))
     }
+    return mineStreak
   }, [coupleId, userId, dayTz])
 
   useEffect(() => {
@@ -137,9 +140,9 @@ export default function MomentsCard({
         .from('checkins')
         .insert({ couple_id: coupleId, user_id: userId, day: todayInTz(dayTz) })
       if (error) throw error
-      const newStreak = streakMine + 1
-      await load()
-      if ([7, 30, 100, 365].includes(newStreak)) {
+      // 用 reload 后的真实连胜值判断里程碑,而不是本地 streakMine+1(可能因竞态而错)
+      const newStreak = await load()
+      if ([7, 30, 100, 365, 520, 1000].includes(newStreak)) {
         fireEffect(['🔥', '🎉', '🏅'], 36)
         onToast(t('连续打卡 {n} 天!太厉害了 🎉', { n: newStreak }))
       } else {
