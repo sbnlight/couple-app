@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useMessages } from '../hooks/useMessages'
 import type { ChatItem } from '../hooks/useMessages'
 import { useReadStatus } from '../hooks/useReadStatus'
-import { CHAT_BGS, getBubbleFont, getBubbleStyle, getChatBgToken } from '../lib/prefs'
+import { CHAT_BGS, getBubbleFont, getBubbleStyle, getChatBgToken, getRecvSkin } from '../lib/prefs'
 import { getSignedUrl } from '../lib/storage'
 import { onLive, onPartnerInChat, sendLive, trackInChat } from '../lib/live'
 import { fireEffect, keywordEffect } from '../lib/effects'
@@ -93,6 +93,7 @@ export default function Chat() {
   const [bubble, setBubble] = useState(getBubbleStyle)
   const [bubbleFont, setBubbleFont] = useState(getBubbleFont)
   const [bgToken, setBgToken] = useState(getChatBgToken)
+  const [recvSkin, setRecvSkin] = useState(getRecvSkin)
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null)
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -552,6 +553,27 @@ export default function Chat() {
             )}
             {items.map((item, i) => {
               const prev = items[i - 1]
+              const next = items[i + 1]
+              // 连续消息分组:同一发送者、相隔 < 5 分钟、同一天,且都不是拍一拍/撤回。
+              // 拍一拍/撤回是居中系统提示,不参与分组。
+              const gk = (m?: ChatItem) =>
+                m && !m.recalled && m.type !== 'nudge' ? m.senderId : null
+              const near = (a?: ChatItem, b?: ChatItem) =>
+                !!a &&
+                !!b &&
+                Math.abs(new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) <=
+                  DIVIDER_GAP &&
+                new Date(a.createdAt).toDateString() === new Date(b.createdAt).toDateString()
+              const groupedWithPrev = gk(item) !== null && gk(prev) === gk(item) && near(prev, item)
+              const groupedWithNext = gk(item) !== null && gk(next) === gk(item) && near(item, next)
+              const groupPos: 'single' | 'first' | 'middle' | 'last' = groupedWithPrev
+                ? groupedWithNext
+                  ? 'middle'
+                  : 'last'
+                : groupedWithNext
+                  ? 'first'
+                  : 'single'
+              const mineMsg = item.senderId === userId
               // 分隔条只出现在已发送消息之间:pending/failed(尤其重开恢复的失败消息,
               // createdAt 可能是几天前)始终排在列表末尾,不该在它上方冒出"X天前"的过期日期条
               const showDivider =
@@ -570,9 +592,9 @@ export default function Chat() {
                 <div
                   key={item.key}
                   id={item.id !== undefined ? `msg-${item.id}` : undefined}
-                  className={`msg-in mb-2 rounded-2xl ${
-                    highlightId !== null && item.id === highlightId ? 'msg-highlight' : ''
-                  }`}
+                  className={`rounded-2xl ${mineMsg ? 'msg-in-me' : 'msg-in-you'} ${
+                    groupedWithNext ? 'mb-0.5' : 'mb-3'
+                  } ${highlightId !== null && item.id === highlightId ? 'msg-highlight' : ''}`}
                 >
                   {showDivider && (
                     <p className="my-3 text-center text-xs text-gray-300">
@@ -581,9 +603,11 @@ export default function Chat() {
                   )}
                   <MessageBubble
                     item={item}
-                    mine={item.senderId === userId}
+                    mine={mineMsg}
                     bubble={bubble}
                     font={bubbleFont}
+                    groupPos={groupPos}
+                    recvClass={recvSkin.cls}
                     readLabel={
                       item.key === myLastKey &&
                       item.id !== undefined &&
@@ -768,6 +792,7 @@ export default function Chat() {
             setBubble(getBubbleStyle())
             setBubbleFont(getBubbleFont())
             setBgToken(getChatBgToken())
+            setRecvSkin(getRecvSkin())
           }}
           onClose={() => setAppearanceOpen(false)}
           onToast={showToast}

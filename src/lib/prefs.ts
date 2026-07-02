@@ -325,6 +325,34 @@ export function saveBubbleFont(id: string) {
   localStorage.setItem(FONT_STYLE_KEY, id)
 }
 
+/* ---------- 对方气泡皮肤(本机偏好,决定"收到的消息"长什么样) ---------- */
+
+export interface RecvSkin {
+  id: string
+  label: string
+  /** 对应 index.css 里的皮肤类(含深色适配) */
+  cls: string
+}
+
+/** 对方气泡皮肤:告别写死的纯白板,几款精修浅色,跟随主题、深色自适应 */
+export const RECV_SKINS: RecvSkin[] = [
+  { id: 'macaron', label: '温柔马卡龙', cls: 'recv-macaron' },
+  { id: 'clean', label: '清爽灰', cls: 'recv-clean' },
+  { id: 'theme', label: '主题浅色', cls: 'recv-theme' },
+  { id: 'paper', label: '奶油信纸', cls: 'recv-paper' },
+]
+
+const RECV_SKIN_KEY = 'pref-recv-skin'
+
+export function getRecvSkin(): RecvSkin {
+  const v = localStorage.getItem(RECV_SKIN_KEY)
+  return RECV_SKINS.find((s) => s.id === v) ?? RECV_SKINS[0]
+}
+
+export function saveRecvSkin(id: string) {
+  localStorage.setItem(RECV_SKIN_KEY, id)
+}
+
 /** 字体偏好 → 内联样式 */
 export function fontCss(f: BubbleFont): {
   fontFamily?: string

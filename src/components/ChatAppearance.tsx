@@ -7,19 +7,22 @@ import {
   BUBBLE_FONTS,
   BUBBLE_STYLES,
   CHAT_BGS,
+  RECV_SKINS,
   bubbleCss,
   fontCss,
   getBubbleFont,
   getBubbleStyle,
   getChatBgToken,
+  getRecvSkin,
   saveBubbleFont,
   saveBubbleStyle,
   saveChatBgToken,
+  saveRecvSkin,
 } from '../lib/prefs'
 import { t } from '../lib/i18n'
 import { renderBubbleArt, renderDecos } from './MessageBubble'
 
-type Page = 'menu' | 'bubble' | 'bg' | 'font'
+type Page = 'menu' | 'bubble' | 'bg' | 'font' | 'recv'
 
 /** 子选择页的通用外壳 */
 function PickerPage({
@@ -62,6 +65,7 @@ export default function ChatAppearance({
   const [page, setPage] = useState<Page>('menu')
   const [bubbleId, setBubbleId] = useState(() => getBubbleStyle().id)
   const [fontId, setFontId] = useState(() => getBubbleFont().id)
+  const [recvId, setRecvId] = useState(() => getRecvSkin().id)
   const [bgToken, setBgToken] = useState(getChatBgToken)
   const [customThumb, setCustomThumb] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -90,6 +94,11 @@ export default function ChatAppearance({
   const pickFont = (id: string) => {
     saveBubbleFont(id)
     setFontId(id)
+    onChanged()
+  }
+  const pickRecv = (id: string) => {
+    saveRecvSkin(id)
+    setRecvId(id)
     onChanged()
   }
   const pickPreset = (id: string) => {
@@ -167,6 +176,37 @@ export default function ChatAppearance({
             </div>
           </div>
         ))}
+      </PickerPage>
+    )
+  }
+
+  /* ---------- 子页:对方气泡 ---------- */
+  if (page === 'recv') {
+    return (
+      <PickerPage title={t('对方气泡')} onBack={() => setPage('menu')}>
+        <p className="mb-3 px-1 text-xs text-gray-400">
+          {t('这是"收到的消息"在你这边显示的样子(本机生效)')}
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {RECV_SKINS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => pickRecv(s.id)}
+              className="flex flex-col items-center gap-1.5"
+            >
+              <span
+                className={`recv-skin ${s.cls} chat-bubble flex h-11 w-full items-center justify-center text-sm ${
+                  recvId === s.id ? 'ring-2 ring-gray-700 ring-offset-2' : ''
+                }`}
+                style={{ borderRadius: '20px 20px 20px 7px' }}
+              >
+                {t('你好呀')}
+              </span>
+              <span className="text-xs text-gray-500">{t(s.label)}</span>
+            </button>
+          ))}
+        </div>
       </PickerPage>
     )
   }
@@ -284,6 +324,17 @@ export default function ChatAppearance({
             <span>{t('💬 修改气泡')}</span>
             <span className="flex items-center gap-2 text-sm text-gray-400">
               {t(currentBubble.label)}
+              <span className="text-gray-300">›</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage('recv')}
+            className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
+          >
+            <span>{t('🫧 对方气泡')}</span>
+            <span className="flex items-center gap-2 text-sm text-gray-400">
+              {t(RECV_SKINS.find((s) => s.id === recvId)?.label ?? '')}
               <span className="text-gray-300">›</span>
             </span>
           </button>

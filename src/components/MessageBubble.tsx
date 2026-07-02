@@ -94,27 +94,30 @@ function Topper({ type, color }: { type: NonNullable<BubbleStyle['topper']>; col
   }
 }
 
-/** 气泡手绘装饰:顶饰 + 对话尾巴尖(给自己的气泡用) */
+/** 气泡手绘装饰:顶饰(给自己的气泡用)。
+ * 说明:早期那种孤立实心小三角尾巴已停用——形状统一改用"非对称圆角当尾巴"
+ * (见 bubbleRadius),更干净、能融入渐变与圆角,也不会在渐变气泡上露色差。 */
 export function renderBubbleArt(bubble: BubbleStyle) {
   const accent = bubble.accent ?? 'var(--c-primary)'
-  return (
-    <>
-      {bubble.topper && <Topper type={bubble.topper} color={accent} />}
-      {bubble.tail && (
-        <span
-          className="pointer-events-none absolute"
-          style={{
-            right: -5,
-            bottom: 4,
-            width: 0,
-            height: 0,
-            borderTop: '8px solid transparent',
-            borderLeft: `9px solid ${accent}`,
-          }}
-        />
-      )}
-    </>
-  )
+  return <>{bubble.topper && <Topper type={bubble.topper} color={accent} />}</>
+}
+
+/** 连续消息中的位置:决定气泡贴边角的收放 */
+export type GroupPos = 'single' | 'first' | 'middle' | 'last'
+
+/** 按 (是否自己, 分组位置) 算四角圆角。发送方一侧的贴边角收小成"尾巴/接缝"。 */
+export function bubbleRadius(mine: boolean, pos: GroupPos): string {
+  const R = 20
+  const S = 7
+  const groupedWithPrev = pos === 'middle' || pos === 'last'
+  if (mine) {
+    // 发送方在右:右上(接上一条时收小)/ 右下(尾巴,恒小)
+    const tr = groupedWithPrev ? S : R
+    return `${R}px ${tr}px ${S}px ${R}px`
+  }
+  // 发送方在左:左上(接上一条时收小)/ 左下(尾巴,恒小)
+  const tl = groupedWithPrev ? S : R
+  return `${tl}px ${R}px ${R}px ${S}px`
 }
 
 /** 渲染气泡角落的 emoji 挂件 */
@@ -199,10 +202,16 @@ function VoiceBubble({
   item,
   mine,
   styleObj,
+  recvClass,
+  cornerStyle,
 }: {
   item: ChatItem
   mine: boolean
   styleObj?: CSSProperties
+  /** 对方气泡皮肤类(!mine 时用) */
+  recvClass?: string
+  /** 统一的四角圆角(随分组变化) */
+  cornerStyle?: CSSProperties
 }) {
   const [playing, setPlaying] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -260,10 +269,14 @@ function VoiceBubble({
     <button
       type="button"
       onClick={() => void toggle()}
-      className={`flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-base ${
-        mine ? 'rounded-br-sm' : 'rounded-bl-sm bg-white'
+      className={`chat-bubble flex items-center gap-2 px-3.5 py-2.5 text-base ${
+        mine ? '' : `recv-skin ${recvClass ?? ''}`
       }`}
-      style={{ ...(mine ? styleObj : {}), width: 92 + Math.min(dur, 60) * 2 }}
+      style={{
+        ...(mine ? styleObj : {}),
+        ...cornerStyle,
+        width: 92 + Math.min(dur, 60) * 2,
+      }}
     >
       <span>{playing ? '⏸' : '▶'}</span>
       <span className="flex flex-1 items-center gap-0.5 overflow-hidden">
@@ -293,6 +306,8 @@ export default function MessageBubble({
   onLongPress,
   onDoubleTap,
   replyRecalled = false,
+  groupPos = 'single',
+  recvClass = 'recv-macaron',
 }: {
   item: ChatItem
   mine: boolean
@@ -300,6 +315,10 @@ export default function MessageBubble({
   bubble?: BubbleStyle
   /** 自己文字的字体(本机偏好) */
   font?: BubbleFont
+  /** 连续消息中的位置(驱动尾角/贴边收放) */
+  groupPos?: GroupPos
+  /** 对方气泡皮肤类(本机偏好,!mine 时用) */
+  recvClass?: string
   /** 是否在这条消息下方显示「已读」(只用于自己最新一条已被对方读过的消息) */
   readLabel?: boolean
   onRetry: () => void
@@ -316,6 +335,10 @@ export default function MessageBubble({
   const pressTimer = useRef<number | undefined>(undefined)
   const pressElRef = useRef<HTMLElement | null>(null)
   const lastTapRef = useRef(0)
+
+  // 统一四角圆角:带自定义 radius 的花哨款(自己)尊重其原形状;其余走非对称尾角
+  const cornerStyle: CSSProperties =
+    mine && bubble.radius ? {} : { borderRadius: bubbleRadius(mine, groupPos) }
 
   // 已撤回:居中灰字提示,不再显示内容
   if (item.recalled) {
@@ -374,21 +397,31 @@ export default function MessageBubble({
           }}
         >
           {item.type === 'voice' ? (
-            <VoiceBubble item={item} mine={mine} styleObj={bubbleCss(bubble)} />
+            <VoiceBubble
+              item={item}
+              mine={mine}
+              styleObj={bubbleCss(bubble)}
+              recvClass={recvClass}
+              cornerStyle={cornerStyle}
+            />
           ) : item.type === 'text' ? (
             <div className="relative">
               <div
-                className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-base leading-relaxed ${
+                className={`chat-bubble whitespace-pre-wrap break-words px-3.5 py-2 text-base leading-relaxed ${
                   mine
-                    ? `rounded-br-sm ${bubble.anim ?? ''} ${bubble.extraClass ?? ''}`
-                    : 'rounded-bl-sm bg-white'
+                    ? `${bubble.anim ?? ''} ${bubble.extraClass ?? ''}`
+                    : `recv-skin ${recvClass}`
                 }`}
-                style={mine ? { ...bubbleCss(bubble), ...fontCss(font) } : undefined}
+                style={
+                  mine
+                    ? { ...bubbleCss(bubble), ...fontCss(font), ...cornerStyle }
+                    : cornerStyle
+                }
               >
                 {item.replyPreview && (
                   <div
-                    className={`mb-1 max-w-full truncate border-l-2 pl-2 text-xs ${
-                      mine ? 'border-white/50 opacity-80' : 'border-primary/50 text-gray-400'
+                    className={`mb-1 max-w-full truncate rounded-md px-2 py-0.5 text-xs ${
+                      mine ? 'bg-white/20 opacity-90' : 'bg-black/[0.06] text-gray-500'
                     }`}
                   >
                     {replyRecalled ? t('该消息已撤回') : item.replyPreview}

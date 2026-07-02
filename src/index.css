@@ -110,6 +110,59 @@ html.dark .rounded-2xl.bg-white {
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
 }
 
+/* ---------- 聊天气泡:专属柔影 + 对方气泡皮肤 ----------
+   .chat-bubble 给收发双方气泡统一的细腻投影(自己带自定义 boxShadow 的花哨款
+   会以内联样式覆盖,保留其辉光);不复用卡片选择器,互不牵连。 */
+.chat-bubble {
+  box-shadow:
+    0 1px 1px rgb(0 0 0 / 0.04),
+    0 6px 16px -12px color-mix(in srgb, var(--c-primary-dark) 60%, transparent);
+}
+html.dark .chat-bubble {
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+
+/* 对方气泡皮肤:浅色底 + 发丝描边,跟随主题、深色自适应。文字色统一深灰/浅灰。 */
+.recv-skin {
+  color: #3a343c;
+  border: 1px solid transparent;
+}
+html.dark .recv-skin {
+  color: #eae3e8;
+}
+.recv-macaron {
+  background: color-mix(in srgb, var(--c-primary) 12%, #ffffff);
+  border-color: color-mix(in srgb, var(--c-primary) 22%, #ffffff);
+}
+.recv-clean {
+  background: #f2f3f5;
+  border-color: #e6e7ea;
+}
+.recv-theme {
+  background: var(--c-soft);
+  border-color: var(--c-line);
+}
+.recv-paper {
+  background: #fdf6ea;
+  border-color: #f0e6d2;
+}
+html.dark .recv-macaron {
+  background: color-mix(in srgb, var(--c-primary) 22%, #241c28);
+  border-color: color-mix(in srgb, var(--c-primary) 30%, #241c28);
+}
+html.dark .recv-clean {
+  background: #2f2833;
+  border-color: #3d3542;
+}
+html.dark .recv-theme {
+  background: var(--c-soft);
+  border-color: var(--c-line);
+}
+html.dark .recv-paper {
+  background: #2e2a23;
+  border-color: #40392e;
+}
+
 /* ---------- 微交互 ---------- */
 @keyframes fade-up {
   from {
@@ -136,6 +189,33 @@ html.dark .rounded-2xl.bg-white {
 }
 .msg-in {
   animation: msg-pop 0.18s ease-out both;
+}
+/* 方向化入场:自己从右、对方从左,轻微位移 + 柔性缓动,更有"发出/收到"的仪式感 */
+@keyframes msg-pop-me {
+  from {
+    opacity: 0;
+    transform: translate(10px, 4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes msg-pop-you {
+  from {
+    opacity: 0;
+    transform: translate(-10px, 4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.msg-in-me {
+  animation: msg-pop-me 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.msg-in-you {
+  animation: msg-pop-you 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 /* 定位到某条消息时的高亮闪烁 */
 @keyframes msg-flash {
@@ -560,7 +640,9 @@ html.dark .rounded-2xl.bg-white {
   .bubble-ring::before,
   .bubble-aura::before,
   .bubble-neon-cyan-x,
-  .bubble-neon-pink-x {
+  .bubble-neon-pink-x,
+  .msg-in-me,
+  .msg-in-you {
     animation: none !important;
   }
 }
