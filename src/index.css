@@ -1017,6 +1017,55 @@ html.dark .recv-paper {
   animation: bubble-firefly-rise 6s linear infinite;
 }
 
+/* ---------- 爱情树页面:树的呼吸摇曳 + 居中弹窗入场 ---------- */
+@keyframes tree-sway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+.tree-sway {
+  animation: tree-sway 4s ease-in-out infinite;
+  transform-origin: bottom center;
+  display: inline-block;
+}
+@keyframes tree-bounce {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.15) rotate(-4deg);
+  }
+  60% {
+    transform: scale(0.95) rotate(3deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.tree-bounce {
+  animation: tree-bounce 0.6s ease;
+  display: inline-block;
+  transform-origin: bottom center;
+}
+/* 居中弹窗:轻微放大淡入 */
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.modal-pop {
+  animation: modal-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* ---------- 图案纹样底纹(纯 CSS,配合纯色底使用;背景色走内联 backgroundColor) ---------- */
 .bubble-pat-dots {
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.55) 1.5px, transparent 2px);
@@ -1216,6 +1265,9 @@ html.dark .recv-paper {
   .bubble-goldring::before,
   .bubble-soda::after,
   .bubble-lanterns::after,
+  .tree-sway,
+  .tree-bounce,
+  .modal-pop,
   .msg-in-me,
   .msg-in-you {
     animation: none !important;

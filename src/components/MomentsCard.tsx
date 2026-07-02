@@ -211,17 +211,16 @@ export default function MomentsCard({
         )}
       </p>
 
-      {/* 想你 composer:选个表情 + 可选悄悄话,先预览再一键送到 TA */}
+      {/* 想你 composer:居中卡片 + 深色遮罩,聚焦中间的想念卡片 */}
       {missOpen && (
         <div
-          className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-6"
           onClick={() => setMissOpen(false)}
         >
           <div
-            className="mx-auto w-full max-w-md rounded-t-3xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
+            className="modal-pop w-full max-w-sm rounded-3xl bg-white px-5 pb-5 pt-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200" />
             <p className="mb-3 text-center text-base font-semibold text-primary-dark">
               {t('想 TA 了 💌')}
             </p>
