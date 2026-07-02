@@ -519,20 +519,23 @@ export default function Chat() {
         </h1>
         {partnerTyping ? (
           <p className="text-xs text-primary-dark">{t('对方正在输入…')}</p>
-        ) : (
-          (partner?.timezone || moodValid(partner)) && (
-            <p className="text-xs text-gray-400">
-              <PartnerClock tz={partner?.timezone ?? null} />
-              {weather && (
-                <>
-                  {' '}
-                  · {weather.emoji} {weather.temp}°C
-                </>
-              )}
-              {moodValid(partner) && <> · {moodValid(partner)}</>}
-            </p>
-          )
-        )}
+        ) : partner?.timezone || moodValid(partner) ? (
+          <p className="text-xs text-gray-400">
+            <PartnerClock tz={partner?.timezone ?? null} />
+            {weather && (
+              <>
+                {' '}
+                · {weather.emoji} {weather.temp}°C
+              </>
+            )}
+            {moodValid(partner) && <> · {moodValid(partner)}</>}
+          </p>
+        ) : partner ? (
+          // 对方时区还没同步(TA 用新版打开一次 App 就会自动写入),先给个说明而不是空白
+          <p className="text-xs text-gray-300">
+            {t('TA 打开一次 App 后,这里就会显示 TA 那边的实时时间 🕐')}
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={() => setAppearanceOpen(true)}
