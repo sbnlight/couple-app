@@ -21,11 +21,14 @@ export default function GlobalLive() {
     setTimeout(() => setToast(''), 3000)
   }
 
-  // 对方想你 → 爱心雨
+  // 对方想你 → 爱心雨(带上 TA 的表情与悄悄话)
   useEffect(() => {
-    return onLive('miss', () => {
-      fireEffect(['💗', '💕', '💭', '❤️'], 32)
-      showToast(t('TA 正在想你 💭'))
+    return onLive('miss', (p) => {
+      const emoji = typeof p.emoji === 'string' && p.emoji ? p.emoji : '💭'
+      const note = typeof p.note === 'string' ? p.note.trim() : ''
+      fireEffect([emoji, '💕', '💗', '❤️'], 32)
+      const who = partner?.display_name ?? t('TA')
+      showToast(note ? `${who}: ${note} ${emoji}` : t('TA 正在想你 {e}', { e: emoji }))
     })
   }, [partner?.display_name])
 

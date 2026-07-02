@@ -37,6 +37,63 @@ const TZ_COORDS: Record<string, [number, number]> = {
   'Australia/Perth': [-31.95, 115.86],
 }
 
+/** 时区 → 代表城市中文名(双城卡片显示;查不到则用时区最后一段) */
+const TZ_CITY: Record<string, string> = {
+  'Asia/Shanghai': '上海',
+  'Asia/Chongqing': '重庆',
+  'Asia/Urumqi': '乌鲁木齐',
+  'Asia/Hong_Kong': '香港',
+  'Asia/Macau': '澳门',
+  'Asia/Taipei': '台北',
+  'Asia/Tokyo': '东京',
+  'Asia/Seoul': '首尔',
+  'Asia/Singapore': '新加坡',
+  'Asia/Bangkok': '曼谷',
+  'Asia/Kolkata': '新德里',
+  'Asia/Dubai': '迪拜',
+  'America/Los_Angeles': '洛杉矶',
+  'America/Vancouver': '温哥华',
+  'America/Phoenix': '凤凰城',
+  'America/Denver': '丹佛',
+  'America/Chicago': '芝加哥',
+  'America/New_York': '纽约',
+  'America/Toronto': '多伦多',
+  'America/Anchorage': '安克雷奇',
+  'Pacific/Honolulu': '檀香山',
+  'Europe/London': '伦敦',
+  'Europe/Paris': '巴黎',
+  'Europe/Berlin': '柏林',
+  'Europe/Amsterdam': '阿姆斯特丹',
+  'Europe/Madrid': '马德里',
+  'Europe/Rome': '罗马',
+  'Europe/Moscow': '莫斯科',
+  'Australia/Sydney': '悉尼',
+  'Australia/Melbourne': '墨尔本',
+  'Australia/Perth': '珀斯',
+}
+
+/** 时区对应的城市名(查不到用时区最后一段,下划线转空格) */
+export function cityLabelForTz(tz: string | null): string | null {
+  if (!tz) return null
+  return TZ_CITY[tz] ?? tz.split('/').pop()?.replace(/_/g, ' ') ?? tz
+}
+
+/** 两个时区代表城市之间的直线距离(公里);任一查不到坐标返回 null */
+export function distanceKm(tzA: string | null, tzB: string | null): number | null {
+  if (!tzA || !tzB) return null
+  const a = TZ_COORDS[tzA]
+  const b = TZ_COORDS[tzB]
+  if (!a || !b) return null
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(b[0] - a[0])
+  const dLon = toRad(b[1] - a[1])
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLon / 2) ** 2
+  return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(s))))
+}
+
 /** WMO 天气代码 → emoji */
 function codeEmoji(code: number): string {
   if (code === 0) return '☀️'

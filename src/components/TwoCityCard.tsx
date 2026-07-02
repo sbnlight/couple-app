@@ -1,0 +1,104 @@
+import { useEffect, useState } from 'react'
+import { cityLabelForTz, distanceKm, weatherForTz } from '../lib/weather'
+import { t } from '../lib/i18n'
+
+type W = { emoji: string; temp: number } | null
+
+/** 取某时区当前 HH:mm */
+function timeInTz(tz: string): string {
+  try {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date())
+  } catch {
+    return ''
+  }
+}
+
+/** 取某时区当前小时(判断白天/夜晚:6–18 视为白天) */
+function hourInTz(tz: string): number {
+  try {
+    const h = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      hour12: false,
+    }).format(new Date())
+    return Number(h) % 24
+  } catch {
+    return 12
+  }
+}
+
+function CityCol({ tz, name, mine }: { tz: string; name: string; mine: boolean }) {
+  const [time, setTime] = useState(() => timeInTz(tz))
+  const [weather, setWeather] = useState<W>(null)
+
+  useEffect(() => {
+    setTime(timeInTz(tz))
+    const timer = setInterval(() => setTime(timeInTz(tz)), 30_000)
+    return () => clearInterval(timer)
+  }, [tz])
+
+  useEffect(() => {
+    let cancelled = false
+    void weatherForTz(tz).then((w) => {
+      if (!cancelled) setWeather(w)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [tz])
+
+  const isDay = hourInTz(tz) >= 6 && hourInTz(tz) < 18
+  return (
+    <div className="flex flex-1 flex-col items-center gap-0.5">
+      <span className="text-2xl">{isDay ? '🌇' : '🌃'}</span>
+      <span className="max-w-full truncate text-sm font-medium text-gray-600">
+        {name}
+        {mine ? t('(你)') : ''}
+      </span>
+      <span className="text-lg font-semibold tabular-nums text-primary-dark">{time}</span>
+      <span className="text-xs text-gray-400">
+        {weather ? `${weather.emoji} ${weather.temp}°` : isDay ? t('白天') : t('夜晚')}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * 双城卡片(异地专属):并排显示两人所在城市的当地时间、天气,中间是相距公里数。
+ * 依赖两人 profile.timezone(App 打开时自动写入);任一方时区缺失/未知则不显示。
+ */
+export default function TwoCityCard({
+  myTz,
+  partnerTz,
+}: {
+  myTz: string | null
+  partnerTz: string | null
+}) {
+  if (!myTz || !partnerTz || myTz === partnerTz) return null
+  const myCity = cityLabelForTz(myTz)
+  const partnerCity = cityLabelForTz(partnerTz)
+  const km = distanceKm(myTz, partnerTz)
+  if (!myCity || !partnerCity) return null
+
+  return (
+    <div className="mt-4 rounded-2xl bg-white p-5">
+      <div className="flex items-center gap-2">
+        <CityCol tz={myTz} name={myCity} mine />
+        <div className="flex flex-col items-center px-1 text-center">
+          <span className="text-lg">❤️</span>
+          {km !== null && (
+            <span className="whitespace-nowrap text-xs text-gray-400">
+              {t('相距 {n} 公里', { n: km.toLocaleString() })}
+            </span>
+          )}
+        </div>
+        <CityCol tz={partnerTz} name={partnerCity} mine={false} />
+      </div>
+    </div>
+  )
+}

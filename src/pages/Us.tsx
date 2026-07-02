@@ -16,6 +16,8 @@ import NotesPage from '../components/NotesPage'
 import YearReport from '../components/YearReport'
 import FeatureToggles, { dayTzOf, featureOn } from '../components/FeatureToggles'
 import MoodCard, { moodValid } from '../components/MoodCard'
+import TwoCityCard from '../components/TwoCityCard'
+import Thumbkiss from '../components/Thumbkiss'
 import { LANGS, getLang, setLang, t } from '../lib/i18n'
 import {
   FONT_SIZES,
@@ -204,7 +206,7 @@ export default function Us() {
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
   /** 当前打开的功能页 */
   const [feature, setFeature] = useState<
-    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | null
+    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | 'touch' | null
   >(null)
   const [showPwModal, setShowPwModal] = useState(false)
   const anniversaries = useAnniversaries(couple!.id)
@@ -375,6 +377,9 @@ export default function Us() {
           )}
         </div>
 
+        {/* ---- 双城卡片(异地:两地时间/天气/距离) ---- */}
+        <TwoCityCard myTz={profile?.timezone ?? null} partnerTz={partner?.timezone ?? null} />
+
         {/* ---- 今日心情(对方可见) ---- */}
         {profile && <MoodCard profile={profile} onSaved={refresh} onToast={showToast} />}
 
@@ -393,6 +398,14 @@ export default function Us() {
 
         {/* ---- 功能入口 ---- */}
         <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
+          <button
+            type="button"
+            onClick={() => setFeature('touch')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>{t('💗 实时触碰')}</span>
+            <span className="text-gray-300">›</span>
+          </button>
           {featureOn(couple, 'daily_qa') && (
             <button
               type="button"
@@ -670,6 +683,7 @@ export default function Us() {
       )}
 
       {/* 功能页(全屏覆盖) */}
+      {feature === 'touch' && <Thumbkiss onClose={() => setFeature(null)} />}
       {feature === 'qa' && (
         <DailyQA
           coupleId={couple!.id}

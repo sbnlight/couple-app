@@ -49,6 +49,10 @@ export default function MomentsCard({
   const [theirCheckedToday, setTheirCheckedToday] = useState(false)
   const [streakMine, setStreakMine] = useState(0)
   const lastMissRef = useRef(0)
+  // 想你 composer(可选表情 + 悄悄话)
+  const [missOpen, setMissOpen] = useState(false)
+  const [missEmoji, setMissEmoji] = useState('💭')
+  const [missNote, setMissNote] = useState('')
   const [streakTheirs, setStreakTheirs] = useState(0)
   const [busy, setBusy] = useState(false)
 
@@ -93,8 +97,8 @@ export default function MomentsCard({
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
 
-  /** 想你 +1 */
-  const handleMiss = async () => {
+  /** 想你 +1(可附一个表情 + 一句悄悄话) */
+  const handleMiss = async (emoji?: string, note?: string) => {
     if (busy) return
     // 节流:3 秒内只发一次,避免连点刷屏 misses 表
     if (Date.now() - lastMissRef.current < 3000) {
@@ -104,15 +108,19 @@ export default function MomentsCard({
     lastMissRef.current = Date.now()
     setBusy(true)
     try {
+      const trimmed = note?.trim() || null
+      const em = emoji || '💭'
       const { error } = await supabase
         .from('misses')
-        .insert({ couple_id: coupleId, user_id: userId })
+        .insert({ couple_id: coupleId, user_id: userId, emoji: em, note: trimmed })
       if (error) throw error
       setMissMine((n) => n + 1)
-      // 对方如果正开着 App,立刻下一场爱心雨
-      sendLive('miss')
-      fireEffect(['💭', '💗'], 12)
-      onToast(t('已经告诉 TA 你在想 TA 了 💭'))
+      // 对方如果正开着 App,立刻收到想念卡片(带表情 + 悄悄话)
+      sendLive('miss', { emoji: em, note: trimmed ?? '' })
+      fireEffect([em, '💗'], 12)
+      onToast(trimmed ? t('悄悄话已送到 TA 那儿 💌') : t('已经告诉 TA 你在想 TA 了 💭'))
+      setMissOpen(false)
+      setMissNote('')
     } catch {
       onToast(t('网络不太好,请重试'))
     } finally {
@@ -151,7 +159,7 @@ export default function MomentsCard({
         {missEnabled && (
           <button
             type="button"
-            onClick={() => void handleMiss()}
+            onClick={() => setMissOpen(true)}
             disabled={busy}
             className="rounded-xl bg-soft py-3 text-center active:opacity-70 disabled:opacity-50"
           >
@@ -199,6 +207,51 @@ export default function MomentsCard({
           </>
         )}
       </p>
+
+      {/* 想你 composer:选个表情 + 可选悄悄话,一键送到 TA */}
+      {missOpen && (
+        <div
+          className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40"
+          onClick={() => setMissOpen(false)}
+        >
+          <div
+            className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-3 text-center text-sm font-medium text-gray-500">{t('想对 TA 说…')}</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {['💭', '💗', '🥰', '😘', '🤗', '😢', '☕', '🌙'].map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setMissEmoji(e)}
+                  className={`h-11 w-11 rounded-full text-2xl transition-transform ${
+                    missEmoji === e ? 'scale-110 bg-soft ring-2 ring-primary' : 'bg-gray-50'
+                  }`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+            <input
+              className="input mt-3 w-full py-2.5"
+              type="text"
+              maxLength={30}
+              placeholder={t('悄悄话(可留空,直接发想念)')}
+              value={missNote}
+              onChange={(e) => setMissNote(e.target.value)}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleMiss(missEmoji, missNote)}
+              className="btn-primary mt-3 w-full py-2.5"
+            >
+              {missNote.trim() ? t('悄悄送给 TA {e}', { e: missEmoji }) : t('发送想念 {e}', { e: missEmoji })}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
