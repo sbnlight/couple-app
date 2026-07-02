@@ -32,6 +32,15 @@ import {
 } from '../lib/prefs'
 import type { FontSize, ThemeId, ThemeMode } from '../lib/prefs'
 
+/** 从某个日期('YYYY-MM-DD')到今天的天数(当天记为第 1 天),按日历日期做差 */
+function daysSince(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const start = Date.UTC(y, m - 1, d)
+  const now = new Date()
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Math.floor((today - start) / 86_400_000) + 1
+}
+
 /** 单行文本编辑弹层(改昵称/小屋名共用) */
 function EditModal({
   title,
@@ -216,9 +225,14 @@ export default function Us() {
   const [theme, setTheme] = useState<ThemeId>(getTheme)
   const [mode, setMode] = useState<ThemeMode>(getThemeMode)
 
-  const days = couple
-    ? Math.floor((Date.now() - new Date(couple.created_at).getTime()) / 86_400_000) + 1
-    : 0
+  // 在一起的天数(第 1 天=当天):优先用 together_date,未设置则退回小屋建立日。
+  // 按日历日期做差,避开毫秒/DST 误差。
+  const anchorDate = couple?.together_date ?? couple?.created_at?.slice(0, 10) ?? null
+  const days = anchorDate ? daysSince(anchorDate) : 0
+  const hasTogether = Boolean(couple?.together_date)
+  // 下一个里程碑(用于"再过 N 天就 XXX 天啦")
+  const MILESTONES = [100, 200, 365, 520, 700, 1000, 1314, 2000, 3000, 3650, 5000]
+  const nextMilestone = MILESTONES.find((m) => m > days) ?? null
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -349,9 +363,31 @@ export default function Us() {
             </div>
           </div>
 
-          <p className="mt-4 text-center text-sm text-gray-400">
-            {t('小屋已建立 {n} 天', { n: days })}
-          </p>
+          {hasTogether ? (
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-400">{t('我们已经在一起')}</p>
+              <p className="mt-0.5 text-3xl font-bold text-primary-dark">
+                {days.toLocaleString()} <span className="text-base font-normal">{t('天')} ❤️</span>
+              </p>
+              {nextMilestone && (
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {t('再过 {n} 天就 {m} 天啦 🎉', { n: nextMilestone - days, m: nextMilestone })}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-4 text-center text-sm text-gray-400">
+              {t('小屋已建立 {n} 天', { n: days })}
+              {' · '}
+              <button
+                type="button"
+                onClick={() => setFeature('anniv')}
+                className="text-primary-dark underline"
+              >
+                {t('设置在一起的日子')}
+              </button>
+            </p>
+          )}
 
           {/* 见面倒数 */}
           {couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0 && (
@@ -365,11 +401,29 @@ export default function Us() {
           {anniversaries.list.length > 0 && (
             <div className="mt-3 space-y-1 border-t border-line pt-3">
               {anniversaries.list.map((a) => {
-                const n = daysUntil(a.anniv_date)
+                let label: string
+                if (a.recurring) {
+                  const [yy, mm, dd] = a.anniv_date.split('-').map(Number)
+                  const td = new Date()
+                  td.setHours(0, 0, 0, 0)
+                  let nx = new Date(td.getFullYear(), mm - 1, dd)
+                  if (nx.getTime() < td.getTime()) nx = new Date(td.getFullYear() + 1, mm - 1, dd)
+                  const dd2 = Math.round((nx.getTime() - td.getTime()) / 86_400_000)
+                  const yrs = nx.getFullYear() - yy
+                  label =
+                    dd2 === 0
+                      ? t('就是今天 🎉')
+                      : yrs > 0
+                        ? t('还有 {n} 天 · 第 {y} 周年', { n: dd2, y: yrs })
+                        : t('还有 {n} 天', { n: dd2 })
+                } else {
+                  const n = daysUntil(a.anniv_date)
+                  label =
+                    n > 0 ? t('还有 {n} 天', { n }) : n === 0 ? t('就是今天 🎉') : t('第 {n} 天', { n: -n + 1 })
+                }
                 return (
                   <p key={a.id} className="text-center text-xs text-gray-400">
-                    🎀 {a.title} ·{' '}
-                    {n > 0 ? t('还有 {n} 天', { n }) : n === 0 ? t('就是今天 🎉') : t('第 {n} 天', { n: -n + 1 })}
+                    🎀 {a.title} · {label}
                   </p>
                 )
               })}

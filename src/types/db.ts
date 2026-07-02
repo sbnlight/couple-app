@@ -22,6 +22,8 @@ export interface Couple {
   member_b: string | null
   /** 下次见面日期(倒数日) */
   next_meet_date: string | null
+  /** 在一起的日期(恋爱计数大卡的锚点),未设置为 null */
+  together_date: string | null
   /** 小屋级共享设置:功能开关(布尔,缺省开启)+ 换日时区 day_tz(字符串) */
   feature_flags: Record<string, boolean | string> | null
   created_at: string
@@ -33,6 +35,8 @@ export interface Anniversary {
   couple_id: string
   title: string
   anniv_date: string
+  /** 是否每年重复(生日/周年):到期后自动倒计下一年 */
+  recurring: boolean
   created_at: string
 }
 

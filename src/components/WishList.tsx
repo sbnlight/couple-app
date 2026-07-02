@@ -4,6 +4,40 @@ import { supabase } from '../lib/supabase'
 import type { Wish } from '../types/db'
 import { t } from '../lib/i18n'
 
+/** 恋爱清单灵感模板:一键添加想一起做的事(已在清单里的会自动隐藏) */
+const WISH_TEMPLATES = [
+  '一起看一次日出',
+  '一起看一次日落',
+  '一起去看海',
+  '一起看极光',
+  '一起看一场雪',
+  '一起去一次演唱会',
+  '一起看一部深夜电影',
+  '一起做一顿饭',
+  '一起烤一次蛋糕',
+  '一起养一盆植物',
+  '一起拍一组情侣照',
+  '一起去游乐园坐过山车',
+  '一起去泡温泉',
+  '一起看星星',
+  '一起放一次烟花',
+  '一起骑车压马路',
+  '一起去一次长途旅行',
+  '一起坐一次摩天轮',
+  '一起去图书馆待一下午',
+  '一起学一支舞',
+  '一起完成一幅拼图',
+  '一起写下给十年后的信',
+  '一起过一个不看手机的周末',
+  '一起去菜市场买菜',
+  '一起淋一场雨',
+  '一起看一次球赛',
+  '一起做一次手工',
+  '一起去露营看银河',
+  '一起重走第一次约会的路',
+  '一起给对方读一本书',
+]
+
 /** 愿望清单(全屏覆盖页):两人共同的 bucket list,都可添加/打勾/删除 */
 export default function WishList({
   coupleId,
@@ -20,6 +54,7 @@ export default function WishList({
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -47,6 +82,21 @@ export default function WishList({
         .insert({ couple_id: coupleId, creator_id: userId, content })
       if (error) throw error
       setDraft('')
+      await load()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 从模板一键添加(去重:已在清单里的不再重复添加) */
+  const addPreset = async (content: string) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const { error } = await supabase
+        .from('wishes')
+        .insert({ couple_id: coupleId, creator_id: userId, content })
+      if (error) throw error
       await load()
     } finally {
       setBusy(false)
@@ -104,7 +154,14 @@ export default function WishList({
         <button type="button" onClick={onClose} className="px-1 text-2xl text-gray-400">
           ‹
         </button>
-        <h1 className="text-base font-semibold text-primary-dark">{t('愿望清单')}</h1>
+        <h1 className="flex-1 text-base font-semibold text-primary-dark">{t('愿望清单')}</h1>
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="rounded-full bg-soft px-3 py-1.5 text-xs text-primary-dark"
+        >
+          {t('💡 灵感')}
+        </button>
       </header>
 
       {/* 添加 */}
@@ -150,6 +207,48 @@ export default function WishList({
           </>
         )}
       </div>
+
+      {/* 灵感清单:一键添加想一起做的事(已添加的自动隐藏) */}
+      {pickerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
+          onClick={() => setPickerOpen(false)}
+        >
+          <div
+            className="mx-auto max-h-[75vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-3 text-center text-sm font-medium text-gray-500">
+              {t('想一起做的事 · 点一下加入清单')}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {WISH_TEMPLATES.filter((tpl) => !wishes.some((w) => w.content === tpl)).map((tpl) => (
+                <button
+                  key={tpl}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void addPreset(tpl)}
+                  className="rounded-full border border-line bg-soft px-3 py-1.5 text-sm text-gray-600 active:scale-95 disabled:opacity-50"
+                >
+                  ＋ {tpl}
+                </button>
+              ))}
+              {WISH_TEMPLATES.every((tpl) => wishes.some((w) => w.content === tpl)) && (
+                <p className="w-full py-4 text-center text-sm text-gray-300">
+                  {t('灵感都加完啦,你们真有行动力 🎉')}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              className="mt-4 w-full border-t border-line py-3 text-center text-gray-500"
+              onClick={() => setPickerOpen(false)}
+            >
+              {t('完成')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -17,15 +17,17 @@ export default function AnniversaryManager({
 }: {
   couple: Couple
   anniversaries: Anniversary[]
-  onAdd: (title: string, date: string) => Promise<void>
+  onAdd: (title: string, date: string, recurring: boolean) => Promise<void>
   onRemove: (id: number) => Promise<void>
   onCoupleChanged: () => Promise<void>
   onClose: () => void
   onToast: (msg: string) => void
 }) {
   const [meetDate, setMeetDate] = useState(couple.next_meet_date ?? '')
+  const [togetherDate, setTogetherDate] = useState(couple.together_date ?? '')
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
+  const [recurring, setRecurring] = useState(false)
   const [busy, setBusy] = useState(false)
 
   /** 保存/清除下次见面日期 */
@@ -48,14 +50,35 @@ export default function AnniversaryManager({
     }
   }
 
+  /** 保存/清除在一起的日子(恋爱计数大卡锚点) */
+  const saveTogetherDate = async (value: string | null) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const { error } = await supabase
+        .from('couples')
+        .update({ together_date: value })
+        .eq('id', couple.id)
+      if (error) throw error
+      await onCoupleChanged()
+      setTogetherDate(value ?? '')
+      onToast(value ? t('在一起的日子已设置 ❤️') : t('已清除'))
+    } catch {
+      onToast(t('保存失败,请重试'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
     if (busy || !title.trim() || !date) return
     setBusy(true)
     try {
-      await onAdd(title.trim(), date)
+      await onAdd(title.trim(), date, recurring)
       setTitle('')
       setDate('')
+      setRecurring(false)
     } catch {
       onToast(t('添加失败,请重试'))
     } finally {
@@ -72,8 +95,26 @@ export default function AnniversaryManager({
     }
   }
 
-  const fmtDays = (d: string) => {
-    const n = daysUntil(d)
+  // 年度重复项(生日/周年):算出下一次周年还有几天、届时是第几周年
+  const nextRecurring = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    let next = new Date(today.getFullYear(), m - 1, d)
+    if (next.getTime() < today.getTime()) next = new Date(today.getFullYear() + 1, m - 1, d)
+    const days = Math.round((next.getTime() - today.getTime()) / 86_400_000)
+    return { days, years: next.getFullYear() - y }
+  }
+
+  const fmtDays = (a: Anniversary) => {
+    if (a.recurring) {
+      const { days, years } = nextRecurring(a.anniv_date)
+      if (days === 0) return t('就是今天 🎉')
+      return years > 0
+        ? t('还有 {n} 天 · 第 {y} 周年', { n: days, y: years })
+        : t('还有 {n} 天', { n: days })
+    }
+    const n = daysUntil(a.anniv_date)
     if (n > 0) return t('还有 {n} 天', { n })
     if (n === 0) return t('就是今天 🎉')
     return t('第 {n} 天', { n: -n + 1 })
@@ -86,6 +127,36 @@ export default function AnniversaryManager({
         onClick={(e) => e.stopPropagation()}
       >
         <p className="mb-4 text-center text-sm font-medium text-gray-500">{t('纪念日与见面日')}</p>
+
+        {/* 在一起的日子(恋爱计数大卡) */}
+        <p className="text-sm font-medium text-gray-500">{t('❤️ 在一起的日子')}</p>
+        <div className="mb-4 mt-2 flex gap-2">
+          <input
+            className="input min-w-0 flex-1 py-2"
+            type="date"
+            max={new Date().toISOString().slice(0, 10)}
+            value={togetherDate}
+            onChange={(e) => setTogetherDate(e.target.value)}
+          />
+          <button
+            type="button"
+            disabled={busy || !togetherDate}
+            onClick={() => void saveTogetherDate(togetherDate)}
+            className="btn-primary px-4 py-2"
+          >
+            {t('保存')}
+          </button>
+          {couple.together_date && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void saveTogetherDate(null)}
+              className="shrink-0 text-sm text-gray-400"
+            >
+              {t('清除')}
+            </button>
+          )}
+        </div>
 
         {/* 下次见面 */}
         <p className="text-sm font-medium text-gray-500">{t('✈️ 下次见面')}</p>
@@ -124,7 +195,8 @@ export default function AnniversaryManager({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm">{a.title}</span>
                 <span className="block text-xs text-gray-400">
-                  {a.anniv_date} · {fmtDays(a.anniv_date)}
+                  {a.anniv_date}
+                  {a.recurring ? t(' · 每年') : ''} · {fmtDays(a)}
                 </span>
               </span>
               <button
@@ -144,28 +216,38 @@ export default function AnniversaryManager({
         </div>
 
         {/* 添加 */}
-        <form onSubmit={handleAdd} className="mt-3 flex gap-2">
-          <input
-            className="input min-w-0 flex-[1.2] py-2"
-            type="text"
-            placeholder={t('名称,如:在一起')}
-            maxLength={12}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <input
-            className="input min-w-0 flex-1 py-2"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-          <button
-            type="submit"
-            disabled={busy || !title.trim() || !date}
-            className="btn-primary px-4 py-2"
-          >
-            {t('添加')}
-          </button>
+        <form onSubmit={handleAdd} className="mt-3">
+          <div className="flex gap-2">
+            <input
+              className="input min-w-0 flex-[1.2] py-2"
+              type="text"
+              placeholder={t('名称,如:在一起')}
+              maxLength={12}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <input
+              className="input min-w-0 flex-1 py-2"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            <button
+              type="submit"
+              disabled={busy || !title.trim() || !date}
+              className="btn-primary px-4 py-2"
+            >
+              {t('添加')}
+            </button>
+          </div>
+          <label className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+            <input
+              type="checkbox"
+              checked={recurring}
+              onChange={(e) => setRecurring(e.target.checked)}
+            />
+            {t('每年重复(生日 / 周年,到期自动倒计下一年)')}
+          </label>
         </form>
 
         <button

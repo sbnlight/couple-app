@@ -20,10 +20,10 @@ export function useAnniversaries(coupleId: string) {
   }, [load])
 
   const add = useCallback(
-    async (title: string, date: string) => {
+    async (title: string, date: string, recurring = false) => {
       const { error } = await supabase
         .from('anniversaries')
-        .insert({ couple_id: coupleId, title, anniv_date: date })
+        .insert({ couple_id: coupleId, title, anniv_date: date, recurring })
       if (error) throw error
       await load()
     },
