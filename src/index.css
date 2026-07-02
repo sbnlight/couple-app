@@ -853,6 +853,170 @@ html.dark .recv-paper {
   filter: blur(1.5px);
   animation: deco-spin 5s linear infinite;
 }
+/* ---------- 画框气泡(QQ 风精髓:装饰外框 + 浅色内芯 + 细节签) ---------- */
+/* 缝线内框:内圈虚线,布贴/票据的手作感 */
+.bubble-stitch::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  border: 1.5px dashed currentColor;
+  border-radius: 10px;
+  opacity: 0.45;
+}
+.bubble-stitch {
+  position: relative;
+}
+/* 碎花外框:一圈小花点点围绕气泡 */
+.bubble-frame-flowers {
+  position: relative;
+}
+.bubble-frame-flowers::before {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(2.5px 2.5px at 12% 18%, #f9a8d4 60%, transparent 62%),
+    radial-gradient(2px 2px at 34% 6%, #86efac 60%, transparent 62%),
+    radial-gradient(2.5px 2.5px at 58% 14%, #fda4af 60%, transparent 62%),
+    radial-gradient(2px 2px at 80% 8%, #fde68a 60%, transparent 62%),
+    radial-gradient(2.5px 2.5px at 92% 30%, #f9a8d4 60%, transparent 62%),
+    radial-gradient(2px 2px at 88% 78%, #86efac 60%, transparent 62%),
+    radial-gradient(2.5px 2.5px at 66% 92%, #fda4af 60%, transparent 62%),
+    radial-gradient(2px 2px at 30% 90%, #fde68a 60%, transparent 62%),
+    radial-gradient(2.5px 2.5px at 8% 68%, #f9a8d4 60%, transparent 62%),
+    #fdf2f8;
+}
+/* 金星外框:深色气泡外一圈金色星点 */
+.bubble-frame-gold {
+  position: relative;
+}
+.bubble-frame-gold::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(2px 2px at 15% 15%, #fde68a 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 45% 5%, #fbbf24 60%, transparent 62%),
+    radial-gradient(2px 2px at 78% 12%, #fde68a 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 94% 45%, #fbbf24 60%, transparent 62%),
+    radial-gradient(2px 2px at 85% 85%, #fde68a 60%, transparent 62%),
+    radial-gradient(1.5px 1.5px at 50% 95%, #fbbf24 60%, transparent 62%),
+    radial-gradient(2px 2px at 10% 80%, #fde68a 60%, transparent 62%),
+    #292524;
+}
+/* 蕾丝外框:圆点粗边像蕾丝花牙 */
+.bubble-frame-lace {
+  position: relative;
+}
+.bubble-frame-lace::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  z-index: -1;
+  border-radius: inherit;
+  border: 4px dotted #f9a8d4;
+  background: #fff;
+}
+/* 布标签:左上角一枚小布签(手作缝纫感) */
+.bubble-tag-love::after,
+.bubble-tag-meow::after,
+.bubble-tag-honey::after {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 4px;
+  transform: rotate(-4deg);
+  pointer-events: none;
+}
+.bubble-tag-love {
+  position: relative;
+}
+.bubble-tag-love::after {
+  content: 'LOVE';
+  background: #fb7185;
+  color: #fff;
+}
+.bubble-tag-meow {
+  position: relative;
+}
+.bubble-tag-meow::after {
+  content: 'MEOW';
+  background: #fbbf24;
+  color: #78350f;
+}
+.bubble-tag-honey {
+  position: relative;
+}
+.bubble-tag-honey::after {
+  content: 'HONEY';
+  background: #a78bfa;
+  color: #fff;
+}
+/* 云朵形:顶部鼓出两团云包 */
+.bubble-cloud-shape {
+  position: relative;
+}
+.bubble-cloud-shape::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 0;
+  right: 0;
+  height: 18px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(12px 12px at 28% 60%, var(--cloud, #ffffff) 58%, transparent 60%),
+    radial-gradient(9px 9px at 55% 50%, var(--cloud, #ffffff) 58%, transparent 60%),
+    radial-gradient(11px 11px at 76% 62%, var(--cloud, #ffffff) 58%, transparent 60%);
+}
+/* 漫画爆炸框:锯齿星爆轮廓(配合大内边距) */
+.bubble-boom {
+  clip-path: polygon(
+    0% 18%, 5% 8%, 12% 12%, 18% 2%, 26% 10%, 35% 0%, 42% 9%, 52% 2%, 60% 10%,
+    70% 3%, 77% 11%, 86% 5%, 92% 13%, 100% 10%, 96% 24%, 100% 36%, 95% 47%,
+    100% 60%, 94% 70%, 100% 82%, 92% 88%, 96% 100%, 84% 95%, 76% 100%, 66% 94%,
+    56% 100%, 47% 93%, 37% 100%, 28% 93%, 18% 99%, 12% 90%, 4% 95%, 7% 80%,
+    0% 72%, 6% 60%, 0% 48%, 5% 36%, 0% 28%
+  );
+  padding: 14px 18px !important;
+}
+/* 粉笔黑板:微噪点纹理 + 手写晃动感由字体承担 */
+.bubble-chalkboard {
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.12) 60%, transparent 62%),
+    radial-gradient(1px 1px at 60% 70%, rgba(255, 255, 255, 0.1) 60%, transparent 62%),
+    radial-gradient(1px 1px at 80% 20%, rgba(255, 255, 255, 0.1) 60%, transparent 62%);
+  background-size: 26px 22px;
+}
+/* 天灯夜:暖橙灯点从底部缓缓升起 */
+.bubble-lanterns {
+  position: relative;
+  overflow: hidden;
+}
+.bubble-lanterns::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 -100% 0;
+  pointer-events: none;
+  background:
+    radial-gradient(3px 4px at 22% 75%, rgba(253, 186, 116, 0.9) 55%, transparent 60%),
+    radial-gradient(2.5px 3.5px at 58% 40%, rgba(251, 191, 36, 0.8) 55%, transparent 60%),
+    radial-gradient(3px 4px at 82% 65%, rgba(253, 186, 116, 0.75) 55%, transparent 60%),
+    radial-gradient(2px 3px at 40% 15%, rgba(251, 191, 36, 0.7) 55%, transparent 60%);
+  background-size: 100% 50%;
+  animation: bubble-firefly-rise 6s linear infinite;
+}
+
 /* ---------- 图案纹样底纹(纯 CSS,配合纯色底使用;背景色走内联 backgroundColor) ---------- */
 .bubble-pat-dots {
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.55) 1.5px, transparent 2px);
@@ -1051,6 +1215,7 @@ html.dark .recv-paper {
   .bubble-scan::after,
   .bubble-goldring::before,
   .bubble-soda::after,
+  .bubble-lanterns::after,
   .msg-in-me,
   .msg-in-you {
     animation: none !important;
