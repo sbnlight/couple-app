@@ -10,8 +10,10 @@ import type { ReadStatus } from '../types/db'
  */
 export function useReadStatus(coupleId: string, userId: string, latestId: number) {
   const [partnerReadId, setPartnerReadId] = useState(0)
-  // 自己已上报过的位置,避免重复请求
+  // 自己已成功上报过的位置,避免重复请求
   const reportedRef = useRef(0)
+  // 上报在途标记,避免并发重复 upsert
+  const sendingRef = useRef(false)
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -30,17 +32,31 @@ export function useReadStatus(coupleId: string, userId: string, latestId: number
   // 上报自己的已读位置
   useEffect(() => {
     const report = () => {
-      if (document.hidden || latestId === 0 || latestId <= reportedRef.current) return
-      reportedRef.current = latestId
-      void supabase.from('read_status').upsert(
-        {
-          couple_id: coupleId,
-          user_id: userId,
-          last_read_id: latestId,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'couple_id,user_id' },
+      if (
+        document.hidden ||
+        latestId === 0 ||
+        latestId <= reportedRef.current ||
+        sendingRef.current
       )
+        return
+      const target = latestId
+      sendingRef.current = true
+      void supabase
+        .from('read_status')
+        .upsert(
+          {
+            couple_id: coupleId,
+            user_id: userId,
+            last_read_id: target,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'couple_id,user_id' },
+        )
+        .then(({ error }) => {
+          sendingRef.current = false
+          // 仅在成功后推进已上报位置;失败则保留旧值,下次可见/新消息时重试
+          if (!error) reportedRef.current = target
+        })
     }
     report()
     const onVisible = () => {

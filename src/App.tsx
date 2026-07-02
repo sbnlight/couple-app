@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { RequireAuth, RequireCouple } from './components/Guard'
 import { configMissing } from './lib/supabase'
@@ -82,6 +82,8 @@ export default function App() {
               </Route>
             </Route>
           </Route>
+          {/* 未知路径兜底:回首页,再由守卫决定去登录/配对/聊天,避免空白主区 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

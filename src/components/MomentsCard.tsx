@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { dayStartUtcISO, prevUtcDay, todayInTz } from '../lib/time'
 import { sendLive } from '../lib/live'
@@ -48,6 +48,7 @@ export default function MomentsCard({
   const [checkedToday, setCheckedToday] = useState(false)
   const [theirCheckedToday, setTheirCheckedToday] = useState(false)
   const [streakMine, setStreakMine] = useState(0)
+  const lastMissRef = useRef(0)
   const [streakTheirs, setStreakTheirs] = useState(0)
   const [busy, setBusy] = useState(false)
 
@@ -95,6 +96,12 @@ export default function MomentsCard({
   /** 想你 +1 */
   const handleMiss = async () => {
     if (busy) return
+    // 节流:3 秒内只发一次,避免连点刷屏 misses 表
+    if (Date.now() - lastMissRef.current < 3000) {
+      onToast(t('慢一点~ TA 已经收到你的想念啦 💭'))
+      return
+    }
+    lastMissRef.current = Date.now()
     setBusy(true)
     try {
       const { error } = await supabase

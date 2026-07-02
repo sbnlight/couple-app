@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { compressImage } from '../lib/image'
+import { compressImage, extFromType } from '../lib/image'
 import type { Sticker } from '../types/db'
 
 /**
@@ -29,10 +29,11 @@ export function useStickers(coupleId: string, userId: string) {
   const add = useCallback(
     async (file: File) => {
       const blob = await compressImage(file, 512, 0.85)
-      const path = `${coupleId}/${crypto.randomUUID()}.jpg`
+      // 保留 GIF 动图/PNG 透明:按真实类型定扩展名与内容类型
+      const path = `${coupleId}/${crypto.randomUUID()}.${extFromType(blob.type)}`
       const { error: upErr } = await supabase.storage
         .from('stickers')
-        .upload(path, blob, { contentType: 'image/jpeg' })
+        .upload(path, blob, { contentType: blob.type || 'image/jpeg' })
       if (upErr) throw upErr
       const { error: dbErr } = await supabase
         .from('stickers')

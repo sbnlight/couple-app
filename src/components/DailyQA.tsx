@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
-import { compressImage } from '../lib/image'
+import { compressImage, extFromType } from '../lib/image'
 import { getSignedUrl } from '../lib/storage'
 import { questionForDate } from '../lib/questions'
 import { todayInTz } from '../lib/time'
@@ -56,6 +56,8 @@ export default function DailyQA({
   const MAX_IMGS = 9
   const [draft, setDraft] = useState('')
   const [imgs, setImgs] = useState<{ blob: Blob; url: string }[]>([])
+  // 编辑时保留的原有配图路径(用户可逐张删除);新建时为空
+  const [keptPaths, setKeptPaths] = useState<string[]>([])
   const [mine, setMine] = useState<DailyAnswer | null>(null)
   const [theirs, setTheirs] = useState<DailyAnswer | null>(null)
   const [theyAnswered, setTheyAnswered] = useState(false)
@@ -108,7 +110,7 @@ export default function DailyQA({
     const files = [...(e.target.files ?? [])]
     e.target.value = ''
     if (files.length === 0) return
-    const room = MAX_IMGS - imgs.length
+    const room = MAX_IMGS - imgs.length - keptPaths.length
     for (const file of files.slice(0, room)) {
       try {
         const blob = await compressImage(file, 1280, 0.8)
@@ -127,19 +129,23 @@ export default function DailyQA({
     if ((!content && imgs.length === 0) || busy) return
     setBusy(true)
     try {
-      // 先传图(若有);编辑时选了新图则整组替换,否则保留原图
-      let imagePaths: string[] | null = editing ? (mine?.image_paths ?? null) : null
-      if (imgs.length > 0) {
-        const paths: string[] = []
-        for (const im of imgs) {
-          const path = `${coupleId}/qa-${crypto.randomUUID()}.jpg`
-          const { error: upErr } = await supabase.storage
-            .from('chat-images')
-            .upload(path, im.blob, { contentType: 'image/jpeg' })
-          if (upErr) throw upErr
-          paths.push(path)
-        }
-        imagePaths = paths
+      // 配图 = 编辑时保留的原图(未被删掉的)+ 本次新上传的
+      const uploaded: string[] = []
+      for (const im of imgs) {
+        const path = `${coupleId}/qa-${crypto.randomUUID()}.${extFromType(im.blob.type)}`
+        const { error: upErr } = await supabase.storage
+          .from('chat-images')
+          .upload(path, im.blob, { contentType: im.blob.type || 'image/jpeg' })
+        if (upErr) throw upErr
+        uploaded.push(path)
+      }
+      const keep = editing ? keptPaths : []
+      const finalPaths = [...keep, ...uploaded]
+      const imagePaths: string[] | null = finalPaths.length > 0 ? finalPaths : null
+      // 孤儿清理:编辑时被删掉的原图从 Storage 移除,避免占用免费额度
+      if (editing && mine?.image_paths) {
+        const removed = mine.image_paths.filter((p) => !keep.includes(p))
+        if (removed.length > 0) void supabase.storage.from('chat-images').remove(removed)
       }
 
       if (mine && editing) {
@@ -160,6 +166,7 @@ export default function DailyQA({
       }
       setDraft('')
       setImgs([])
+      setKeptPaths([])
       setEditing(false)
       await load() // 答完即可看到对方的答案
     } catch {
@@ -218,6 +225,8 @@ export default function DailyQA({
                   className="mt-1 text-xs text-gray-400 underline"
                   onClick={() => {
                     setDraft(mine.content)
+                    setKeptPaths(mine.image_paths ?? [])
+                    setImgs([])
                     setEditing(true)
                   }}
                 >
@@ -244,8 +253,22 @@ export default function DailyQA({
                 onChange={(e) => setDraft(e.target.value)}
               />
 
-              {/* 配图(最多 9 张) */}
+              {/* 配图(最多 9 张):编辑时先展示保留的原图(可逐张删),再是新选的图 */}
               <div className="mt-2 grid grid-cols-4 gap-2">
+                {editing &&
+                  keptPaths.map((p) => (
+                    <span key={p} className="relative">
+                      <QAImage path={p} onPreview={(u) => setViewer(u)} />
+                      <button
+                        type="button"
+                        onClick={() => setKeptPaths((prev) => prev.filter((x) => x !== p))}
+                        className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs text-white"
+                        aria-label="移除这张原配图"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
                 {imgs.map((im, i) => (
                   <span key={im.url} className="relative">
                     <img
@@ -263,7 +286,7 @@ export default function DailyQA({
                     </button>
                   </span>
                 ))}
-                {imgs.length < MAX_IMGS && (
+                {keptPaths.length + imgs.length < MAX_IMGS && (
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
@@ -274,9 +297,6 @@ export default function DailyQA({
                   </button>
                 )}
               </div>
-              {editing && (mine?.image_paths?.length ?? 0) > 0 && imgs.length === 0 && (
-                <p className="mt-1 text-xs text-gray-300">{t('(保留原配图;选了新图则整组替换)')}</p>
-              )}
 
               <p className="mt-2 text-xs text-gray-400">
                 {theyAnswered
@@ -285,7 +305,7 @@ export default function DailyQA({
               </p>
               <button
                 type="submit"
-                disabled={busy || (!draft.trim() && imgs.length === 0)}
+                disabled={busy || (!draft.trim() && imgs.length === 0 && keptPaths.length === 0)}
                 className="btn-primary mt-3 w-full"
               >
                 {busy ? t('提交中…') : editing ? t('保存修改') : t('提交回答')}

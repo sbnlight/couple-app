@@ -10,13 +10,17 @@ import { supabase } from './supabase'
 export type LiveEvent = 'nudge' | 'typing' | 'miss'
 
 let channel: RealtimeChannel | null = null
+let currentCoupleId = ''
 let myId = ''
 const listeners = new Map<LiveEvent, Set<(payload: Record<string, unknown>) => void>>()
 const presenceListeners = new Set<(partnerInChat: boolean) => void>()
 let lastPartnerInChat = false
 
 export function initLive(coupleId: string, userId: string) {
-  if (channel) return
+  // 已连到同一小屋则复用;若 coupleId 变了(如未登出直接重新配对)先拆旧通道再重建
+  if (channel && currentCoupleId === coupleId) return
+  if (channel) teardownLive()
+  currentCoupleId = coupleId
   myId = userId
   channel = supabase.channel(`live-${coupleId}`, {
     config: { presence: { key: userId }, broadcast: { self: false } },
@@ -44,6 +48,7 @@ export function teardownLive() {
   if (channel) {
     void supabase.removeChannel(channel)
     channel = null
+    currentCoupleId = ''
     lastPartnerInChat = false
   }
 }

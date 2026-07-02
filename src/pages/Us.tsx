@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { compressImage } from '../lib/image'
+import { compressImage, extFromType } from '../lib/image'
 import { daysUntil } from '../lib/time'
 import { useAnniversaries } from '../hooks/useAnniversaries'
 import Avatar from '../components/Avatar'
@@ -248,10 +248,10 @@ export default function Us() {
     try {
       const blob = await compressImage(file, 512, 0.85)
       // 时间戳文件名:换头像即换路径,绕开旧签名 URL 的缓存
-      const path = `${profile.id}/avatar-${Date.now()}.jpg`
+      const path = `${profile.id}/avatar-${Date.now()}.${extFromType(blob.type)}`
       const { error: upErr } = await supabase.storage
         .from('avatars')
-        .upload(path, blob, { contentType: 'image/jpeg' })
+        .upload(path, blob, { contentType: blob.type || 'image/jpeg' })
       if (upErr) throw upErr
 
       const oldPath = profile.avatar_url

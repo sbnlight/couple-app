@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { compressImage } from '../lib/image'
+import { compressImage, extFromType } from '../lib/image'
 import { getSignedUrl } from '../lib/storage'
 import {
   BUBBLE_FONTS,
@@ -106,10 +106,10 @@ export default function ChatAppearance({
     setUploading(true)
     try {
       const blob = await compressImage(file, 1280, 0.8)
-      const path = `${userId}/chatbg-${Date.now()}.jpg`
+      const path = `${userId}/chatbg-${Date.now()}.${extFromType(blob.type)}`
       const { error } = await supabase.storage
         .from('avatars')
-        .upload(path, blob, { contentType: 'image/jpeg' })
+        .upload(path, blob, { contentType: blob.type || 'image/jpeg' })
       if (error) throw error
       const old = getChatBgToken()
       if (old.startsWith('custom:')) void supabase.storage.from('avatars').remove([old.slice(7)])

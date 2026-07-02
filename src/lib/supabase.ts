@@ -15,7 +15,18 @@ export const configMissing = !url || !anonKey
  */
 const fetchWithTimeout: typeof fetch = (input, init) => {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(new DOMException('请求超时', 'TimeoutError')), 10_000)
+  // Storage 上传(弱网下的语音/图片可能几百 KB)套 10s 会被误判超时→失败重试。
+  // 对 storage 写请求单独放宽到 60s;普通 REST 查询仍用 10s 快速失败。
+  const urlStr =
+    typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url
+  const method = (init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase()
+  const isStorageWrite =
+    (method === 'POST' || method === 'PUT') && urlStr.includes('/storage/v1/object/')
+  const timeoutMs = isStorageWrite ? 60_000 : 10_000
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('请求超时', 'TimeoutError')),
+    timeoutMs,
+  )
   const callerSignal = init?.signal
   if (callerSignal) {
     if (callerSignal.aborted) controller.abort(callerSignal.reason)

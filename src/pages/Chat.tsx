@@ -109,6 +109,7 @@ export default function Chat() {
   const [recording, setRecording] = useState(false)
   const [recElapsed, setRecElapsed] = useState(0)
   const lastTypingSentRef = useRef(0)
+  const lastNudgeRef = useRef(0) // 拍一拍节流:避免连续双击刷屏
   const prevMaxRef = useRef<number | null>(null)
   const recRef = useRef<{
     mr: MediaRecorder
@@ -343,6 +344,13 @@ export default function Chat() {
 
   const partnerReadId = useReadStatus(couple!.id, userId, mode === 'live' ? latestServerId : 0)
 
+  // 已撤回消息的 id 集合:用于判断某条"引用回复"指向的原消息是否已被撤回
+  const recalledIds = useMemo(() => {
+    const s = new Set<number>()
+    for (const it of items) if (it.recalled && it.id !== undefined) s.add(it.id)
+    return s
+  }, [items])
+
   useLayoutEffect(() => {
     const el = listRef.current
     if (el && stickRef.current && mode === 'live') el.scrollTop = el.scrollHeight
@@ -544,11 +552,20 @@ export default function Chat() {
             )}
             {items.map((item, i) => {
               const prev = items[i - 1]
+              // 分隔条只出现在已发送消息之间:pending/failed(尤其重开恢复的失败消息,
+              // createdAt 可能是几天前)始终排在列表末尾,不该在它上方冒出"X天前"的过期日期条
               const showDivider =
-                !prev ||
-                new Date(item.createdAt).getTime() - new Date(prev.createdAt).getTime() >
-                  DIVIDER_GAP
-              const longPressable = item.type === 'text' || canRecall(item)
+                item.status === 'sent' &&
+                (!prev ||
+                  new Date(item.createdAt).getTime() - new Date(prev.createdAt).getTime() >
+                    DIVIDER_GAP ||
+                  // 跨天即使间隔很短也要分隔,否则 23:59 与次日 00:01 会紧挨且都不带日期
+                  new Date(item.createdAt).toDateString() !==
+                    new Date(prev.createdAt).toDateString())
+              // 已发送(有 id)且非拍一拍、未撤回的消息都可长按 → 菜单里按类型显示
+              // 复制/引用/撤回。要求 status==='sent':pending 无 id,引用会被静默丢弃。
+              const longPressable =
+                item.status === 'sent' && item.type !== 'nudge' && !item.recalled
               return (
                 <div
                   key={item.key}
@@ -575,12 +592,20 @@ export default function Chat() {
                     onRetry={() => retrySend(item.key)}
                     onPreview={(url) => setViewer(url)}
                     onMediaLoad={scrollBottomOnMedia}
+                    replyRecalled={
+                      item.replyTo !== undefined &&
+                      item.replyTo !== null &&
+                      recalledIds.has(item.replyTo)
+                    }
                     onLongPress={
                       longPressable ? (rect) => setActionTarget({ item, rect }) : undefined
                     }
                     onDoubleTap={
                       item.senderId !== userId && item.id !== undefined
                         ? async () => {
+                            // 节流:2 秒内只发一次,防止连续双击刷屏
+                            if (Date.now() - lastNudgeRef.current < 2000) return
+                            lastNudgeRef.current = Date.now()
                             if (mode === 'history') await backToLatest()
                             navigator.vibrate?.(60)
                             sendNudge()
@@ -698,7 +723,22 @@ export default function Chat() {
         <ChatPanel
           coupleId={couple!.id}
           userId={userId}
-          onEmoji={(e) => setDraft((d) => d + e)}
+          onEmoji={(e) => {
+            // 在光标处插入,而不是一律追加到末尾
+            const input = inputRef.current
+            if (!input) {
+              setDraft((d) => d + e)
+              return
+            }
+            const start = input.selectionStart ?? draft.length
+            const end = input.selectionEnd ?? draft.length
+            setDraft(draft.slice(0, start) + e + draft.slice(end))
+            requestAnimationFrame(() => {
+              input.focus()
+              const pos = start + e.length
+              input.setSelectionRange(pos, pos)
+            })
+          }}
           onSticker={async (path) => {
             // 从搜索进入历史窗口时,先回到最新再发,否则新消息会错落进旧窗口末尾
             if (mode === 'history') await backToLatest()

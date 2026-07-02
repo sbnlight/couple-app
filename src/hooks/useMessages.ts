@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { compressImage } from '../lib/image'
+import { compressImage, extFromType } from '../lib/image'
 import { deletePendingMedia, getPendingMedia, putPendingMedia } from '../lib/pendingStore'
+import { clearSignedUrl } from '../lib/storage'
 import type { Message, MessageType } from '../types/db'
 
 const PAGE_SIZE = 50
@@ -25,6 +26,8 @@ export interface ChatItem {
   recalled?: boolean
   /** 引用回复的预览文本 */
   replyPreview?: string | null
+  /** 引用回复指向的消息 id(用于判断被引用消息是否已被撤回) */
+  replyTo?: number | null
 }
 
 /** 本地待发队列里的一条 */
@@ -164,9 +167,11 @@ export function useMessages(coupleId: string, userId: string) {
           const next = prev.filter((p) => !clientIds.has(p.localId))
           if (next.length !== prev.length) {
             savePending(coupleId, next)
-            // 图片/语音的 Blob 存在 IndexedDB,确认落库后一并清除,避免残留
             for (const p of removed) {
+              // 图片/语音的 Blob 存在 IndexedDB,确认落库后一并清除,避免残留
               if (p.type === 'image' || p.type === 'voice') void deletePendingMedia(p.localId)
+              // 回收本地预览 object URL,避免长会话内存泄漏
+              if (p.previewUrl) URL.revokeObjectURL(p.previewUrl)
             }
           }
           return next
@@ -229,16 +234,26 @@ export function useMessages(coupleId: string, userId: string) {
   /** 增量补拉:取本地最大 id 之后的所有消息(Realtime 丢推的兜底) */
   const catchUp = useCallback(async () => {
     if (modeRef.current !== 'live') return
-    const since = maxIdRef.current
+    // 循环续拉,直到取回不足一页 —— 离线期间错过 >200 条也能一次补齐,
+    // 不会只补前 200 条就停(要等下次可见/上线事件)
+    const LIMIT = 200
+    let since = maxIdRef.current
     if (since === 0) return
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .gt('id', since)
-      .order('id', { ascending: true })
-      .limit(200)
-    if (!error && data && data.length > 0) mergeServer(data as Message[])
+    for (let i = 0; i < 50; i++) {
+      if (modeRef.current !== 'live') return
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .gt('id', since)
+        .order('id', { ascending: true })
+        .limit(LIMIT)
+      if (error || !data || data.length === 0) return
+      const rows = data as Message[]
+      mergeServer(rows)
+      since = rows[rows.length - 1].id // 用返回数据推进,不依赖 setState 的异步更新
+      if (rows.length < LIMIT) return
+    }
   }, [coupleId, mergeServer])
 
   useEffect(() => {
@@ -315,12 +330,16 @@ export function useMessages(coupleId: string, userId: string) {
           // 图片/语音:先上传文件(重试时已传过则跳过)
           if ((msg.type === 'image' || msg.type === 'voice') && content === '') {
             if (!msg.blob) throw Object.assign(new Error('媒体数据已丢失'), { fatal: true })
-            const ext = msg.type === 'voice' ? (msg.voiceExt ?? 'm4a') : 'jpg'
+            // 图片按真实类型选扩展名/内容类型(保留 GIF 动图、PNG 透明)
+            const ext =
+              msg.type === 'voice' ? (msg.voiceExt ?? 'm4a') : extFromType(msg.blob.type)
+            const contentType =
+              msg.type === 'voice' ? (msg.voiceMime ?? 'audio/mp4') : msg.blob.type || 'image/jpeg'
             const path = `${coupleId}/${msg.localId}.${ext}`
             const { error: upErr } = await supabase.storage
               .from('chat-images')
               .upload(path, msg.blob, {
-                contentType: msg.type === 'voice' ? (msg.voiceMime ?? 'audio/mp4') : 'image/jpeg',
+                contentType,
                 upsert: true,
               })
             if (upErr) throw upErr
@@ -505,10 +524,26 @@ export function useMessages(coupleId: string, userId: string) {
   /** 撤回自己的消息(服务端校验:仅本人、2 分钟内) */
   const recallMessage = useCallback(
     async (id: number) => {
+      const row = serverRef.current.find((m) => m.id === id)
+      // 撤回前先算出要清理的一次性文件:图片=路径本身,语音=JSON 里的 p。
+      // 表情包在 stickers 共享库、可复用,不删文件。
+      let filePath: string | null = null
+      if (row?.type === 'image') filePath = row.content || null
+      else if (row?.type === 'voice') {
+        try {
+          filePath = (JSON.parse(row.content) as { p?: string }).p ?? null
+        } catch {
+          filePath = null
+        }
+      }
       const { error } = await supabase.rpc('recall_message', { mid: id })
       if (error) throw error
-      const row = serverRef.current.find((m) => m.id === id)
       if (row) mergeUpdate({ ...row, recalled: true, content: '' })
+      // 删除 Storage 原文件并清签名 URL 缓存,避免已拿到 URL 的一方还能访问
+      if (filePath) {
+        void supabase.storage.from('chat-images').remove([filePath])
+        clearSignedUrl('chat-images', filePath)
+      }
     },
     [mergeUpdate],
   )
@@ -588,6 +623,7 @@ export function useMessages(coupleId: string, userId: string) {
       status: 'sent' as const,
       recalled: m.recalled,
       replyPreview: m.reply_preview,
+      replyTo: m.reply_to,
     })),
     ...pending.map((p) => ({
       key: p.localId,
@@ -598,6 +634,7 @@ export function useMessages(coupleId: string, userId: string) {
       status: p.status,
       previewUrl: p.previewUrl,
       replyPreview: p.replyPreview,
+      replyTo: p.replyTo,
     })),
   ]
 

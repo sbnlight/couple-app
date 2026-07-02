@@ -145,7 +145,8 @@ export default function Pair() {
               placeholder={t('输入 6 位邀请码')}
               maxLength={6}
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              // 先去掉所有空白再大写:粘贴带前后空格的码不会占满 6 位上限而被截断
+              onChange={(e) => setCode(e.target.value.replace(/\s/g, '').toUpperCase())}
             />
             <button
               type="submit"

@@ -187,7 +187,14 @@ function ChatImage({
   )
 }
 
-/** 语音消息气泡:点击播放/暂停,宽度随时长 */
+// 全局仅允许一条语音在播:开始播新的前先暂停上一条,避免多条同时响
+let activeVoiceAudio: HTMLAudioElement | null = null
+function claimVoicePlayback(me: HTMLAudioElement) {
+  if (activeVoiceAudio && activeVoiceAudio !== me) activeVoiceAudio.pause()
+  activeVoiceAudio = me
+}
+
+/** 语音消息气泡:点击播放/暂停(可续播),宽度随时长 */
 function VoiceBubble({
   item,
   mine,
@@ -210,8 +217,20 @@ function VoiceBubble({
   }
 
   const toggle = async () => {
+    const existing = audioRef.current
     if (playing) {
-      audioRef.current?.pause()
+      existing?.pause()
+      return
+    }
+    // 已加载且未播完 → 从暂停处续播,而不是每次从头 new Audio
+    if (existing && !existing.ended) {
+      claimVoicePlayback(existing)
+      try {
+        await existing.play()
+        setPlaying(true)
+      } catch {
+        setPlaying(false)
+      }
       return
     }
     if (!path) return
@@ -221,12 +240,20 @@ function VoiceBubble({
     audioRef.current = audio
     audio.onended = () => setPlaying(false)
     audio.onpause = () => setPlaying(false)
-    void audio.play()
-    setPlaying(true)
+    claimVoicePlayback(audio)
+    try {
+      await audio.play() // 自动播放策略拒绝时不让 ▶/⏸ 卡在播放态
+      setPlaying(true)
+    } catch {
+      setPlaying(false)
+    }
   }
 
   useEffect(() => {
-    return () => audioRef.current?.pause()
+    return () => {
+      audioRef.current?.pause()
+      if (activeVoiceAudio === audioRef.current) activeVoiceAudio = null
+    }
   }, [])
 
   return (
@@ -265,6 +292,7 @@ export default function MessageBubble({
   onMediaLoad,
   onLongPress,
   onDoubleTap,
+  replyRecalled = false,
 }: {
   item: ChatItem
   mine: boolean
@@ -282,6 +310,8 @@ export default function MessageBubble({
   onLongPress?: (rect: DOMRect) => void
   /** 双击对方气泡 → 拍一拍 */
   onDoubleTap?: () => void
+  /** 被引用的原消息是否已被撤回(是则引用框显示"该消息已撤回") */
+  replyRecalled?: boolean
 }) {
   const pressTimer = useRef<number | undefined>(undefined)
   const pressElRef = useRef<HTMLElement | null>(null)
@@ -361,7 +391,7 @@ export default function MessageBubble({
                       mine ? 'border-white/50 opacity-80' : 'border-primary/50 text-gray-400'
                     }`}
                   >
-                    {item.replyPreview}
+                    {replyRecalled ? t('该消息已撤回') : item.replyPreview}
                   </div>
                 )}
                 {item.content}

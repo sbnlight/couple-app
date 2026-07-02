@@ -77,6 +77,10 @@ export default function MoodCard({
               if (sp > 0) {
                 setEmoji(current.slice(0, sp))
                 setText(current.slice(sp + 1))
+              } else {
+                // 纯 emoji(无文字):整体就是表情,否则选择器会被重置为默认表情
+                setEmoji(current)
+                setText('')
               }
             }
             setEditing(true)
