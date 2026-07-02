@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { compressImage } from '../lib/image'
+import { deletePendingMedia, getPendingMedia, putPendingMedia } from '../lib/pendingStore'
 import type { Message, MessageType } from '../types/db'
 
 const PAGE_SIZE = 50
@@ -111,6 +112,39 @@ export function useMessages(coupleId: string, userId: string) {
     pendingRef.current = pending
   }, [pending])
 
+  // 恢复上次未发出的图片/语音(存在 IndexedDB):重开后作为 failed 可手动重试,
+  // 不再静默消失。若其实已发送成功(client_id 已落库),重试时会被去重并清理。
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const media = await getPendingMedia(coupleId)
+      if (cancelled || media.length === 0) return
+      setPending((prev) => {
+        const existing = new Set(prev.map((p) => p.localId))
+        const restored: PendingMsg[] = media
+          .filter((m) => !existing.has(m.localId))
+          .map((m) => ({
+            localId: m.localId,
+            type: m.type,
+            content: '',
+            createdAt: m.createdAt,
+            status: 'failed' as const,
+            blob: m.blob,
+            previewUrl: m.type === 'image' ? URL.createObjectURL(m.blob) : undefined,
+            voiceDur: m.voiceDur,
+            voiceExt: m.voiceExt,
+            voiceMime: m.voiceMime,
+            replyTo: m.replyTo,
+            replyPreview: m.replyPreview,
+          }))
+        return restored.length > 0 ? [...prev, ...restored] : prev
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [coupleId])
+
   /** 合并服务端消息:按 id 去重排序;命中待发队列 client_id 的一并移除 */
   const mergeServer = useCallback(
     (rows: Message[]) => {
@@ -126,8 +160,15 @@ export function useMessages(coupleId: string, userId: string) {
       const clientIds = new Set(rows.map((r) => r.client_id).filter(Boolean))
       if (clientIds.size > 0) {
         setPending((prev) => {
+          const removed = prev.filter((p) => clientIds.has(p.localId))
           const next = prev.filter((p) => !clientIds.has(p.localId))
-          if (next.length !== prev.length) savePending(coupleId, next)
+          if (next.length !== prev.length) {
+            savePending(coupleId, next)
+            // 图片/语音的 Blob 存在 IndexedDB,确认落库后一并清除,避免残留
+            for (const p of removed) {
+              if (p.type === 'image' || p.type === 'voice') void deletePendingMedia(p.localId)
+            }
+          }
           return next
         })
       }
@@ -374,9 +415,19 @@ export function useMessages(coupleId: string, userId: string) {
         previewUrl: URL.createObjectURL(blob),
       }
       setPending((prev) => [...prev, p])
+      // 落 IndexedDB:App 被杀/刷新后仍可恢复重发,不静默丢失
+      void putPendingMedia({
+        localId: p.localId,
+        coupleId,
+        type: 'image',
+        createdAt: p.createdAt,
+        blob,
+        replyTo: p.replyTo,
+        replyPreview: p.replyPreview,
+      })
       void attemptSend(p)
     },
-    [attemptSend],
+    [coupleId, attemptSend],
   )
 
   /** 发送语音消息:blob 上传后 content 存 {p:路径, d:秒数} */
@@ -394,9 +445,19 @@ export function useMessages(coupleId: string, userId: string) {
         voiceMime: mime,
       }
       setPending((prev) => [...prev, p])
+      void putPendingMedia({
+        localId: p.localId,
+        coupleId,
+        type: 'voice',
+        createdAt: p.createdAt,
+        blob,
+        voiceDur: p.voiceDur,
+        voiceExt: p.voiceExt,
+        voiceMime: p.voiceMime,
+      })
       void attemptSend(p)
     },
-    [attemptSend],
+    [coupleId, attemptSend],
   )
 
   /** 拍一拍:一条 nudge 类型的消息(聊天里显示居中提示) */

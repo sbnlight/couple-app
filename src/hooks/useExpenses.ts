@@ -127,9 +127,12 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
     [coupleId, userId, load],
   )
 
-  /** 修改自己记的一笔 */
+  /**
+   * 修改自己记的一笔。若把日期改到了别的月份,当前月列表会重拉后不含它,
+   * 返回目标月份字符串('YYYY-MM')供调用方提示"已移到 X 月";否则返回 null。
+   */
   const update = useCallback(
-    async (id: number, input: ExpenseInput) => {
+    async (id: number, input: ExpenseInput): Promise<string | null> => {
       const { error: err } = await supabase
         .from('expenses')
         .update({
@@ -144,8 +147,10 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
         .eq('id', id)
       if (err) throw err
       await load()
+      const targetMonth = input.spent_at.slice(0, 7)
+      return targetMonth !== month ? targetMonth : null
     },
-    [load],
+    [load, month],
   )
 
   /** 删除自己记的一笔 */

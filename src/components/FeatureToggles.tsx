@@ -39,42 +39,46 @@ export default function FeatureToggles({
 }) {
   const [busy, setBusy] = useState(false)
 
-  const toggle = async (key: string) => {
-    if (busy) return
+  /**
+   * 读-改-写单个/多个开关字段。关键:写入前先从数据库取最新 feature_flags 再合并,
+   * 而不是用组件手里的 couple 快照(可能已被对方改过其他字段)。这样两人同时改
+   * 不同字段(如一方改开关、一方改换日时区)不会互相覆盖。
+   * compute 接收最新 flags,返回要合并进去的补丁。
+   */
+  const patchFlags = async (compute: (fresh: Record<string, boolean | string>) => Record<string, boolean | string>) => {
+    if (busy) return false
     setBusy(true)
     try {
-      const flags = couple.feature_flags ?? {}
-      const next = { ...flags, [key]: !(flags[key] !== false) }
+      const { data, error: readErr } = await supabase
+        .from('couples')
+        .select('feature_flags')
+        .eq('id', couple.id)
+        .single()
+      if (readErr) throw readErr
+      const fresh = (data?.feature_flags as Record<string, boolean | string> | null) ?? {}
+      const next = { ...fresh, ...compute(fresh) }
       const { error } = await supabase
         .from('couples')
         .update({ feature_flags: next })
         .eq('id', couple.id)
       if (error) throw error
       await onChanged()
+      return true
     } catch {
       onToast(t('保存失败,请重试'))
+      return false
     } finally {
       setBusy(false)
     }
   }
 
+  const toggle = async (key: string) => {
+    await patchFlags((fresh) => ({ [key]: !(fresh[key] !== false) }))
+  }
+
   const setDayTz = async (tz: string) => {
-    if (busy) return
-    setBusy(true)
-    try {
-      const next = { ...(couple.feature_flags ?? {}), day_tz: tz }
-      const { error } = await supabase
-        .from('couples')
-        .update({ feature_flags: next })
-        .eq('id', couple.id)
-      if (error) throw error
-      await onChanged()
-      onToast(t('换日时区已更新'))
-    } catch {
-      onToast(t('保存失败,请重试'))
-    } finally {
-      setBusy(false)
-    }
+    const ok = await patchFlags(() => ({ day_tz: tz }))
+    if (ok) onToast(t('换日时区已更新'))
   }
 
   const curTz = dayTzOf(couple)

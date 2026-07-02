@@ -117,6 +117,11 @@ export default function Chat() {
     stream: MediaStream
   } | null>(null)
   const recTimerRef = useRef<number | undefined>(undefined)
+  // 录音"正在启动中"(getUserMedia 授权 / backToLatest 仍在 await):
+  // 此时 recRef 还是 null,若用户已松手需记下意图,拿到流后立即释放
+  const recStartingRef = useRef(false)
+  // 启动期间收到的停止请求:null=无;true=松手发送;false=取消丢弃
+  const pendingStopRef = useRef<boolean | null>(null)
 
   // 在场:进入聊天页让对方看到呼吸光点;同时订阅对方的在场与输入状态
   useEffect(() => {
@@ -130,11 +135,20 @@ export default function Chat() {
     }
   }, [])
 
-  // "正在输入"过期自动消失
+  // "正在输入"过期自动消失。注意:typingUntil 到点后该值不再变化,effect 不会重跑,
+  // 因此必须在 tick 内部检测过期并 clearInterval 自停,否则会残留一个每秒触发整页
+  // 重渲染的定时器(直到下次 typing 事件或卸载),持续耗电/掉帧。
   useEffect(() => {
     if (typingUntil <= Date.now()) return
-    const t = setInterval(() => typingTick((x) => x + 1), 1000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => {
+      if (Date.now() >= typingUntil) {
+        clearInterval(timer)
+        typingTick((x) => x + 1) // 触发一次重渲染,让"正在输入"消失
+        return
+      }
+      typingTick((x) => x + 1)
+    }, 1000)
+    return () => clearInterval(timer)
   }, [typingUntil])
   const partnerTyping = typingUntil > Date.now()
 
@@ -192,7 +206,12 @@ export default function Chat() {
 
   const stopRec = (send: boolean) => {
     const r = recRef.current
-    if (!r) return
+    if (!r) {
+      // 录音尚未真正开始(授权框/backToLatest 还在进行):记下停止意图,
+      // startRec 拿到麦克风流后据此立即释放,避免"松手了却一直录到 60s"
+      if (recStartingRef.current) pendingStopRef.current = send
+      return
+    }
     window.clearInterval(recTimerRef.current)
     const durSec = (Date.now() - r.start) / 1000
     r.mr.onstop = () => {
@@ -219,15 +238,22 @@ export default function Chat() {
   }
 
   const startRec = async () => {
-    if (recording) return
-    if (mode === 'history') await backToLatest()
+    if (recording || recStartingRef.current) return
     const mime = pickMime()
     if (mime === null || !navigator.mediaDevices?.getUserMedia) {
       showToast(t('这个浏览器不支持录音'))
       return
     }
+    recStartingRef.current = true
+    pendingStopRef.current = null
     try {
+      if (mode === 'history') await backToLatest()
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // 授权/切换期间用户已松手或取消:不真正开始,立即释放麦克风流
+      if (pendingStopRef.current !== null) {
+        stream.getTracks().forEach((tk) => tk.stop())
+        return
+      }
       const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
       const chunks: Blob[] = []
       mr.ondataavailable = (e) => {
@@ -244,8 +270,28 @@ export default function Chat() {
       }, 250)
     } catch {
       showToast(t('无法使用麦克风,请检查权限设置'))
+    } finally {
+      recStartingRef.current = false
     }
   }
+
+  // 卸载(如切到别的 Tab)时兜底停止录音并释放麦克风流,避免指示灯常亮/流泄漏
+  useEffect(() => {
+    return () => {
+      window.clearInterval(recTimerRef.current)
+      const r = recRef.current
+      if (r) {
+        try {
+          r.mr.onstop = null
+          r.mr.stop()
+        } catch {
+          // 忽略:MediaRecorder 可能已停止
+        }
+        r.stream.getTracks().forEach((tk) => tk.stop())
+        recRef.current = null
+      }
+    }
+  }, [])
 
   // 自定义背景:解析签名 URL
   useLayoutEffect(() => {
@@ -305,6 +351,13 @@ export default function Chat() {
   const onScroll = () => {
     const el = listRef.current
     if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }
+
+  // 图片/表情包异步加载完成后,<img> 撑高发生在上面 items 贴底 effect 之后,
+  // 若此时仍贴在底部则重新滚到底,避免自己发图/收图后停在图片上方
+  const scrollBottomOnMedia = () => {
+    const el = listRef.current
+    if (el && stickRef.current && mode === 'live') el.scrollTop = el.scrollHeight
   }
 
   const showToast = (msg: string) => {
@@ -521,12 +574,14 @@ export default function Chat() {
                     }
                     onRetry={() => retrySend(item.key)}
                     onPreview={(url) => setViewer(url)}
+                    onMediaLoad={scrollBottomOnMedia}
                     onLongPress={
                       longPressable ? (rect) => setActionTarget({ item, rect }) : undefined
                     }
                     onDoubleTap={
                       item.senderId !== userId && item.id !== undefined
-                        ? () => {
+                        ? async () => {
+                            if (mode === 'history') await backToLatest()
                             navigator.vibrate?.(60)
                             sendNudge()
                           }
@@ -590,10 +645,14 @@ export default function Chat() {
         </button>
         <button
           type="button"
-          onPointerDown={() => void startRec()}
+          onPointerDown={(e) => {
+            // 捕获指针:手指/鼠标即使滑出小按钮,pointerup 仍回到本按钮,
+            // 不会因轻微滑动误触发"取消录音"(移动端极易误触)
+            e.currentTarget.setPointerCapture(e.pointerId)
+            void startRec()
+          }}
           onPointerUp={() => stopRec(true)}
           onPointerCancel={() => stopRec(false)}
-          onPointerLeave={() => recording && stopRec(false)}
           onContextMenu={(e) => e.preventDefault()}
           className={`select-none text-2xl leading-none ${recording ? 'scale-125' : ''}`}
           style={{ touchAction: 'none' }}
@@ -640,7 +699,9 @@ export default function Chat() {
           coupleId={couple!.id}
           userId={userId}
           onEmoji={(e) => setDraft((d) => d + e)}
-          onSticker={(path) => {
+          onSticker={async (path) => {
+            // 从搜索进入历史窗口时,先回到最新再发,否则新消息会错落进旧窗口末尾
+            if (mode === 'history') await backToLatest()
             stickRef.current = true
             sendSticker(path)
           }}

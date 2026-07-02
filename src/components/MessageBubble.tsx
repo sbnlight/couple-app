@@ -140,7 +140,15 @@ import type { ChatItem } from '../hooks/useMessages'
 import { t } from '../lib/i18n'
 
 /** 图片/表情包消息:待发送时用本地预览,已落库则取私有桶签名 URL */
-function ChatImage({ item, onPreview }: { item: ChatItem; onPreview: (url: string) => void }) {
+function ChatImage({
+  item,
+  onPreview,
+  onMediaLoad,
+}: {
+  item: ChatItem
+  onPreview: (url: string) => void
+  onMediaLoad?: () => void
+}) {
   const [url, setUrl] = useState<string | null>(item.previewUrl ?? null)
   const isSticker = item.type === 'sticker'
 
@@ -174,6 +182,7 @@ function ChatImage({ item, onPreview }: { item: ChatItem; onPreview: (url: strin
           : 'max-h-64 max-w-full rounded-xl object-cover'
       }
       onClick={() => onPreview(url)}
+      onLoad={onMediaLoad}
     />
   )
 }
@@ -253,6 +262,7 @@ export default function MessageBubble({
   readLabel = false,
   onRetry,
   onPreview,
+  onMediaLoad,
   onLongPress,
   onDoubleTap,
 }: {
@@ -266,6 +276,8 @@ export default function MessageBubble({
   readLabel?: boolean
   onRetry: () => void
   onPreview: (url: string) => void
+  /** 图片/表情包加载完成回调:用于加载后重新贴底 */
+  onMediaLoad?: () => void
   /** 长按气泡 → 弹出菜单,带气泡屏幕位置用于定位弹窗 */
   onLongPress?: (rect: DOMRect) => void
   /** 双击对方气泡 → 拍一拍 */
@@ -358,7 +370,7 @@ export default function MessageBubble({
               {mine && renderBubbleArt(bubble)}
             </div>
           ) : (
-            <ChatImage item={item} onPreview={onPreview} />
+            <ChatImage item={item} onPreview={onPreview} onMediaLoad={onMediaLoad} />
           )}
         </div>
 

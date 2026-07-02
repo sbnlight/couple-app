@@ -133,6 +133,11 @@ export default function Ledger() {
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Expense | null>(null)
   const [trend, setTrend] = useState<TrendData | null>(null)
+  const [toast, setToast] = useState('')
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2500)
+  }
 
   // 近 6 个月支出趋势(记账有增删改时跟着 expenses 一起刷新)
   useEffect(() => {
@@ -256,8 +261,11 @@ export default function Ledger() {
   const [yy, mm] = month.split('-').map(Number)
 
   const handleSave = async (input: ExpenseInput) => {
-    if (editTarget) await update(editTarget.id, input)
-    else await add(input)
+    if (editTarget) {
+      // 编辑时若把日期改到别的月份,当前月列表里这笔会消失,给出可见提示避免困惑
+      const movedTo = await update(editTarget.id, input)
+      if (movedTo) showToast(t('已移到 {m} 月', { m: Number(movedTo.slice(5, 7)) }))
+    } else await add(input)
   }
 
   const nameOf = (payerId: string) =>
@@ -307,9 +315,12 @@ export default function Ledger() {
                   <div className="flex items-end justify-between">
                     <div>
                       <p className="text-sm text-gray-400">
-                        {summaries.length > 1
-                          ? t('本月支出({c})', { c: s.currency })
-                          : t('本月支出')}
+                        {(() => {
+                          // 浏览往月时不再写死"本月",改显具体月份,避免误导
+                          const mm = Number(month.slice(5, 7))
+                          const prefix = isCurrentMonth ? t('本月支出') : t('{m}月支出', { m: mm })
+                          return summaries.length > 1 ? `${prefix}(${s.currency})` : prefix
+                        })()}
                       </p>
                       <p className="mt-1 text-2xl font-bold">
                         {sym}
@@ -379,8 +390,9 @@ export default function Ledger() {
               )
             })}
 
-            {/* 统计图表 */}
-            {trend && trend.series.length > 0 && (
+            {/* 统计图表:趋势/环比/占比均相对"当前"计算,浏览往月时隐藏,避免与上方
+                往月汇总错配(与下方分类占比的 isCurrentMonth 判断保持一致) */}
+            {isCurrentMonth && trend && trend.series.length > 0 && (
               <div className="mb-3 rounded-2xl bg-white p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-gray-500">{t('📈 近半年支出趋势')}</p>
@@ -493,6 +505,13 @@ export default function Ledger() {
             setEditTarget(null)
           }}
         />
+      )}
+
+      {/* 轻提示 */}
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 top-16 z-[60] flex justify-center">
+          <span className="rounded-full bg-gray-800/80 px-4 py-2 text-sm text-white">{toast}</span>
+        </div>
       )}
     </div>
   )
