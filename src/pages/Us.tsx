@@ -380,28 +380,21 @@ export default function Us() {
           ) : (
             <p className="mt-4 text-center text-sm text-gray-400">
               {t('小屋已建立 {n} 天', { n: days })}
-              {' · '}
-              <button
-                type="button"
-                onClick={() => setFeature('anniv')}
-                className="text-primary-dark underline"
-              >
-                {t('设置在一起的日子')}
-              </button>
             </p>
           )}
 
-          {/* 见面倒数 */}
-          {couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0 && (
-            <p className="mt-1 text-center text-sm text-primary-dark">
-              {t('✈️ 距离下次见面还有 {n} 天', { n: daysUntil(couple.next_meet_date) })}
-              {daysUntil(couple.next_meet_date) === 0 && t(',就是今天!')}
-            </p>
-          )}
-
-          {/* 纪念日 */}
-          {anniversaries.list.length > 0 && (
-            <div className="mt-3 space-y-1 border-t border-line pt-3">
+          {/* 倒数事件:见面 + 纪念日,统一成居中小药丸(视觉一致) */}
+          {((couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0) ||
+            anniversaries.list.length > 0) && (
+            <div className="mt-3 flex flex-wrap justify-center gap-2 border-t border-line pt-3">
+              {couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0 && (
+                <span className="rounded-full bg-soft px-3 py-1 text-xs text-primary-dark">
+                  {t('✈️ 见面')} ·{' '}
+                  {daysUntil(couple.next_meet_date) === 0
+                    ? t('就是今天!')
+                    : t('还有 {n} 天', { n: daysUntil(couple.next_meet_date) })}
+                </span>
+              )}
               {anniversaries.list.map((a) => {
                 let label: string
                 if (a.recurring) {
@@ -424,9 +417,12 @@ export default function Us() {
                     n > 0 ? t('还有 {n} 天', { n }) : n === 0 ? t('就是今天 🎉') : t('第 {n} 天', { n: -n + 1 })
                 }
                 return (
-                  <p key={a.id} className="text-center text-xs text-gray-400">
+                  <span
+                    key={a.id}
+                    className="rounded-full bg-soft px-3 py-1 text-xs text-primary-dark"
+                  >
                     🎀 {a.title} · {label}
-                  </p>
+                  </span>
                 )
               })}
             </div>

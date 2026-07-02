@@ -43,8 +43,8 @@ export default function AnniversaryManager({
       await onCoupleChanged()
       setMeetDate(value ?? '')
       onToast(value ? t('见面日期已设置 ✈️') : t('已清除见面日期'))
-    } catch {
-      onToast(t('保存失败,请重试'))
+    } catch (e) {
+      onToast(t('保存失败:{m}', { m: (e as { message?: string })?.message ?? '请重试' }))
     } finally {
       setBusy(false)
     }
@@ -63,8 +63,8 @@ export default function AnniversaryManager({
       await onCoupleChanged()
       setTogetherDate(value ?? '')
       onToast(value ? t('在一起的日子已设置 ❤️') : t('已清除'))
-    } catch {
-      onToast(t('保存失败,请重试'))
+    } catch (e) {
+      onToast(t('保存失败:{m}', { m: (e as { message?: string })?.message ?? '请重试' }))
     } finally {
       setBusy(false)
     }

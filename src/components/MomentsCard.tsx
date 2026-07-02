@@ -211,31 +211,47 @@ export default function MomentsCard({
         )}
       </p>
 
-      {/* 想你 composer:选个表情 + 可选悄悄话,一键送到 TA */}
+      {/* 想你 composer:选个表情 + 可选悄悄话,先预览再一键送到 TA */}
       {missOpen && (
         <div
           className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40"
           onClick={() => setMissOpen(false)}
         >
           <div
-            className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4"
+            className="mx-auto w-full max-w-md rounded-t-3xl bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="mb-3 text-center text-sm font-medium text-gray-500">{t('想对 TA 说…')}</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {['💭', '💗', '🥰', '😘', '🤗', '😢', '☕', '🌙'].map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => setMissEmoji(e)}
-                  className={`h-11 w-11 rounded-full text-2xl transition-transform ${
-                    missEmoji === e ? 'scale-110 bg-soft ring-2 ring-primary' : 'bg-gray-50'
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200" />
+            <p className="mb-3 text-center text-base font-semibold text-primary-dark">
+              {t('想 TA 了 💌')}
+            </p>
+
+            {/* 想念卡片预览 */}
+            <div className="flex flex-col items-center rounded-2xl bg-gradient-to-b from-rose-50 to-pink-100 px-4 py-5">
+              <span className="text-5xl">{missEmoji}</span>
+              <p className="mt-2 min-h-[1.25rem] text-center text-sm text-gray-600">
+                {missNote.trim() || t('（悄悄话会显示在这里）')}
+              </p>
             </div>
+
+            {/* 表情选择 */}
+            <div className="mt-4 grid grid-cols-8 gap-1.5">
+              {['💭', '💗', '🥰', '😘', '🤗', '😢', '☕', '🌙', '🫶', '💌', '🥺', '😴', '🌈', '⭐', '🍀', '🐻'].map(
+                (e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => setMissEmoji(e)}
+                    className={`flex aspect-square items-center justify-center rounded-xl text-xl transition-transform active:scale-90 ${
+                      missEmoji === e ? 'scale-110 bg-soft ring-2 ring-primary' : 'bg-gray-50'
+                    }`}
+                  >
+                    {e}
+                  </button>
+                ),
+              )}
+            </div>
+
             <input
               className="input mt-3 w-full py-2.5"
               type="text"
@@ -248,9 +264,16 @@ export default function MomentsCard({
               type="button"
               disabled={busy}
               onClick={() => void handleMiss(missEmoji, missNote)}
-              className="btn-primary mt-3 w-full py-2.5"
+              className="btn-primary mt-3 w-full rounded-full py-3 text-base disabled:opacity-60"
             >
-              {missNote.trim() ? t('悄悄送给 TA {e}', { e: missEmoji }) : t('发送想念 {e}', { e: missEmoji })}
+              {missNote.trim() ? t('悄悄送给 TA') : t('发送想念')} {missEmoji}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMissOpen(false)}
+              className="mt-2 w-full py-2 text-center text-sm text-gray-400"
+            >
+              {t('取消')}
             </button>
           </div>
         </div>

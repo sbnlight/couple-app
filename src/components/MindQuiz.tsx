@@ -34,6 +34,7 @@ export default function MindQuiz({
   const [rows, setRows] = useState<QRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
   // 全部历史(算默契值)
   const [history, setHistory] = useState<QRow[]>([])
 
@@ -86,12 +87,15 @@ export default function MindQuiz({
     if (busy) return
     setBusy(true)
     try {
+      setErr('')
       const { error } = await supabase.from('quiz_answers').upsert(
         { couple_id: coupleId, quiz_date: today, quiz_id: quizId, user_id: userId, choice },
         { onConflict: 'couple_id,quiz_date,user_id' },
       )
       if (error) throw error
       await load()
+    } catch (e) {
+      setErr((e as { message?: string })?.message ?? '提交失败,请重试')
     } finally {
       setBusy(false)
     }
@@ -168,6 +172,11 @@ export default function MindQuiz({
                   : matched
                     ? t('心有灵犀!你们选了一样 💞')
                     : t('这次没选到一起,聊聊为什么呀~')}
+            </p>
+          )}
+          {err && (
+            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-500">
+              {t('提交失败:{m}', { m: err })}
             </p>
           )}
         </div>
