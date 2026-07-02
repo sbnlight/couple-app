@@ -129,7 +129,9 @@ src/
 - **全局**:`ErrorBoundary` 兜底防白屏;PWA + iOS 安全区/启动图;i18n(中/英/日)。
 
 ### 迁移清单(supabase/migrations/,均幂等)
-`0001` 认证配对 · `0002` 小屋/资料/设置 · `0003` 聊天 · `0004` 聊天扩展 · `0005` 记账 v2 · `0006` 双人互动(anniversaries/daily_answers/misses/checkins/wishes/notes)· `0007` push · `0008` 撤回 · `0009` feature_flags · `0010` 语音/拍一拍/心情 · `0011` 补列兜底 · `0012` 想你 note/emoji · `0013` 纪念日 recurring + couples.together_date · `0014` quiz_answers(默契问答)。
+`0001` 认证配对 · `0002` 小屋/资料/设置 · `0003` 聊天 · `0004` 聊天扩展 · `0005` 记账 v2 · `0006` 双人互动(anniversaries/daily_answers/misses/checkins/wishes/notes)· `0007` push · `0008` 撤回 · `0009` feature_flags · `0010` 语音/拍一拍/心情 · `0011` 补列兜底 · `0012` 想你 note/emoji · `0013` 纪念日 recurring + couples.together_date · `0014` quiz_answers(默契问答)· `0015` 补齐 0013/0014(幂等)· `0016` profiles.bubble_id/bubble_font(气泡/字体共享)。
+
+**气泡/字体共享(0016 起)**:每个人选的聊天气泡样式与字体存在自己的 `profiles.bubble_id`/`bubble_font`(而非仅本机),聊天里**每条消息按其发送者的选择渲染**——你的消息用你选的、TA 的用 TA 选的,两人看到一致。选择时同时写本机缓存(即时生效)与 profile(共享);对方的变更在重开/回前台刷新时可见。聊天背景仍是纯本机偏好。
 
 ## 8. 开发路线(按里程碑推进,每个里程碑结束都要能跑)
 

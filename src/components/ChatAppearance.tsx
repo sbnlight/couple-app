@@ -7,22 +7,19 @@ import {
   BUBBLE_FONTS,
   BUBBLE_STYLES,
   CHAT_BGS,
-  RECV_SKINS,
   bubbleCss,
   fontCss,
   getBubbleFont,
   getBubbleStyle,
   getChatBgToken,
-  getRecvSkin,
   saveBubbleFont,
   saveBubbleStyle,
   saveChatBgToken,
-  saveRecvSkin,
 } from '../lib/prefs'
 import { t } from '../lib/i18n'
 import { renderBubbleArt, renderDecos } from './MessageBubble'
 
-type Page = 'menu' | 'bubble' | 'bg' | 'font' | 'recv'
+type Page = 'menu' | 'bubble' | 'bg' | 'font'
 
 /** 子选择页的通用外壳 */
 function PickerPage({
@@ -65,7 +62,6 @@ export default function ChatAppearance({
   const [page, setPage] = useState<Page>('menu')
   const [bubbleId, setBubbleId] = useState(() => getBubbleStyle().id)
   const [fontId, setFontId] = useState(() => getBubbleFont().id)
-  const [recvId, setRecvId] = useState(() => getRecvSkin().id)
   const [bgToken, setBgToken] = useState(getChatBgToken)
   const [customThumb, setCustomThumb] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -87,18 +83,16 @@ export default function ChatAppearance({
   }, [bgToken])
 
   const pickBubble = (id: string) => {
-    saveBubbleStyle(id)
+    saveBubbleStyle(id) // 本机即时生效
     setBubbleId(id)
+    // 共享:写到自己的 profile,对方也能看到我发的消息用这款气泡(迁移 0016 后生效)
+    void supabase.from('profiles').update({ bubble_id: id }).eq('id', userId)
     onChanged()
   }
   const pickFont = (id: string) => {
     saveBubbleFont(id)
     setFontId(id)
-    onChanged()
-  }
-  const pickRecv = (id: string) => {
-    saveRecvSkin(id)
-    setRecvId(id)
+    void supabase.from('profiles').update({ bubble_font: id }).eq('id', userId)
     onChanged()
   }
   const pickPreset = (id: string) => {
@@ -147,6 +141,9 @@ export default function ChatAppearance({
   if (page === 'bubble') {
     return (
       <PickerPage title={t('修改气泡')} onBack={() => setPage('menu')}>
+        <p className="mb-3 px-1 text-xs text-gray-400">
+          {t('你选的气泡会用在"你发出的消息"上,对方也能看到 💕')}
+        </p>
         {bubbleGroups.map((g) => (
           <div key={g} className="mb-5">
             <p className="mb-2 px-1 text-xs text-gray-400">{t(g)}</p>
@@ -176,37 +173,6 @@ export default function ChatAppearance({
             </div>
           </div>
         ))}
-      </PickerPage>
-    )
-  }
-
-  /* ---------- 子页:对方气泡 ---------- */
-  if (page === 'recv') {
-    return (
-      <PickerPage title={t('对方气泡')} onBack={() => setPage('menu')}>
-        <p className="mb-3 px-1 text-xs text-gray-400">
-          {t('这是"收到的消息"在你这边显示的样子(本机生效)')}
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          {RECV_SKINS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => pickRecv(s.id)}
-              className="flex flex-col items-center gap-1.5"
-            >
-              <span
-                className={`recv-skin ${s.cls} chat-bubble flex h-11 w-full items-center justify-center text-sm ${
-                  recvId === s.id ? 'ring-2 ring-gray-700 ring-offset-2' : ''
-                }`}
-                style={{ borderRadius: '20px 20px 20px 7px' }}
-              >
-                {t('你好呀')}
-              </span>
-              <span className="text-xs text-gray-500">{t(s.label)}</span>
-            </button>
-          ))}
-        </div>
       </PickerPage>
     )
   }
@@ -279,7 +245,7 @@ export default function ChatAppearance({
     return (
       <PickerPage title={t('修改字体')} onBack={() => setPage('menu')}>
         <p className="mb-3 px-1 text-xs text-gray-400">
-          {t('只改变你自己发出的文字;个别设备缺少某字体时会自动用近似效果')}
+          {t('改变你自己发出文字的字体,对方也能看到;个别设备缺字体会自动近似')}
         </p>
         <div className="space-y-3">
           {BUBBLE_FONTS.map((f) => (
@@ -329,17 +295,6 @@ export default function ChatAppearance({
           </button>
           <button
             type="button"
-            onClick={() => setPage('recv')}
-            className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
-          >
-            <span>{t('🫧 对方气泡')}</span>
-            <span className="flex items-center gap-2 text-sm text-gray-400">
-              {t(RECV_SKINS.find((s) => s.id === recvId)?.label ?? '')}
-              <span className="text-gray-300">›</span>
-            </span>
-          </button>
-          <button
-            type="button"
             onClick={() => setPage('bg')}
             className="flex w-full items-center justify-between px-5 py-3.5 active:bg-soft"
           >
@@ -361,7 +316,9 @@ export default function ChatAppearance({
             </span>
           </button>
         </div>
-        <p className="px-5 pt-2 text-xs text-gray-300">{t('以上设置只对这台设备生效')}</p>
+        <p className="px-5 pt-2 text-xs text-gray-300">
+          {t('气泡和字体两人共享(对方能看到);聊天背景只对这台设备生效')}
+        </p>
         <button
           type="button"
           className="mt-2 w-full border-t border-line py-3 text-center text-gray-500"

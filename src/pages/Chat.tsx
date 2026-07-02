@@ -4,7 +4,14 @@ import { useAuth } from '../contexts/AuthContext'
 import { useMessages } from '../hooks/useMessages'
 import type { ChatItem } from '../hooks/useMessages'
 import { useReadStatus } from '../hooks/useReadStatus'
-import { CHAT_BGS, getBubbleFont, getBubbleStyle, getChatBgToken, getRecvSkin } from '../lib/prefs'
+import {
+  CHAT_BGS,
+  bubbleById,
+  fontById,
+  getBubbleFont,
+  getBubbleStyle,
+  getChatBgToken,
+} from '../lib/prefs'
 import { getSignedUrl } from '../lib/storage'
 import { onLive, onPartnerInChat, sendLive, trackInChat } from '../lib/live'
 import { fireEffect, keywordEffect } from '../lib/effects'
@@ -39,7 +46,7 @@ const DIVIDER_GAP = 5 * 60 * 1000
 const RECALL_WINDOW = 2 * 60 * 1000
 
 export default function Chat() {
-  const { couple, session, partner } = useAuth()
+  const { couple, session, partner, profile, refresh } = useAuth()
   // 本页在 RequireCouple 守卫内,couple/session 必然存在
   const userId = session!.user.id
   const {
@@ -90,10 +97,16 @@ export default function Chat() {
             : t('消息')
 
   // 聊天外观(本机偏好)
+  // 本机选择(即时生效的缓存);服务端 profile 是共享的事实来源
   const [bubble, setBubble] = useState(getBubbleStyle)
   const [bubbleFont, setBubbleFont] = useState(getBubbleFont)
   const [bgToken, setBgToken] = useState(getChatBgToken)
-  const [recvSkin, setRecvSkin] = useState(getRecvSkin)
+
+  // 气泡/字体共享:优先用各自 profile 上的选择;profile 还没有(未迁移/未选)则兜底
+  const myBubble = profile?.bubble_id ? bubbleById(profile.bubble_id) : bubble
+  const myFont = profile?.bubble_font ? fontById(profile.bubble_font) : bubbleFont
+  const partnerBubble = bubbleById(partner?.bubble_id)
+  const partnerFont = fontById(partner?.bubble_font)
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null)
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -604,10 +617,9 @@ export default function Chat() {
                   <MessageBubble
                     item={item}
                     mine={mineMsg}
-                    bubble={bubble}
-                    font={bubbleFont}
+                    bubble={mineMsg ? myBubble : partnerBubble}
+                    font={mineMsg ? myFont : partnerFont}
                     groupPos={groupPos}
-                    recvClass={recvSkin.cls}
                     readLabel={
                       item.key === myLastKey &&
                       item.id !== undefined &&
@@ -792,7 +804,7 @@ export default function Chat() {
             setBubble(getBubbleStyle())
             setBubbleFont(getBubbleFont())
             setBgToken(getChatBgToken())
-            setRecvSkin(getRecvSkin())
+            void refresh() // 同步 profile 上的气泡/字体(共享)
           }}
           onClose={() => setAppearanceOpen(false)}
           onToast={showToast}

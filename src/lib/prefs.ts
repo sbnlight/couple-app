@@ -283,6 +283,20 @@ export function bubbleCss(b: BubbleStyle): {
 
 const BUBBLE_KEY = 'pref-bubble'
 
+/** 还没选过气泡的一方,用这款干净浅色兜底(浅灰底 + 深色字,配 chat-bubble 柔影) */
+export const FALLBACK_BUBBLE: BubbleStyle = {
+  group: '默认',
+  id: '__fallback',
+  label: '默认',
+  bg: '#f2f3f5',
+  text: '#3a343c',
+}
+
+/** 按 id 找气泡样式;找不到用兜底浅色 */
+export function bubbleById(id: string | null | undefined): BubbleStyle {
+  return BUBBLE_STYLES.find((b) => b.id === id) ?? FALLBACK_BUBBLE
+}
+
 export function getBubbleStyle(): BubbleStyle {
   const v = localStorage.getItem(BUBBLE_KEY)
   return BUBBLE_STYLES.find((b) => b.id === v) ?? BUBBLE_STYLES[0]
@@ -323,6 +337,11 @@ export function getBubbleFont(): BubbleFont {
 
 export function saveBubbleFont(id: string) {
   localStorage.setItem(FONT_STYLE_KEY, id)
+}
+
+/** 按 id 找字体;找不到用默认 */
+export function fontById(id: string | null | undefined): BubbleFont {
+  return BUBBLE_FONTS.find((f) => f.id === id) ?? BUBBLE_FONTS[0]
 }
 
 /* ---------- 对方气泡皮肤(本机偏好,决定"收到的消息"长什么样) ---------- */

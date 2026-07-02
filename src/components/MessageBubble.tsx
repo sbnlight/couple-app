@@ -200,16 +200,12 @@ function claimVoicePlayback(me: HTMLAudioElement) {
 /** 语音消息气泡:点击播放/暂停(可续播),宽度随时长 */
 function VoiceBubble({
   item,
-  mine,
   styleObj,
-  recvClass,
   cornerStyle,
 }: {
   item: ChatItem
-  mine: boolean
+  /** 发送者气泡样式(双方都用发送者的) */
   styleObj?: CSSProperties
-  /** 对方气泡皮肤类(!mine 时用) */
-  recvClass?: string
   /** 统一的四角圆角(随分组变化) */
   cornerStyle?: CSSProperties
 }) {
@@ -269,11 +265,9 @@ function VoiceBubble({
     <button
       type="button"
       onClick={() => void toggle()}
-      className={`chat-bubble flex items-center gap-2 px-3.5 py-2.5 text-base ${
-        mine ? '' : `recv-skin ${recvClass ?? ''}`
-      }`}
+      className="chat-bubble flex items-center gap-2 px-3.5 py-2.5 text-base"
       style={{
-        ...(mine ? styleObj : {}),
+        ...styleObj,
         ...cornerStyle,
         width: 92 + Math.min(dur, 60) * 2,
       }}
@@ -307,18 +301,15 @@ export default function MessageBubble({
   onDoubleTap,
   replyRecalled = false,
   groupPos = 'single',
-  recvClass = 'recv-macaron',
 }: {
   item: ChatItem
   mine: boolean
-  /** 自己气泡的样式(本机偏好) */
+  /** 这条消息按其发送者选择的气泡样式(共享;双方都能看到) */
   bubble?: BubbleStyle
-  /** 自己文字的字体(本机偏好) */
+  /** 这条消息按其发送者选择的字体(共享) */
   font?: BubbleFont
   /** 连续消息中的位置(驱动尾角/贴边收放) */
   groupPos?: GroupPos
-  /** 对方气泡皮肤类(本机偏好,!mine 时用) */
-  recvClass?: string
   /** 是否在这条消息下方显示「已读」(只用于自己最新一条已被对方读过的消息) */
   readLabel?: boolean
   onRetry: () => void
@@ -336,9 +327,10 @@ export default function MessageBubble({
   const pressElRef = useRef<HTMLElement | null>(null)
   const lastTapRef = useRef(0)
 
-  // 统一四角圆角:带自定义 radius 的花哨款(自己)尊重其原形状;其余走非对称尾角
-  const cornerStyle: CSSProperties =
-    mine && bubble.radius ? {} : { borderRadius: bubbleRadius(mine, groupPos) }
+  // 统一四角圆角:带自定义 radius 的花哨款尊重其原形状;其余走非对称尾角(按发送方一侧)
+  const cornerStyle: CSSProperties = bubble.radius
+    ? {}
+    : { borderRadius: bubbleRadius(mine, groupPos) }
 
   // 已撤回:居中灰字提示,不再显示内容
   if (item.recalled) {
@@ -397,40 +389,25 @@ export default function MessageBubble({
           }}
         >
           {item.type === 'voice' ? (
-            <VoiceBubble
-              item={item}
-              mine={mine}
-              styleObj={bubbleCss(bubble)}
-              recvClass={recvClass}
-              cornerStyle={cornerStyle}
-            />
+            <VoiceBubble item={item} styleObj={bubbleCss(bubble)} cornerStyle={cornerStyle} />
           ) : item.type === 'text' ? (
             <div className="relative">
               <div
-                className={`chat-bubble whitespace-pre-wrap break-words px-3.5 py-2 text-base leading-relaxed ${
-                  mine
-                    ? `${bubble.anim ?? ''} ${bubble.extraClass ?? ''}`
-                    : `recv-skin ${recvClass}`
-                }`}
-                style={
-                  mine
-                    ? { ...bubbleCss(bubble), ...fontCss(font), ...cornerStyle }
-                    : cornerStyle
-                }
+                className={`chat-bubble whitespace-pre-wrap break-words px-3.5 py-2 text-base leading-relaxed ${bubble.anim ?? ''} ${bubble.extraClass ?? ''}`}
+                style={{ ...bubbleCss(bubble), ...fontCss(font), ...cornerStyle }}
               >
                 {item.replyPreview && (
                   <div
-                    className={`mb-1 max-w-full truncate rounded-md px-2 py-0.5 text-xs ${
-                      mine ? 'bg-white/20 opacity-90' : 'bg-black/[0.06] text-gray-500'
-                    }`}
+                    className="mb-1 max-w-full truncate rounded-md px-2 py-0.5 text-xs opacity-90"
+                    style={{ background: 'rgba(127,127,127,0.18)' }}
                   >
                     {replyRecalled ? t('该消息已撤回') : item.replyPreview}
                   </div>
                 )}
                 {item.content}
               </div>
-              {mine && renderDecos(bubble.deco)}
-              {mine && renderBubbleArt(bubble)}
+              {renderDecos(bubble.deco)}
+              {renderBubbleArt(bubble)}
             </div>
           ) : (
             <ChatImage item={item} onPreview={onPreview} onMediaLoad={onMediaLoad} />

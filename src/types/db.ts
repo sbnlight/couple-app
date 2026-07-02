@@ -9,6 +9,10 @@ export interface Profile {
   /** 今日心情(如 "😴 好困"),24 小时内有效 */
   mood: string | null
   mood_at: string | null
+  /** 选择的气泡样式 id(共享:两人都按发送者的选择显示);未选为 null */
+  bubble_id: string | null
+  /** 选择的聊天字体 id(共享);未选为 null */
+  bubble_font: string | null
   created_at: string
 }
 
