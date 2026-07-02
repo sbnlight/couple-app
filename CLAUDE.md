@@ -107,12 +107,29 @@ create table expenses (
 
 ```
 src/
-  lib/supabase.ts        # supabase 客户端单例
-  hooks/                 # useAuth, useCouple, useMessages, useExpenses
-  pages/                 # Chat / Ledger / Us / Login / Pair
-  components/            # 通用组件
-  types/                 # 数据库类型定义
+  lib/          # supabase 单例、storage(签名URL)、image(压缩/extFromType)、
+                # pendingStore(待发媒体 IndexedDB)、live(Realtime 广播/在场)、
+                # effects(全屏特效)、weather、time(共用换日时区)、prefs、i18n、
+                # questions(每日一问题库)、quizzes(默契问答题库)
+  contexts/     # AuthContext(登录+配对+全局状态,对外 useAuth();无独立 useCouple)
+  hooks/        # useMessages / useExpenses / useAnniversaries / useReadStatus / useStickers
+  pages/        # Chat / Ledger / Us / Login / Pair / ResetPassword
+  components/   # 通用组件 + 页面级面板(DailyQA / WishList / NotesPage / YearReport /
+                # MindQuiz / Thumbkiss / TwoCityCard / LoveTree / MomentsCard 等)
+  types/        # 数据库类型定义(types/db.ts)
 ```
+
+> 说明:实际用 **`contexts/AuthContext`(`useAuth()`)** 承载登录+配对全局状态,没有单独的 `useCouple`;
+> 部分"页面级面板"(如每日一问、愿望清单、默契问答)放在 `components/` 而非 `pages/`,以全屏覆盖层形式从「我们」页打开。
+
+### 现有功能(已远超 v1,截至迁移 0014)
+- **聊天**:文/图/语音/表情包(保留 GIF 动图、PNG 透明)/拍一拍/引用回复/撤回(2 分钟,撤回删 Storage 文件)/已读回执/搜索定位;弱网:服务端为准 + Realtime 通知 + catchUp 增量续拉 + 待发落 IndexedDB 可重试。
+- **记账**:多币种、收支、共同/个人、月度汇总、AA 结算、月度预算(存 `feature_flags`)、分类/趋势图、年度报告。
+- **我们(异地互动包)**:今日心情、对方当地时钟、**双城卡片**(两地时间/天气/距离)、**实时触碰 Thumbkiss**、见面倒数、**纪念日(支持年度轮回)**、**恋爱计数大卡**(`couples.together_date`)、每日一问(答完才可见对方,服务端 RLS 强制)、**默契双人问答**、想你(可带留言+表情)、每日打卡(连胜里程碑)、**爱情树**养成、愿望清单(恋爱清单模板)、定时解锁纸条、功能开关、外观设置、Web Push。
+- **全局**:`ErrorBoundary` 兜底防白屏;PWA + iOS 安全区/启动图;i18n(中/英/日)。
+
+### 迁移清单(supabase/migrations/,均幂等)
+`0001` 认证配对 · `0002` 小屋/资料/设置 · `0003` 聊天 · `0004` 聊天扩展 · `0005` 记账 v2 · `0006` 双人互动(anniversaries/daily_answers/misses/checkins/wishes/notes)· `0007` push · `0008` 撤回 · `0009` feature_flags · `0010` 语音/拍一拍/心情 · `0011` 补列兜底 · `0012` 想你 note/emoji · `0013` 纪念日 recurring + couples.together_date · `0014` quiz_answers(默契问答)。
 
 ## 8. 开发路线(按里程碑推进,每个里程碑结束都要能跑)
 
