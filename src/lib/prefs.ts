@@ -302,6 +302,9 @@ export function getBubbleStyle(): BubbleStyle {
   return BUBBLE_STYLES.find((b) => b.id === v) ?? BUBBLE_STYLES[0]
 }
 
+/** 本机是否真的选过气泡(区别于"用默认");用于把旧的本机选择自动同步到 profile */
+export const rawBubbleId = () => localStorage.getItem(BUBBLE_KEY)
+
 export function saveBubbleStyle(id: string) {
   localStorage.setItem(BUBBLE_KEY, id)
 }
@@ -334,6 +337,8 @@ export function getBubbleFont(): BubbleFont {
   const v = localStorage.getItem(FONT_STYLE_KEY)
   return BUBBLE_FONTS.find((f) => f.id === v) ?? BUBBLE_FONTS[0]
 }
+
+export const rawFontId = () => localStorage.getItem(FONT_STYLE_KEY)
 
 export function saveBubbleFont(id: string) {
   localStorage.setItem(FONT_STYLE_KEY, id)

@@ -11,7 +11,10 @@ import {
   getBubbleFont,
   getBubbleStyle,
   getChatBgToken,
+  rawBubbleId,
+  rawFontId,
 } from '../lib/prefs'
+import { supabase } from '../lib/supabase'
 import { getSignedUrl } from '../lib/storage'
 import { onLive, onPartnerInChat, sendLive, trackInChat } from '../lib/live'
 import { fireEffect, keywordEffect } from '../lib/effects'
@@ -137,6 +140,28 @@ export default function Chat() {
   const recStartingRef = useRef(false)
   // 启动期间收到的停止请求:null=无;true=松手发送;false=取消丢弃
   const pendingStopRef = useRef<boolean | null>(null)
+
+  // 一次性:把旧的"本机气泡/字体选择"自动同步到 profile,让现有选择也能共享给对方
+  // (迁移 0016 后生效;profile 已有值则不动,避免覆盖)
+  useEffect(() => {
+    if (!profile) return
+    const patch: { bubble_id?: string; bubble_font?: string } = {}
+    const localB = rawBubbleId()
+    const localF = rawFontId()
+    if (!profile.bubble_id && localB) patch.bubble_id = localB
+    if (!profile.bubble_font && localF) patch.bubble_font = localF
+    if (Object.keys(patch).length > 0) {
+      void supabase
+        .from('profiles')
+        .update(patch)
+        .eq('id', userId)
+        .then((r) => {
+          if (!r.error) void refresh()
+        })
+    }
+    // 只在 profile 首次可用时尝试一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, profile?.bubble_id, profile?.bubble_font])
 
   // 在场:进入聊天页让对方看到呼吸光点;同时订阅对方的在场与输入状态
   useEffect(() => {
