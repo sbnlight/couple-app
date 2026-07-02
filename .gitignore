@@ -10,6 +10,11 @@ dev-dist/
 # 配置模板不含真实密钥,允许提交
 !.env.example
 
+# 根目录下的临时截图/图片(粘贴给 AI 参考用,不入库;正式资源放 public/ 或 src/)
+/*.png
+/*.jpg
+/*.jpeg
+
 # 日志与系统文件
 *.log
 npm-debug.log*
