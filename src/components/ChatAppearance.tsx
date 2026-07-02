@@ -62,6 +62,7 @@ export default function ChatAppearance({
   const [page, setPage] = useState<Page>('menu')
   const [bubbleId, setBubbleId] = useState(() => getBubbleStyle().id)
   const [fontId, setFontId] = useState(() => getBubbleFont().id)
+  const [bubbleQuery, setBubbleQuery] = useState('')
   const [bgToken, setBgToken] = useState(getChatBgToken)
   const [customThumb, setCustomThumb] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -139,16 +140,54 @@ export default function ChatAppearance({
 
   /* ---------- 子页:气泡 ---------- */
   if (page === 'bubble') {
+    // 搜索:按名称/分组匹配(原文与译文都算),空格分词、全部命中才算
+    const terms = bubbleQuery.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    const matches = (b: (typeof BUBBLE_STYLES)[number]) => {
+      if (terms.length === 0) return true
+      const hay = `${b.label} ${t(b.label)} ${b.group} ${t(b.group)} ${b.id}`.toLowerCase()
+      return terms.every((w) => hay.includes(w))
+    }
+    const shownGroups = bubbleGroups.filter((g) =>
+      BUBBLE_STYLES.some((b) => b.group === g && matches(b)),
+    )
+    const hitCount = BUBBLE_STYLES.filter(matches).length
     return (
       <PickerPage title={t('修改气泡')} onBack={() => setPage('menu')}>
-        <p className="mb-3 px-1 text-xs text-gray-400">
+        <p className="mb-2 px-1 text-xs text-gray-400">
           {t('你选的气泡会用在"你发出的消息"上,对方也能看到 💕')}
         </p>
-        {bubbleGroups.map((g) => (
+        <div className="relative mb-3">
+          <input
+            className="input w-full py-2 pl-8 pr-8"
+            type="search"
+            placeholder={t('搜索气泡,如:樱花 / 猫 / 霓虹 / 国风')}
+            value={bubbleQuery}
+            onChange={(e) => setBubbleQuery(e.target.value)}
+          />
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-gray-300">
+            🔍
+          </span>
+          {bubbleQuery && (
+            <button
+              type="button"
+              onClick={() => setBubbleQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-1 text-gray-300"
+              aria-label="清空搜索"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {terms.length > 0 && (
+          <p className="mb-3 px-1 text-xs text-gray-400">
+            {hitCount > 0 ? t('找到 {n} 款', { n: hitCount }) : t('没有匹配的气泡,换个词试试~')}
+          </p>
+        )}
+        {shownGroups.map((g) => (
           <div key={g} className="mb-5">
             <p className="mb-2 px-1 text-xs text-gray-400">{t(g)}</p>
             <div className="grid grid-cols-3 gap-3">
-              {BUBBLE_STYLES.filter((b) => b.group === g).map((b) => (
+              {BUBBLE_STYLES.filter((b) => b.group === g && matches(b)).map((b) => (
                 <button
                   key={b.id}
                   type="button"
