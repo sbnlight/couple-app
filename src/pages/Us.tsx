@@ -528,6 +528,7 @@ export default function Us() {
         <LoveTree
           coupleId={couple!.id}
           daysTogether={days}
+          userId={profile!.id}
           partnerTz={partner?.timezone ?? null}
           partnerName={partner?.display_name ?? null}
         />

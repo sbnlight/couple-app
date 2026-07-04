@@ -58,15 +58,21 @@ function skyByHour(h: number): { bg: string; night: boolean; label: string } {
   return { bg: 'linear-gradient(180deg, #1e1b4b, #312e81 60%, #4c1d95)', night: true, label: '夜晚' }
 }
 
+/** 回忆果实:挂在树上的一段共同回忆(实现的愿望 / 纪念日) */
+type Memory = { emoji: string; kind: string; text: string; date: string | null }
+
 export default function LoveTree({
   coupleId,
   daysTogether,
+  userId = null,
   partnerTz = null,
   partnerName = null,
 }: {
   coupleId: string
   /** 在一起天数(没设在一起日期则传小屋建立天数) */
   daysTogether: number
+  /** 本人 id(双人双色贡献拆分用) */
+  userId?: string | null
   /** 对方时区/昵称(双子天空「TA 那边此刻」用) */
   partnerTz?: string | null
   partnerName?: string | null
@@ -81,6 +87,11 @@ export default function LoveTree({
   const [bouncing, setBouncing] = useState(false)
   const [watering, setWatering] = useState(false)
   const [waterKey, setWaterKey] = useState(0)
+  const [levelUp, setLevelUp] = useState<{ to: string } | null>(null)
+  const [drawKey, setDrawKey] = useState(0)
+  const [memories, setMemories] = useState<Memory[]>([])
+  const [activeMemory, setActiveMemory] = useState<Memory | null>(null)
+  const [mineContrib, setMineContrib] = useState<number | null>(null)
   const talkTimer = useRef<number | undefined>(undefined)
   const enteredRef = useRef(false)
 
@@ -127,6 +138,55 @@ export default function LoveTree({
     if (h % 19 === 1) return 'tree-var-aurora'
     return ''
   })()
+
+  // 回忆果实:进园地时拉「实现的愿望 + 纪念日」,挂到树上(表缺失/RLS 拦下就空,不报错)
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      const [w, a] = await Promise.all([
+        supabase
+          .from('wishes')
+          .select('content, done_at')
+          .eq('couple_id', coupleId)
+          .eq('done', true)
+          .order('done_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('anniversaries')
+          .select('title, anniv_date')
+          .eq('couple_id', coupleId)
+          .order('anniv_date', { ascending: false })
+          .limit(5),
+      ])
+      if (cancelled) return
+      const mem: Memory[] = []
+      for (const x of (w.data as { content: string; done_at: string | null }[] | null) ?? [])
+        mem.push({ emoji: '🍎', kind: t('实现的愿望'), text: x.content, date: x.done_at?.slice(0, 10) ?? null })
+      for (const x of (a.data as { title: string; anniv_date: string }[] | null) ?? [])
+        mem.push({ emoji: '🎀', kind: t('纪念日'), text: x.title, date: x.anniv_date })
+      setMemories(mem.slice(0, 8))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, coupleId])
+
+  // 双人双色:各自「浇灌」贡献(打卡×2 + 想你×1),拆蓝(你)/粉(TA)
+  useEffect(() => {
+    if (!open || !userId) return
+    let cancelled = false
+    void (async () => {
+      const [c, m] = await Promise.all([
+        supabase.from('checkins').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId).eq('user_id', userId),
+        supabase.from('misses').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId).eq('user_id', userId),
+      ])
+      if (!cancelled && !c.error && !m.error) setMineContrib((c.count ?? 0) * 2 + (m.count ?? 0))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, userId, coupleId])
 
   const loadCounts = async () => {
     const [c, m] = await Promise.all([
@@ -191,9 +251,15 @@ export default function LoveTree({
     if (loading || !loadOk) return
     const prev = Number(localStorage.getItem(STAGE_KEY) ?? '-1')
     if (stageIdx > prev) {
-      if (prev >= 0) fireEffect(['🎉', '🌸', '✨', '🌿'], 34)
+      if (prev >= 0) {
+        fireEffect(['🎉', '🌸', '✨', '🌿'], 40)
+        setLevelUp({ to: stage.name })
+        setDrawKey((k) => k + 1) // 让树重新"长一遍"
+        window.setTimeout(() => setLevelUp(null), 2800)
+      }
       localStorage.setItem(STAGE_KEY, String(stageIdx))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, stageIdx])
 
   // 进入园地:飘一场落叶欢迎(每次打开一次)+ 离开-回来揭示(隔 ≥1 天温柔提示)
@@ -385,7 +451,15 @@ export default function LoveTree({
                 >
                   <span className={variantClass}>
                     <span className={`inline-block drop-shadow-lg ${bouncing ? 'tree-bounce' : 'tree-sway'}`}>
-                      <TreeGraphic stageIdx={treeStage} season={season} animate width={176} />
+                      <TreeGraphic
+                        key={drawKey}
+                        stageIdx={treeStage}
+                        season={season}
+                        animate
+                        width={176}
+                        fruits={treeStage >= 2 ? memories.map((m) => m.emoji) : undefined}
+                        onFruitClick={(i) => setActiveMemory(memories[i])}
+                      />
                     </span>
                   </span>
                 </button>
@@ -472,6 +546,34 @@ export default function LoveTree({
                 </div>
               </div>
 
+              {/* 双人双色:这棵树一半是你一半是 TA */}
+              {mineContrib != null &&
+                checkins * 2 + misses > 0 &&
+                (() => {
+                  const interact = checkins * 2 + misses
+                  const mineC = Math.min(interact, mineContrib)
+                  const taC = interact - mineC
+                  return (
+                    <>
+                      <p className="mb-2 mt-5 px-1 text-sm font-medium text-gray-500">
+                        {t('🌿 是你俩一起养大的')}
+                      </p>
+                      <div className="rounded-2xl bg-white p-3">
+                        <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
+                          <div style={{ width: `${(mineC / interact) * 100}%`, background: '#60a5fa' }} />
+                          <div style={{ width: `${(taC / interact) * 100}%`, background: '#f9a8d4' }} />
+                        </div>
+                        <div className="mt-2 flex justify-between text-xs">
+                          <span className="font-medium text-sky-500">{t('你 · {n}', { n: mineC })}</span>
+                          <span className="font-medium text-pink-400">
+                            {t('{name} · {n}', { name: partnerName ?? t('TA'), n: taC })}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
+
               {/* 恋爱里程碑徽章墙 */}
               <p className="mb-2 mt-5 px-1 text-sm font-medium text-gray-500">{t('🏅 恋爱里程碑')}</p>
               <div className="grid grid-cols-4 gap-2">
@@ -520,6 +622,48 @@ export default function LoveTree({
                   )
                 })}
               </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* 回忆果实弹窗:点树上的果子打开那段回忆 */}
+      {activeMemory && (
+        <Portal>
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-8"
+            onClick={() => setActiveMemory(null)}
+          >
+            <div
+              className="modal-pop w-full max-w-xs rounded-3xl bg-white p-6 text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-5xl">{activeMemory.emoji}</div>
+              <p className="mt-2 text-xs font-medium text-emerald-600">{activeMemory.kind}</p>
+              <p className="mt-1 whitespace-pre-wrap text-base font-medium text-gray-700">
+                {activeMemory.text}
+              </p>
+              {activeMemory.date && <p className="mt-1 text-xs text-gray-400">{activeMemory.date}</p>}
+              <button
+                type="button"
+                onClick={() => setActiveMemory(null)}
+                className="mt-4 w-full rounded-full bg-emerald-400 py-2.5 text-sm font-medium text-white"
+              >
+                {t('收好这颗回忆')}
+              </button>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* 升级小电影:跨阶段时的全屏庆祝横幅 */}
+      {levelUp && (
+        <Portal>
+          <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center px-8">
+            <div className="modal-pop rounded-3xl bg-white/95 px-7 py-5 text-center shadow-2xl">
+              <p className="text-4xl">🌟</p>
+              <p className="mt-2 text-sm text-emerald-700">{t('小树长成了')}</p>
+              <p className="text-xl font-extrabold text-emerald-600">「{t(levelUp.to)}」</p>
             </div>
           </div>
         </Portal>

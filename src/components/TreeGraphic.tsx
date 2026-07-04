@@ -31,6 +31,10 @@ const FLOWERS: [number, number][] = [
   [86, 88], [112, 86], [100, 100], [74, 108], [126, 106], [96, 78], [118, 100],
   [82, 120], [118, 120], [100, 124], [70, 98], [130, 98], [100, 64], [92, 110],
 ]
+// 回忆果实的挂点(树冠上,与树同坐标系,故会随树摇曳/缩放)
+const FRUIT_ANCHORS: [number, number][] = [
+  [90, 88], [114, 90], [78, 102], [124, 104], [100, 74], [98, 112], [118, 118], [74, 116],
+]
 const SEASONS: Record<Season, { leaf: string; dark: string; blossom: boolean; snow: boolean }> = {
   spring: { leaf: '#86efac', dark: '#4ade80', blossom: true, snow: false },
   summer: { leaf: '#34d399', dark: '#10b981', blossom: false, snow: false },
@@ -52,11 +56,16 @@ export default function TreeGraphic({
   season,
   animate = false,
   width = 190,
+  fruits,
+  onFruitClick,
 }: {
   stageIdx: number
   season: Season
   animate?: boolean
   width?: number
+  /** 回忆果实(emoji 列表);点一颗回调其序号 */
+  fruits?: string[]
+  onFruitClick?: (i: number) => void
 }) {
   const s = SCALE[stageIdx] ?? 1
   const se = SEASONS[season]
@@ -116,6 +125,26 @@ export default function TreeGraphic({
             <circle cx={f[0]} cy={f[1]} r="1.3" fill="#fbbf24" />
           </g>
         ))}
+        {/* 回忆果实:点一颗弹出那段回忆 */}
+        {fruits?.slice(0, FRUIT_ANCHORS.length).map((emoji, i) => {
+          const [ax, ay] = FRUIT_ANCHORS[i]
+          return (
+            <g
+              key={`fruit${i}`}
+              className={popCls}
+              style={{ ...delay(), cursor: 'pointer' }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onFruitClick?.(i)
+              }}
+            >
+              <circle cx={ax} cy={ay} r="8.5" fill="rgba(255,255,255,.45)" />
+              <text x={ax} y={ay} textAnchor="middle" dominantBaseline="central" fontSize="13">
+                {emoji}
+              </text>
+            </g>
+          )
+        })}
       </g>
     </svg>
   )
