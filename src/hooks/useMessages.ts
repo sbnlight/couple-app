@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { compressImage, extFromType } from '../lib/image'
 import { deletePendingMedia, getPendingMedia, putPendingMedia } from '../lib/pendingStore'
@@ -649,9 +649,11 @@ export function useMessages(
     await loadInitial()
   }, [loadInitial])
 
-  // 输出统一形态:服务端消息在前,本地待发(更新)在后
-  const items: ChatItem[] = [
-    ...serverMsgs.map((m) => ({
+  // 输出统一形态:服务端消息在前,本地待发(更新)在后。用 useMemo 稳定引用,
+  // 避免 Chat 里依赖 [items] 的 effect 每次渲染(如打字)都重跑。
+  const items: ChatItem[] = useMemo(
+    () => [
+      ...serverMsgs.map((m) => ({
       key: `s-${m.id}`,
       id: m.id,
       type: m.type,
@@ -679,7 +681,9 @@ export function useMessages(
       bubbleFont: p.bubbleFont,
       voiceDur: p.voiceDur,
     })),
-  ]
+    ],
+    [serverMsgs, pending, userId],
+  )
 
   return {
     items,

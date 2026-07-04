@@ -423,20 +423,25 @@ export default function Chat() {
 
   // 未读新消息:仅 live 模式滚上去看历史时,新消息到达但没贴底 → 记数,底部显示药丸
   const [liveUnread, setLiveUnread] = useState(0)
-  const prevLenRef = useRef(0)
+  // 记「已读到的最大消息 id」;未读 = 比它更新的消息数。用 id 而非 items.length,
+  // 这样「加载更早历史」(在顶部插入、id 更小)不会被误计成未读(修回归)。
+  const lastReadIdRef = useRef(0)
+  const maxItemId = () => items.reduce((m, it) => (it.id !== undefined && it.id > m ? it.id : m), 0)
 
   useLayoutEffect(() => {
     const el = listRef.current
     if (mode === 'live') {
       if (el && stickRef.current) {
         el.scrollTop = el.scrollHeight
+        lastReadIdRef.current = maxItemId()
         setLiveUnread(0)
-      } else if (items.length > prevLenRef.current) {
-        // 滚上去了,新来的消息没被自动滚到 → 累计未读
-        setLiveUnread((n) => n + (items.length - prevLenRef.current))
+      } else {
+        setLiveUnread(
+          items.filter((it) => it.id !== undefined && it.id > lastReadIdRef.current).length,
+        )
       }
     }
-    prevLenRef.current = items.length
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length, loadingInitial, mode, partnerTyping])
 
   const onScroll = () => {
@@ -444,7 +449,10 @@ export default function Chat() {
     if (!el) return
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
     stickRef.current = atBottom
-    if (atBottom) setLiveUnread(0)
+    if (atBottom) {
+      lastReadIdRef.current = maxItemId()
+      setLiveUnread(0)
+    }
   }
 
   // 图片/表情包异步加载完成后,<img> 撑高发生在上面 items 贴底 effect 之后,
@@ -790,6 +798,7 @@ export default function Chat() {
           type="button"
           onClick={() => {
             stickRef.current = true
+            lastReadIdRef.current = maxItemId()
             setLiveUnread(0)
             const el = listRef.current
             if (el) el.scrollTop = el.scrollHeight

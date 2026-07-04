@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { categoryIcon, currencySymbol, CURRENCIES, useExpenses } from '../hooks/useExpenses'
@@ -118,7 +118,7 @@ function Donut({ cats, total, sym }: { cats: [string, number][]; total: number; 
           <span className="text-[9px] leading-tight text-gray-400">{t('本月支出')}</span>
           <span className="text-xs font-bold text-primary-dark">
             {sym}
-            <CountUp value={total} />
+            <CountUp value={total} decimals={2} />
           </span>
         </div>
       </div>
@@ -166,9 +166,11 @@ export default function Ledger() {
   const [editTarget, setEditTarget] = useState<Expense | null>(null)
   const [trend, setTrend] = useState<TrendData | null>(null)
   const [toast, setToast] = useState('')
+  const toastTimerRef = useRef<number | undefined>(undefined)
   const showToast = (msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(''), 2500)
+    window.clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = window.setTimeout(() => setToast(''), 2500)
   }
 
   // 月度预算(小屋级共享,存 feature_flags):budget_cur 货币 + budget_amt 金额

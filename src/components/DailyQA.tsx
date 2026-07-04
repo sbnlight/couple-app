@@ -70,6 +70,17 @@ export default function DailyQA({
   const MAX_IMGS = 9
   const [draft, setDraft] = useState('')
   const [imgs, setImgs] = useState<{ blob: Blob; url: string }[]>([])
+  // 卸载时回收待发配图的预览 object URL,避免选图/换图/关页面的缓慢内存泄漏
+  const imgsRef = useRef(imgs)
+  useEffect(() => {
+    imgsRef.current = imgs
+  }, [imgs])
+  useEffect(
+    () => () => {
+      imgsRef.current.forEach((im) => URL.revokeObjectURL(im.url))
+    },
+    [],
+  )
   // 编辑时保留的原有配图路径(用户可逐张删除);新建时为空
   const [keptPaths, setKeptPaths] = useState<string[]>([])
   const [mine, setMine] = useState<DailyAnswer | null>(null)
@@ -204,6 +215,7 @@ export default function DailyQA({
         if (removed.length > 0) void supabase.storage.from('chat-images').remove(removed)
       }
       setDraft('')
+      imgs.forEach((im) => URL.revokeObjectURL(im.url))
       setImgs([])
       setKeptPaths([])
       setEditing(false)
@@ -340,7 +352,12 @@ export default function DailyQA({
                     />
                     <button
                       type="button"
-                      onClick={() => setImgs((prev) => prev.filter((_, j) => j !== i))}
+                      onClick={() =>
+                        setImgs((prev) => {
+                          if (prev[i]) URL.revokeObjectURL(prev[i].url)
+                          return prev.filter((_, j) => j !== i)
+                        })
+                      }
                       className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs text-white"
                       aria-label="移除这张图"
                     >

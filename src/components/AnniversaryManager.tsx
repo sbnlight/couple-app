@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
-import { daysUntil } from '../lib/time'
+import { daysUntil, recurringUntil } from '../lib/time'
 import { dayTzOf } from './FeatureToggles'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Anniversary, Couple } from '../types/db'
@@ -104,16 +104,8 @@ export default function AnniversaryManager({
     }
   }
 
-  // 年度重复项(生日/周年):算出下一次周年还有几天、届时是第几周年
-  const nextRecurring = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-').map(Number)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    let next = new Date(today.getFullYear(), m - 1, d)
-    if (next.getTime() < today.getTime()) next = new Date(today.getFullYear() + 1, m - 1, d)
-    const days = Math.round((next.getTime() - today.getTime()) / 86_400_000)
-    return { days, years: next.getFullYear() - y }
-  }
+  // 年度重复项(生日/周年):用共用换日时区 + UTC 算术(异地一致、闰日安全)
+  const nextRecurring = (dateStr: string) => recurringUntil(dateStr, dayTzOf(couple))
 
   const fmtDays = (a: Anniversary) => {
     if (a.recurring) {

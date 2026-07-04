@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { compressImage, extFromType } from '../lib/image'
-import { daysUntil, todayInTz } from '../lib/time'
+import { daysUntil, todayInTz, recurringUntil } from '../lib/time'
 import { useAnniversaries } from '../hooks/useAnniversaries'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import Avatar from '../components/Avatar'
@@ -288,7 +288,11 @@ export default function Us() {
   // 补齐此前只有恋爱里程碑当天庆祝、纪念日/见面日却无粒子的不对称
   const specialDayTz = dayTzOf(couple)
   const meetToday = Boolean(couple?.next_meet_date && daysUntil(couple.next_meet_date, specialDayTz) === 0)
-  const annivToday = anniversaries.list.some((a) => daysUntil(a.anniv_date, specialDayTz) === 0)
+  const annivToday = anniversaries.list.some((a) =>
+    a.recurring
+      ? recurringUntil(a.anniv_date, specialDayTz).days === 0
+      : daysUntil(a.anniv_date, specialDayTz) === 0,
+  )
   useEffect(() => {
     if (!meetToday && !annivToday) return
     const key = `special-day-${todayInTz(specialDayTz)}`
@@ -298,9 +302,11 @@ export default function Us() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetToday, annivToday])
 
+  const toastTimerRef = useRef<number | undefined>(undefined)
   const showToast = (msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(''), 2500)
+    window.clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = window.setTimeout(() => setToast(''), 2500)
   }
 
   // ---- 改昵称 / 改小屋名 ---- (幂等 PATCH,弱网可安全重试;刷新 best-effort 不阻塞)
@@ -484,13 +490,7 @@ export default function Us() {
               {anniversaries.list.map((a) => {
                 let label: string
                 if (a.recurring) {
-                  const [yy, mm, dd] = a.anniv_date.split('-').map(Number)
-                  const td = new Date()
-                  td.setHours(0, 0, 0, 0)
-                  let nx = new Date(td.getFullYear(), mm - 1, dd)
-                  if (nx.getTime() < td.getTime()) nx = new Date(td.getFullYear() + 1, mm - 1, dd)
-                  const dd2 = Math.round((nx.getTime() - td.getTime()) / 86_400_000)
-                  const yrs = nx.getFullYear() - yy
+                  const { days: dd2, years: yrs } = recurringUntil(a.anniv_date, dayTzOf(couple))
                   label =
                     dd2 === 0
                       ? t('就是今天 🎉')

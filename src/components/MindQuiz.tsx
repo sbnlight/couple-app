@@ -74,6 +74,7 @@ export default function MindQuiz({
       .select('quiz_date, quiz_id, user_id, choice, note, updated_at')
       .eq('couple_id', coupleId)
       .order('quiz_date', { ascending: false })
+      .limit(730)
     // 弱网超时:保留已加载内容,别清空
     if (error) {
       console.warn('[MindQuiz load]', error)

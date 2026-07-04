@@ -53,6 +53,26 @@ export function daysUntil(dateStr: string, tz?: string | null): number {
   return Math.round((target - today) / 86_400_000)
 }
 
+/**
+ * 循环纪念日:距「下一次」的天数 + 届时满几周年。
+ * 用共用换日时区取「今天」+ Date.UTC 纯日期算术(异地一致、避 DST);
+ * 闰日 2/29 落到非闰年时退到 2/28,不再溢出到 3/1、也不会在平年永不触发。
+ */
+export function recurringUntil(dateStr: string, tz?: string | null): { days: number; years: number } {
+  const [oy, om, od] = dateStr.split('-').map(Number)
+  const [ty, tm, td] = todayInTz(tz ?? null).split('-').map(Number)
+  const todayUTC = Date.UTC(ty, tm - 1, td)
+  const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
+  const occ = (year: number) =>
+    Date.UTC(year, om - 1, om === 2 && od === 29 && !isLeap(year) ? 28 : od)
+  let next = occ(ty)
+  if (next < todayUTC) next = occ(ty + 1)
+  return {
+    days: Math.round((next - todayUTC) / 86_400_000),
+    years: new Date(next).getUTCFullYear() - oy,
+  }
+}
+
 /** 今天的 UTC 日期(YYYY-MM-DD) */
 export function utcToday(): string {
   return new Date().toISOString().slice(0, 10)

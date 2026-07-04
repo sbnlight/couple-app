@@ -4,7 +4,7 @@ import { useAnniversaries } from '../hooks/useAnniversaries'
 import { onLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
 import { isThumbkissOpen, openThumbkiss } from '../lib/thumbkissStore'
-import { daysUntil } from '../lib/time'
+import { daysUntil, todayInTz, recurringUntil } from '../lib/time'
 import { dayTzOf } from './FeatureToggles'
 import { t } from '../lib/i18n'
 
@@ -20,9 +20,11 @@ export default function GlobalLive() {
   const [touchInvite, setTouchInvite] = useState(false)
   const lastInviteRef = useRef(0)
 
+  const toastTimerRef = useRef<number | undefined>(undefined)
   const showToast = (msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(''), 3000)
+    window.clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = window.setTimeout(() => setToast(''), 3000)
   }
 
   // 对方开始实时触碰(且我不在触碰页)→ 弹一个可点提醒,一点就打开触碰页一起碰。
@@ -48,20 +50,22 @@ export default function GlobalLive() {
     })
   }, [partner?.display_name])
 
-  // 纪念日彩蛋:见面日精确匹配;纪念日按"月-日"每年触发
+  // 纪念日彩蛋:用共用换日时区取「今天」;循环纪念日按 recurringUntil(闰日安全)判定;
+  // 键与 Us 的 special-day 统一,避免同一天 GlobalLive + Us 各撒一次花
   useEffect(() => {
     if (anniversaries.length === 0 && !couple?.next_meet_date) return
-    const now = new Date()
-    const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const key = `celebrated-${todayLocal}`
+    const tz = dayTzOf(couple)
+    const today = todayInTz(tz)
+    const key = `special-day-${today}`
     if (sessionStorage.getItem(key)) return
 
     let title: string | null = null
-    if (couple?.next_meet_date && daysUntil(couple.next_meet_date, dayTzOf(couple)) === 0) {
+    if (couple?.next_meet_date && daysUntil(couple.next_meet_date, tz) === 0) {
       title = t('今天就要见面啦 ✈️')
     } else {
-      const md = todayLocal.slice(5)
-      const hit = anniversaries.find((a) => a.anniv_date.slice(5) === md)
+      const hit = anniversaries.find((a) =>
+        a.recurring ? recurringUntil(a.anniv_date, tz).days === 0 : a.anniv_date === today,
+      )
       if (hit) title = t('今天是「{t}」🎉', { t: hit.title })
     }
     if (title) {
