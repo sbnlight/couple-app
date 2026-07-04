@@ -1172,6 +1172,106 @@ html.dark .recv-paper {
   animation: deco-float 4s ease-in-out infinite;
 }
 
+/* ---------- M3:功能绚丽化(计数/输入/倒计时/双城/触碰) ---------- */
+
+/* 恋爱里程碑日:大卡柔和呼吸光晕 */
+@keyframes love-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0);
+  }
+  50% {
+    box-shadow: 0 0 22px 3px rgba(251, 113, 133, 0.45);
+  }
+}
+.love-milestone-glow {
+  animation: love-glow 2.4s ease-in-out infinite;
+}
+
+/* 「正在输入」三点跳动(配合 style 里的 animation-delay 错峰) */
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+/* 倒计时「就是今天」高亮脉冲 */
+@keyframes today-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(244, 114, 182, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 12px 2px rgba(244, 114, 182, 0.55);
+  }
+}
+.today-glow {
+  animation: today-pulse 1.6s ease-in-out infinite;
+}
+
+/* 双城:虚线弧流动 + 飞机沿弧飞(top/left 百分比近似弧线) */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+.city-dash {
+  stroke-dasharray: 3 4;
+  animation: dash-flow 1s linear infinite;
+}
+@keyframes plane-travel {
+  0% {
+    left: 8%;
+    top: 62%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  50% {
+    top: 14%;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 88%;
+    top: 62%;
+    opacity: 0;
+  }
+}
+.city-plane {
+  position: absolute;
+  animation: plane-travel 5s ease-in-out infinite;
+}
+
+/* 触碰:同心涟漪外扩 */
+@keyframes kiss-ripple {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+.kiss-ripple {
+  animation: kiss-ripple 1.8s ease-out infinite;
+}
+
 /* ---------- 爱情树页面:树的呼吸摇曳 + 居中弹窗入场 ---------- */
 @keyframes tree-sway {
   0%,
@@ -1423,6 +1523,12 @@ html.dark .recv-paper {
   .mascot-idle,
   .bubble-confetti::after,
   .bubble-bokeh::after,
+  .love-milestone-glow,
+  .typing-dot,
+  .today-glow,
+  .city-dash,
+  .city-plane,
+  .kiss-ripple,
   .tree-sway,
   .tree-bounce,
   .modal-pop,

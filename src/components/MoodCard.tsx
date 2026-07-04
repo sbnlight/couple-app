@@ -94,7 +94,7 @@ export default function MoodCard({
           className="mt-2 w-full rounded-xl bg-soft px-4 py-3 text-left"
         >
           {current ? (
-            <span className="text-base">{current}</span>
+            <span className="deco-bob inline-block text-base">{current}</span>
           ) : (
             <span className="text-sm text-gray-400">{t('点击设置今天的心情,TA 会看到 →')}</span>
           )}

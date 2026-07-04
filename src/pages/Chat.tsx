@@ -518,7 +518,18 @@ export default function Chat() {
           ❤ {couple?.name ?? '双人小屋'}
         </h1>
         {partnerTyping ? (
-          <p className="text-xs text-primary-dark">{t('对方正在输入…')}</p>
+          <p className="flex items-center justify-center gap-1 text-xs text-primary-dark">
+            {t('对方正在输入')}
+            <span className="ml-0.5 inline-flex items-end gap-0.5">
+              {[0, 0.2, 0.4].map((d) => (
+                <span
+                  key={d}
+                  className="typing-dot inline-block h-1 w-1 rounded-full bg-primary-dark"
+                  style={{ animationDelay: `${d}s` }}
+                />
+              ))}
+            </span>
+          </p>
         ) : partner?.timezone || moodValid(partner) ? (
           <p className="text-xs text-gray-400">
             <PartnerClock tz={partner?.timezone ?? null} />

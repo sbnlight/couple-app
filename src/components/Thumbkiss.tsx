@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { onLive, sendLive } from '../lib/live'
+import { fireEffect } from '../lib/effects'
 import { t } from '../lib/i18n'
 
 /**
@@ -31,6 +32,11 @@ export default function Thumbkiss({ onClose }: { onClose: () => void }) {
   }, [partnerTouch])
 
   const connected = myTouch && partnerTouch
+
+  // 心连上的那一刻:撒一把心形粒子庆祝(两端各自触发)
+  useEffect(() => {
+    if (connected) fireEffect(['💗', '💞', '✨'], 22)
+  }, [connected])
 
   // 双方同时触碰 → 持续心跳震动(可用则震)
   useEffect(() => {
@@ -95,7 +101,16 @@ export default function Thumbkiss({ onClose }: { onClose: () => void }) {
               : 'bg-white shadow-lg'
         }`}
       >
-        <span className={`text-7xl ${connected ? 'animate-pulse' : ''}`}>
+        {/* 连接时:同心涟漪从心口一圈圈荡开 */}
+        {connected &&
+          [0, 0.6, 1.2].map((d) => (
+            <span
+              key={d}
+              className="kiss-ripple pointer-events-none absolute inset-0 rounded-full border-2 border-rose-300"
+              style={{ animationDelay: `${d}s` }}
+            />
+          ))}
+        <span className={`relative z-10 text-7xl ${connected ? 'animate-pulse' : ''}`}>
           {connected ? '💗' : '🤍'}
         </span>
       </button>

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -21,6 +21,8 @@ import TwoCityCard from '../components/TwoCityCard'
 import Thumbkiss from '../components/Thumbkiss'
 import LoveTree from '../components/LoveTree'
 import MindQuiz from '../components/MindQuiz'
+import { CountUp, FloatLayer } from '../components/Fx'
+import { fireEffect } from '../lib/effects'
 import { LANGS, getLang, setLang, t } from '../lib/i18n'
 import {
   FONT_SIZES,
@@ -236,6 +238,16 @@ export default function Us() {
   // 下一个里程碑(用于"再过 N 天就 XXX 天啦")
   const MILESTONES = [100, 200, 365, 520, 700, 1000, 1314, 2000, 3000, 3650, 5000]
   const nextMilestone = MILESTONES.find((m) => m > days) ?? null
+  const isMilestoneDay = hasTogether && MILESTONES.includes(days)
+
+  // 在一起满里程碑那天(如 520/1314/1000 天),进入「我们」页撒一次花庆祝(每天每设备一次)
+  useEffect(() => {
+    if (!isMilestoneDay) return
+    const key = `love-milestone-${days}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+    fireEffect(['🎉', '💕', '✨', '🥳'], 44)
+  }, [isMilestoneDay, days])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -374,16 +386,26 @@ export default function Us() {
           </div>
 
           {hasTogether ? (
-            <div className="mt-4 text-center">
-              <p className="text-xs text-gray-400">{t('我们已经在一起')}</p>
-              <p className="mt-0.5 text-3xl font-bold text-primary-dark">
-                {days.toLocaleString()} <span className="text-base font-normal">{t('天')} ❤️</span>
-              </p>
-              {nextMilestone && (
-                <p className="mt-0.5 text-xs text-gray-400">
-                  {t('再过 {n} 天就 {m} 天啦 🎉', { n: nextMilestone - days, m: nextMilestone })}
+            <div
+              className={`relative mt-4 overflow-hidden rounded-2xl px-4 py-4 text-center ${
+                isMilestoneDay ? 'love-milestone-glow' : ''
+              }`}
+            >
+              {/* 柔和极光底 + 上浮爱心,烘托这个最常看的数字 */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-rose-50 via-pink-50 to-violet-50 opacity-80" />
+              <FloatLayer items={['❤️', '💗', '✨']} count={9} />
+              <div className="relative">
+                <p className="text-xs text-gray-400">{t('我们已经在一起')}</p>
+                <p className="mt-0.5 text-4xl font-bold text-primary-dark">
+                  <CountUp value={days} />{' '}
+                  <span className="text-base font-normal">{t('天')} ❤️</span>
                 </p>
-              )}
+                {nextMilestone && (
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    {t('再过 {n} 天就 {m} 天啦 🎉', { n: nextMilestone - days, m: nextMilestone })}
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <p className="mt-4 text-center text-sm text-gray-400">
@@ -396,7 +418,11 @@ export default function Us() {
             anniversaries.list.length > 0) && (
             <div className="mt-3 flex flex-wrap justify-center gap-2 border-t border-line pt-3">
               {couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0 && (
-                <span className="rounded-full bg-soft px-3 py-1 text-xs text-primary-dark">
+                <span
+                  className={`rounded-full bg-soft px-3 py-1 text-xs text-primary-dark ${
+                    daysUntil(couple.next_meet_date) === 0 ? 'today-glow' : ''
+                  }`}
+                >
                   {t('✈️ 见面')} ·{' '}
                   {daysUntil(couple.next_meet_date) === 0
                     ? t('就是今天!')
@@ -424,10 +450,13 @@ export default function Us() {
                   label =
                     n > 0 ? t('还有 {n} 天', { n }) : n === 0 ? t('就是今天 🎉') : t('第 {n} 天', { n: -n + 1 })
                 }
+                const isToday = label === t('就是今天 🎉')
                 return (
                   <span
                     key={a.id}
-                    className="rounded-full bg-soft px-3 py-1 text-xs text-primary-dark"
+                    className={`rounded-full bg-soft px-3 py-1 text-xs text-primary-dark ${
+                      isToday ? 'today-glow' : ''
+                    }`}
                   >
                     🎀 {a.title} · {label}
                   </span>

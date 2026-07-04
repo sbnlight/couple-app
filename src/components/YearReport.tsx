@@ -4,56 +4,8 @@ import { supabase } from '../lib/supabase'
 import { currencySymbol } from '../hooks/useExpenses'
 import { prevUtcDay } from '../lib/time'
 import { fireEffect } from '../lib/effects'
+import { CountUp, FloatLayer } from './Fx'
 import { t } from '../lib/i18n'
-
-/** 数字从 0 滚动增长(进入该页时触发) */
-function CountUp({ value, run }: { value: number; run: boolean }) {
-  const [n, setN] = useState(0)
-  useEffect(() => {
-    if (!run) return
-    let raf = 0
-    const start = performance.now()
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / 1100)
-      setN(Math.round(value * (1 - Math.pow(1 - p, 3))))
-      if (p < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [run, value])
-  return <>{n}</>
-}
-
-/** 全屏缓缓上浮的装饰(爱心/星星/彩纸等) */
-function FloatLayer({ items }: { items: string[] }) {
-  const drops = Array.from({ length: 12 }, (_, i) => ({
-    key: i,
-    e: items[i % items.length],
-    left: (i * 37 + 11) % 100,
-    dur: 7 + (i % 5),
-    delay: -(i * 1.3),
-    size: 15 + (i % 4) * 7,
-    op: 0.25 + (i % 3) * 0.12,
-  }))
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {drops.map((d) => (
-        <span
-          key={d.key}
-          className="absolute bottom-0"
-          style={{
-            ...({ '--o': d.op } as CSSProperties),
-            left: `${d.left}%`,
-            fontSize: d.size,
-            animation: `year-drift ${d.dur}s linear ${d.delay}s infinite`,
-          }}
-        >
-          {d.e}
-        </span>
-      ))}
-    </div>
-  )
-}
 
 interface Stats {
   days: number

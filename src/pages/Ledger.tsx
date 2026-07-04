@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { categoryIcon, currencySymbol, CURRENCIES, useExpenses } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import ExpenseForm from '../components/ExpenseForm'
+import { CountUp } from '../components/Fx'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Expense } from '../types/db'
 import { t } from '../lib/i18n'
@@ -394,8 +395,7 @@ export default function Ledger() {
                         })()}
                       </p>
                       <p className="mt-1 text-2xl font-bold">
-                        {sym}
-                        {fmtMoney(s.expense)}
+                        <CountUp value={s.expense} decimals={2} prefix={sym} />
                       </p>
                     </div>
                     {s.income > 0 && (
@@ -410,8 +410,8 @@ export default function Ledger() {
                     <div className="mt-3">
                       <div className="h-2.5 overflow-hidden rounded-full bg-gray-200">
                         <div
-                          className={`h-full rounded-full ${
-                            s.expense > budgetAmt ? 'bg-rose-400' : 'bg-emerald-400'
+                          className={`relative h-full overflow-hidden rounded-full bubble-shimmer ${
+                            s.expense > budgetAmt ? 'bg-rose-400 animate-pulse' : 'bg-emerald-400'
                           }`}
                           style={{ width: `${Math.min(100, (s.expense / budgetAmt) * 100)}%` }}
                         />

@@ -52,17 +52,36 @@ function CityCol({ tz, name, mine }: { tz: string; name: string; mine: boolean }
     }
   }, [tz])
 
-  const isDay = hourInTz(tz) >= 6 && hourInTz(tz) < 18
+  const hr = hourInTz(tz)
+  const phase = hr >= 6 && hr < 17 ? 'day' : hr >= 17 && hr < 20 ? 'dusk' : 'night'
+  const scene = phase === 'day' ? '🌇' : phase === 'dusk' ? '🌆' : '🌃'
+  // 按当地时段给场景一抹底色(白天暖蓝 / 黄昏橙粉 / 夜晚靛蓝)
+  const tint =
+    phase === 'day'
+      ? 'from-sky-100 to-white'
+      : phase === 'dusk'
+        ? 'from-orange-100 to-rose-50'
+        : 'from-indigo-100 to-slate-50'
   return (
     <div className="flex flex-1 flex-col items-center gap-0.5">
-      <span className="text-2xl">{isDay ? '🌇' : '🌃'}</span>
+      <span
+        className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-b ${tint} text-2xl`}
+      >
+        {scene}
+      </span>
       <span className="max-w-full truncate text-sm font-medium text-gray-600">
         {name}
         {mine ? t('(你)') : ''}
       </span>
       <span className="text-lg font-semibold tabular-nums text-primary-dark">{time}</span>
       <span className="text-xs text-gray-400">
-        {weather ? `${weather.emoji} ${weather.temp}°` : isDay ? t('白天') : t('夜晚')}
+        {weather
+          ? `${weather.emoji} ${weather.temp}°`
+          : phase === 'day'
+            ? t('白天')
+            : phase === 'dusk'
+              ? t('黄昏')
+              : t('夜晚')}
       </span>
     </div>
   )
@@ -86,11 +105,28 @@ export default function TwoCityCard({
   if (!myCity || !partnerCity) return null
 
   return (
-    <div className="mt-4 rounded-2xl bg-white p-5">
-      <div className="flex items-center gap-2">
+    <div className="relative mt-4 overflow-hidden rounded-2xl bg-white p-5">
+      {/* 两城之间的飞行连线:流动虚线弧 + 沿弧飞的小飞机(异地也心连心) */}
+      <div className="pointer-events-none absolute inset-x-10 top-3 h-10">
+        <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="h-full w-full">
+          <path
+            d="M2 24 Q50 2 98 24"
+            fill="none"
+            stroke="#fbcfe8"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            className="city-dash"
+          />
+          <circle cx="2" cy="24" r="2.2" fill="#fb7185" />
+          <circle cx="98" cy="24" r="2.2" fill="#fb7185" />
+        </svg>
+        <span className="city-plane text-sm">✈️</span>
+      </div>
+
+      <div className="relative flex items-center gap-2">
         <CityCol tz={myTz} name={myCity} mine />
         <div className="flex flex-col items-center px-1 text-center">
-          <span className="text-lg">❤️</span>
+          <span className="bubble-beat inline-block text-lg">❤️</span>
           {km !== null && (
             <span className="whitespace-nowrap text-xs text-gray-400">
               {t('相距 {n} 公里', { n: km.toLocaleString() })}

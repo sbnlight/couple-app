@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { withRetry, friendlyWriteError } from '../lib/net'
+import { fireEffect } from '../lib/effects'
 import type { Wish } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -124,6 +125,8 @@ export default function WishList({
           .eq('id', w.id)
         if (error) throw error
       })
+      // 刚勾选「完成」→ 撒一把星星庆祝(一起实现了一个愿望 🎉)
+      if (!w.done) fireEffect(['🌠', '✨', '🎉'], 16)
       await load()
     } catch (e2) {
       setErr(friendlyWriteError(e2))

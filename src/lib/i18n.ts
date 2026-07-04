@@ -129,6 +129,7 @@ const dict: Record<string, T2> = {
   '已读': ['Read', '既読'],
   '昨天': ['Yesterday', '昨日'],
   '对方正在输入…': ['Typing…', '入力中…'],
+  '对方正在输入': ['Typing', '入力中'],
   '查看更早的消息': ['Earlier messages', '以前のメッセージ'],
   '查看更新的消息': ['Newer messages', '新しいメッセージ'],
   '↓ 回到最新': ['↓ Back to latest', '↓ 最新へ'],

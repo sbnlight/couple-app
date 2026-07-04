@@ -184,7 +184,7 @@ export default function MomentsCard({
             disabled={busy}
             className="rounded-xl bg-soft py-3 text-center active:opacity-70 disabled:opacity-50"
           >
-            <span className="block text-2xl">💭</span>
+            <span className="deco-bob block text-2xl">💭</span>
             <span className="mt-1 block text-sm font-medium text-primary-dark">{t('想 TA')}</span>
           </button>
         )}
