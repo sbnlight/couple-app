@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { withRetry } from '../lib/net'
-import { deviceTimezone } from '../lib/time'
+import { deviceTimezone, LIVE_REFRESH_MS } from '../lib/time'
 import { initLive, teardownLive } from '../lib/live'
 import type { Couple, Profile } from '../types/db'
 
@@ -126,6 +126,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [userId, loadData])
+
+  // 定时刷新「对方档案」(位置/城市/坐标/时区/心情):让顶栏天气、双城卡片的
+  // 当地时间与「相距 N 公里」在对方更新位置后约 1 分钟内自动同步。
+  // 刻意只重拉对方这一行、且只在前台刷:
+  //  · 不动 couple / 自己,避免每分钟重建实时通道(initLive 依赖 couple 对象身份);
+  //  · document.hidden(退到后台)时跳过,省电省流量。
+  const partnerId =
+    couple?.member_b && userId
+      ? couple.member_a === userId
+        ? couple.member_b
+        : couple.member_a
+      : null
+  useEffect(() => {
+    if (!partnerId) return
+    const pull = async () => {
+      if (document.hidden) return
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', partnerId)
+        .maybeSingle()
+      if (data) setPartner(data as Profile)
+    }
+    const timer = setInterval(() => {
+      void pull()
+    }, LIVE_REFRESH_MS)
+    return () => clearInterval(timer)
+  }, [partnerId])
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()

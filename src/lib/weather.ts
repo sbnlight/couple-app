@@ -1,6 +1,6 @@
 /**
  * 对方城市天气:由时区映射到代表城市坐标,查 open-meteo(免费、无需密钥)。
- * 结果缓存 30 分钟;映射不到或请求失败时返回 null(界面不显示)。
+ * 结果缓存 30 秒;映射不到或请求失败时返回 null(界面不显示)。
  */
 
 /** 8s 超时信号:新环境用 AbortSignal.timeout;老 iOS Safari 缺该 API 时用 AbortController 兜底 */
@@ -152,16 +152,19 @@ function codeEmoji(code: number): string {
   return '⛈'
 }
 
+// 天气缓存时长(秒级):配合前台每分钟自动刷新,让「对方天气」接近实时;同时对同一
+// 坐标的密集调用去重,避免无谓请求。天气源本身约每小时更新,30 秒缓存已绰绰有余。
+const CACHE_MS = 30_000
 const cache = new Map<string, { at: number; value: { emoji: string; temp: number } | null }>()
 
-/** 按精确经纬度取当前天气(open-meteo,免费无密钥);缓存 30 分钟 */
+/** 按精确经纬度取当前天气(open-meteo,免费无密钥);缓存 30 秒 */
 export async function weatherForCoords(
   lat: number,
   lng: number,
 ): Promise<{ emoji: string; temp: number } | null> {
   const key = `${lat.toFixed(2)},${lng.toFixed(2)}`
   const hit = cache.get(key)
-  if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit.value
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.value
   try {
     const res = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`,
@@ -207,11 +210,11 @@ export interface WeatherDetail {
 
 const detailCache = new Map<string, { at: number; value: WeatherDetail | null }>()
 
-/** 详细天气(当前 + 未来 5 天最高/最低/天气);缓存 30 分钟。给"点开看详情"用。 */
+/** 详细天气(当前 + 未来 5 天最高/最低/天气);缓存 30 秒。给"点开看详情"用。 */
 export async function weatherDetailForCoords(lat: number, lng: number): Promise<WeatherDetail | null> {
   const key = `${lat.toFixed(2)},${lng.toFixed(2)}`
   const hit = detailCache.get(key)
-  if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit.value
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.value
   try {
     const res = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5&timezone=auto`,

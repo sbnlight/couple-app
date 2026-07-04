@@ -21,6 +21,7 @@ import { getSignedUrl } from '../lib/storage'
 import { onLive, onPartnerInChat, sendLive, trackInChat } from '../lib/live'
 import { fireEffect, keywordEffect } from '../lib/effects'
 import { weatherForCoords, weatherForTz } from '../lib/weather'
+import { LIVE_REFRESH_MS } from '../lib/time'
 import MessageBubble from '../components/MessageBubble'
 import ChatPanel from '../components/ChatPanel'
 import ChatSearch from '../components/ChatSearch'
@@ -204,7 +205,8 @@ export default function Chat() {
   const partnerTyping = typingUntil > Date.now()
 
   // 对方城市天气:优先精确坐标(profiles.lat/lng),否则按时区。
-  // 自动刷新:每 30 分钟一次 + 回到前台时一次,不用手动操作。(open-meteo 结果本身缓存 30 分钟)
+  // 自动刷新:前台每 LIVE_REFRESH_MS(约 1 分钟)一次 + 回到前台时一次,不用手动操作;
+  // 后台(document.hidden)不刷,省电省流量。(天气数据源本身约每小时才更新一次)
   useEffect(() => {
     let cancelled = false
     const fetchW = () => {
@@ -217,7 +219,9 @@ export default function Chat() {
       })
     }
     fetchW()
-    const timer = setInterval(fetchW, 30 * 60 * 1000)
+    const timer = setInterval(() => {
+      if (!document.hidden) fetchW()
+    }, LIVE_REFRESH_MS)
     const onVisible = () => {
       if (!document.hidden) fetchW()
     }

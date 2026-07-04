@@ -1,5 +1,13 @@
 /** 时间相关小工具:异地时区显示与日期计算 */
 
+/**
+ * 「对方近况」前台自动刷新节奏:对方的天气、城市/坐标、时区、心情,以及双城卡片里
+ * 由坐标算出的「相距 N 公里」,都按这个间隔自动同步。想改快/改慢只动这一个值。
+ * 说明:天气数据源(open-meteo)本身约每小时才更新一次,刷得再勤多半是同一读数;
+ * 城市/距离只有对方手动改了位置才会变——这里保证改动后约 1 分钟内两边就对上。
+ */
+export const LIVE_REFRESH_MS = 60 * 1000
+
 /** 某时区的当前时刻;tz 无效或为空返回 null */
 export function timeInZone(tz: string | null): { hm: string; night: boolean } | null {
   if (!tz) return null
