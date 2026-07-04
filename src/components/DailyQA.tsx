@@ -128,7 +128,8 @@ export default function DailyQA({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const content = draft.trim()
-    if ((!content && imgs.length === 0) || busy) return
+    // 编辑时"只保留原图、清空文字"也算有内容(否则按钮点了没反应)
+    if ((!content && imgs.length === 0 && keptPaths.length === 0) || busy) return
     setBusy(true)
     setErr('')
     try {
@@ -145,11 +146,6 @@ export default function DailyQA({
       const keep = editing ? keptPaths : []
       const finalPaths = [...keep, ...uploaded]
       const imagePaths: string[] | null = finalPaths.length > 0 ? finalPaths : null
-      // 孤儿清理:编辑时被删掉的原图从 Storage 移除,避免占用免费额度
-      if (editing && mine?.image_paths) {
-        const removed = mine.image_paths.filter((p) => !keep.includes(p))
-        if (removed.length > 0) void supabase.storage.from('chat-images').remove(removed)
-      }
 
       // 只对「写库」这一步做弱网重试(图片已在上面传好,不会重复上传)
       if (mine && editing) {
@@ -172,6 +168,11 @@ export default function DailyQA({
           // 唯一约束(couple_id,user_id,question_date):重发命中即视为已提交成功
           if (error && !isUniqueViolation(error)) throw error
         })
+      }
+      // 孤儿清理放在写库成功之后:否则写库失败却已删原图,答案会残留坏图
+      if (editing && mine?.image_paths) {
+        const removed = mine.image_paths.filter((p) => !keep.includes(p))
+        if (removed.length > 0) void supabase.storage.from('chat-images').remove(removed)
       }
       setDraft('')
       setImgs([])

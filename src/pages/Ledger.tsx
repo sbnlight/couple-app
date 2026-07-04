@@ -326,7 +326,12 @@ export default function Ledger() {
       // 编辑时若把日期改到别的月份,当前月列表里这笔会消失,给出可见提示避免困惑
       const movedTo = await update(editTarget.id, input)
       if (movedTo) showToast(t('已移到 {m} 月', { m: Number(movedTo.slice(5, 7)) }))
-    } else await add(input)
+    } else {
+      await add(input)
+      // 在"看往月"时记一笔,默认日期是今天 → 存到了别的月份;不提示会让人以为没存上而重记
+      const savedMonth = input.spent_at.slice(0, 7)
+      if (savedMonth !== month) showToast(t('已存到 {m} 月', { m: Number(savedMonth.slice(5, 7)) }))
+    }
   }
 
   const nameOf = (payerId: string) =>

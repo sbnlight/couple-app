@@ -148,7 +148,8 @@ export default function YearReport({
         missTheirs: missTheirsRes.count ?? 0,
         streakMine: maxStreak(mineDays),
         streakTheirs: maxStreak(theirDays),
-        checkinsTotal: checkins.length,
+        // 两人各一行/天,按去重后的"日期"数才是真实打卡天数(否则约 2×)
+        checkinsTotal: new Set(checkins.map((c) => c.day)).size,
         expense,
         income,
         expenseCount,

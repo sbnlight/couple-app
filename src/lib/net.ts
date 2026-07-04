@@ -38,6 +38,16 @@ export function isUniqueViolation(err: unknown): boolean {
 }
 
 /**
+ * 「列不存在」错误:PostgREST 的 PGRST204(schema 缓存里找不到列)或 Postgres 42703。
+ * 用途:某个可选列所在的迁移还没在生产库跑时,调用方可去掉该列的键重发,
+ * 让核心写入(发消息/记账)仍然成功,而不是整个失败。
+ */
+export function isMissingColumn(err: unknown): boolean {
+  const code = (err as { code?: string })?.code
+  return code === 'PGRST204' || code === '42703'
+}
+
+/**
  * 对写入做指数退避重试:**只重试传输类错误**,真报错立即上抛(快速失败,不空等)。
  * 约定:fn 内部对 supabase 结果自行 `if (error) throw error`,把「返回 error」变成「抛错」,
  * 这样这里才能判定要不要重试。

@@ -123,13 +123,12 @@ export default function MomentsCard({
     try {
       const trimmed = note?.trim() || null
       const em = emoji || '💭'
-      // 弱网重试(只重传输错误);列缺失/RLS 等真报错会立即抛出,不再被当成「网不好」
-      await withRetry(async () => {
-        const { error } = await supabase
-          .from('misses')
-          .insert({ couple_id: coupleId, user_id: userId, emoji: em, note: trimmed })
-        if (error) throw error
-      })
+      // misses 无幂等键,单次插入(不重试)——避免跨太平洋"已提交但超时→重试"重复计数;
+      // 真报错(列缺失/RLS)仍会抛出并如实提示,而非一律「网不好」
+      const { error } = await supabase
+        .from('misses')
+        .insert({ couple_id: coupleId, user_id: userId, emoji: em, note: trimmed })
+      if (error) throw error
       setMissMine((n) => n + 1)
       // 对方如果正开着 App,立刻收到想念卡片(带表情 + 悄悄话)。fire-and-forget,不影响成功
       sendLive('miss', { emoji: em, note: trimmed ?? '' })

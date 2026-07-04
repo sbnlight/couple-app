@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { withRetry, isUniqueViolation } from '../lib/net'
+import { withRetry, isUniqueViolation, isMissingColumn } from '../lib/net'
 import type { Expense } from '../types/db'
 
 /** 支出分类(与 CLAUDE.md 一致) */
@@ -116,7 +116,7 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
       // 弱网重试:一笔插入可能「已提交但响应超 10s 被中止」,重试/重发命中同一 client_id
       // 会被唯一约束拦下,这里把唯一冲突当作「已记成功」,杜绝重复账目。
       await withRetry(async () => {
-        const { error: err } = await supabase.from('expenses').insert({
+        const full: Record<string, unknown> = {
           couple_id: coupleId,
           payer_id: userId,
           amount: input.amount,
@@ -127,7 +127,14 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
           kind: input.kind,
           scope: input.scope,
           client_id: input.client_id ?? null,
-        })
+        }
+        let { error: err } = await supabase.from('expenses').insert(full)
+        if (err && isMissingColumn(err)) {
+          // 迁移 0017(client_id)未跑:去掉幂等键重发,保证记账仍能保存(暂失去去重)
+          const noCid = { ...full }
+          delete noCid.client_id
+          ;({ error: err } = await supabase.from('expenses').insert(noCid))
+        }
         if (err && !isUniqueViolation(err)) throw err
       })
       await load()

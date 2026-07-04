@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { compressImage, extFromType } from '../lib/image'
 import { deletePendingMedia, getPendingMedia, putPendingMedia } from '../lib/pendingStore'
 import { clearSignedUrl } from '../lib/storage'
+import { isMissingColumn } from '../lib/net'
 import type { Message, MessageType } from '../types/db'
 
 const PAGE_SIZE = 50
@@ -375,23 +376,27 @@ export function useMessages(
             .maybeSingle()
           let row = existing as Message | null
           if (!row) {
-            const { data, error } = await supabase
-              .from('messages')
-              .insert({
-                couple_id: coupleId,
-                sender_id: userId,
-                type: msg.type,
-                content,
-                client_id: msg.localId,
-                reply_to: msg.replyTo ?? null,
-                reply_preview: msg.replyPreview ?? null,
-                bubble_id: msg.bubbleId ?? null,
-                bubble_font: msg.bubbleFont ?? null,
-              })
-              .select()
-              .single()
-            if (error) throw error
-            row = data as Message
+            const full: Record<string, unknown> = {
+              couple_id: coupleId,
+              sender_id: userId,
+              type: msg.type,
+              content,
+              client_id: msg.localId,
+              reply_to: msg.replyTo ?? null,
+              reply_preview: msg.replyPreview ?? null,
+              bubble_id: msg.bubbleId ?? null,
+              bubble_font: msg.bubbleFont ?? null,
+            }
+            let res = await supabase.from('messages').insert(full).select().single()
+            if (res.error && isMissingColumn(res.error)) {
+              // 迁移 0018(气泡列)未跑:去掉气泡列重发,保证消息仍能发出(气泡回退按当前渲染)
+              const noBubble = { ...full }
+              delete noBubble.bubble_id
+              delete noBubble.bubble_font
+              res = await supabase.from('messages').insert(noBubble).select().single()
+            }
+            if (res.error) throw res.error
+            row = res.data as Message
           }
           mergeServer([row]) // 同时会把这条从待发队列移除
           return

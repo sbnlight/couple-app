@@ -61,6 +61,8 @@ export default function LoveTree({
   const [checkins, setCheckins] = useState(0)
   const [misses, setMisses] = useState(0)
   const [loading, setLoading] = useState(true)
+  // 是否已成功拿到真实计数:未成功则不据此判定"升级"(避免弱网清零→再成功时误庆祝)
+  const [loadOk, setLoadOk] = useState(false)
   const [open, setOpen] = useState(false)
   const [talk, setTalk] = useState('')
   const [bouncing, setBouncing] = useState(false)
@@ -72,8 +74,15 @@ export default function LoveTree({
       supabase.from('checkins').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId),
       supabase.from('misses').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId),
     ])
+    // 弱网查询失败:保留上次计数(不清零成 0,免得树忽然缩小);也不标记为可靠数据
+    if (c.error || m.error) {
+      console.warn('[LoveTree loadCounts]', c.error ?? m.error)
+      setLoading(false)
+      return
+    }
     setCheckins(c.count ?? 0)
     setMisses(m.count ?? 0)
+    setLoadOk(true)
     setLoading(false)
   }
 
@@ -102,9 +111,9 @@ export default function LoveTree({
     ? Math.min(100, Math.round(((points - stage.min) / (next.min - stage.min)) * 100))
     : 100
 
-  // 升级撒花:本机记录上次阶段,长大到新阶段时庆祝一次
+  // 升级撒花:本机记录上次阶段,长大到新阶段时庆祝一次(必须是可靠数据,否则弱网清零会误判)
   useEffect(() => {
-    if (loading) return
+    if (loading || !loadOk) return
     const prev = Number(localStorage.getItem(STAGE_KEY) ?? '-1')
     if (stageIdx > prev) {
       if (prev >= 0) fireEffect(['🎉', '🌸', '✨', '🌿'], 34)

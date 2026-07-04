@@ -3,6 +3,14 @@
  * 结果缓存 30 分钟;映射不到或请求失败时返回 null(界面不显示)。
  */
 
+/** 8s 超时信号:新环境用 AbortSignal.timeout;老 iOS Safari 缺该 API 时用 AbortController 兜底 */
+function timeoutSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms)
+  const c = new AbortController()
+  setTimeout(() => c.abort(), ms)
+  return c.signal
+}
+
 const TZ_COORDS: Record<string, [number, number]> = {
   'Asia/Shanghai': [31.23, 121.47],
   'Asia/Chongqing': [29.56, 106.55],
@@ -125,7 +133,7 @@ export async function weatherForCoords(
   try {
     const res = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`,
-      { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined },
+      { signal: timeoutSignal(8000) },
     )
     const json = (await res.json()) as {
       current?: { temperature_2m?: number; weather_code?: number }
@@ -158,7 +166,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   try {
     const res = await fetch(
       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`,
-      { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined },
+      { signal: timeoutSignal(8000) },
     )
     const j = (await res.json()) as {
       city?: string
@@ -186,7 +194,7 @@ export async function searchCity(name: string): Promise<CityHit[]> {
   try {
     const res = await fetch(
       `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=zh&format=json`,
-      { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined },
+      { signal: timeoutSignal(8000) },
     )
     const j = (await res.json()) as {
       results?: {
