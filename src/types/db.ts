@@ -96,6 +96,10 @@ export interface Message {
   content: string
   /** 客户端生成的幂等键,用于发送重试时去重 */
   client_id: string | null
+  /** 发送时冻结的气泡样式/字体 id(历史消息保留当时的气泡,改气泡不影响旧消息);
+   *  旧消息为 null → 回退按发送者当前选择渲染。两端一致(存服务端)。 */
+  bubble_id: string | null
+  bubble_font: string | null
   /** 已撤回(内容已被清空) */
   recalled: boolean
   /** 引用回复:被引用消息 id + 预览文本 */

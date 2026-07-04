@@ -12,9 +12,12 @@ import {
   getBubbleFont,
   getBubbleStyle,
   getChatBgToken,
+  getMsgGap,
+  MSG_GAPS,
   saveBubbleFont,
   saveBubbleStyle,
   saveChatBgToken,
+  saveMsgGap,
 } from '../lib/prefs'
 import { t } from '../lib/i18n'
 import { renderBubbleArt, renderDecos } from './MessageBubble'
@@ -64,6 +67,7 @@ export default function ChatAppearance({
   const [fontId, setFontId] = useState(() => getBubbleFont().id)
   const [bubbleQuery, setBubbleQuery] = useState('')
   const [bgToken, setBgToken] = useState(getChatBgToken)
+  const [gap, setGap] = useState(getMsgGap)
   const [customThumb, setCustomThumb] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -354,9 +358,35 @@ export default function ChatAppearance({
               <span className="text-gray-300">›</span>
             </span>
           </button>
+          {/* 消息间距:本机偏好,3 档内联切换 */}
+          <div className="px-5 py-3.5">
+            <div className="mb-2 flex items-center justify-between">
+              <span>{t('↕ 消息间距')}</span>
+            </div>
+            <div className="flex gap-2">
+              {MSG_GAPS.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => {
+                    saveMsgGap(g.id)
+                    setGap(g.id)
+                    onChanged()
+                  }}
+                  className={`flex-1 rounded-lg py-2 text-sm ${
+                    gap === g.id
+                      ? 'bg-soft font-medium text-primary-dark ring-1 ring-primary'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {t(g.label)}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <p className="px-5 pt-2 text-xs text-gray-300">
-          {t('气泡和字体两人共享(对方能看到);聊天背景只对这台设备生效')}
+          {t('气泡和字体两人共享(对方能看到);聊天背景与消息间距只对这台设备生效')}
         </p>
         <button
           type="button"

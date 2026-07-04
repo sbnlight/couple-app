@@ -11,6 +11,8 @@ import {
   getBubbleFont,
   getBubbleStyle,
   getChatBgToken,
+  getMsgGap,
+  msgGapClasses,
   rawBubbleId,
   rawFontId,
 } from '../lib/prefs'
@@ -52,6 +54,8 @@ export default function Chat() {
   const { couple, session, partner, profile, refresh } = useAuth()
   // 本页在 RequireCouple 守卫内,couple/session 必然存在
   const userId = session!.user.id
+  // 发送时冻结当前气泡/字体到消息:此 ref 每次渲染更新为我当前的有效气泡(见下方 myBubble)
+  const senderBubbleRef = useRef<{ id?: string; font?: string }>({})
   const {
     items,
     loadingInitial,
@@ -72,7 +76,7 @@ export default function Chat() {
     jumpTo,
     loadNewer,
     backToLatest,
-  } = useMessages(couple!.id, userId)
+  } = useMessages(couple!.id, userId, senderBubbleRef)
 
   const [draft, setDraft] = useState('')
   const [viewer, setViewer] = useState<string | null>(null)
@@ -104,12 +108,16 @@ export default function Chat() {
   const [bubble, setBubble] = useState(getBubbleStyle)
   const [bubbleFont, setBubbleFont] = useState(getBubbleFont)
   const [bgToken, setBgToken] = useState(getChatBgToken)
+  const [msgGap, setMsgGap] = useState(getMsgGap)
+  const gap = msgGapClasses(msgGap)
 
   // 气泡/字体共享:优先用各自 profile 上的选择;profile 还没有(未迁移/未选)则兜底
   const myBubble = profile?.bubble_id ? bubbleById(profile.bubble_id) : bubble
   const myFont = profile?.bubble_font ? fontById(profile.bubble_font) : bubbleFont
   const partnerBubble = bubbleById(partner?.bubble_id)
   const partnerFont = fontById(partner?.bubble_font)
+  // 每次渲染把"我当前的有效气泡/字体"写进 ref,供发送时冻结到消息
+  senderBubbleRef.current = { id: myBubble.id, font: myFont.id }
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null)
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -645,7 +653,7 @@ export default function Chat() {
                   key={item.key}
                   id={item.id !== undefined ? `msg-${item.id}` : undefined}
                   className={`rounded-2xl ${mineMsg ? 'msg-in-me' : 'msg-in-you'} ${
-                    groupedWithNext ? 'mb-0.5' : 'mb-3'
+                    groupedWithNext ? gap.grouped : gap.group
                   } ${highlightId !== null && item.id === highlightId ? 'msg-highlight' : ''}`}
                 >
                   {showDivider && (
@@ -656,8 +664,12 @@ export default function Chat() {
                   <MessageBubble
                     item={item}
                     mine={mineMsg}
-                    bubble={mineMsg ? myBubble : partnerBubble}
-                    font={mineMsg ? myFont : partnerFont}
+                    bubble={
+                      item.bubbleId ? bubbleById(item.bubbleId) : mineMsg ? myBubble : partnerBubble
+                    }
+                    font={
+                      item.bubbleFont ? fontById(item.bubbleFont) : mineMsg ? myFont : partnerFont
+                    }
                     groupPos={groupPos}
                     readLabel={
                       item.key === myLastKey &&
@@ -843,6 +855,7 @@ export default function Chat() {
             setBubble(getBubbleStyle())
             setBubbleFont(getBubbleFont())
             setBgToken(getChatBgToken())
+            setMsgGap(getMsgGap())
             void refresh() // 同步 profile 上的气泡/字体(共享)
           }}
           onClose={() => setAppearanceOpen(false)}

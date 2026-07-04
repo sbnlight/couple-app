@@ -13,6 +13,33 @@ export const FONT_SIZES: { id: FontSize; label: string; pct: string }[] = [
   { id: 'xl', label: '特大', pct: '125%' },
 ]
 
+/* ---------- 聊天消息间距(本机偏好) ---------- */
+export type MsgGap = 'sm' | 'md' | 'lg'
+
+/** 每档给出:同组相邻消息的间距 + 不同组之间的间距(Tailwind mb-* 类) */
+export const MSG_GAPS: { id: MsgGap; label: string; grouped: string; group: string }[] = [
+  { id: 'sm', label: '紧凑', grouped: 'mb-0.5', group: 'mb-3' },
+  { id: 'md', label: '标准', grouped: 'mb-1.5', group: 'mb-4' },
+  { id: 'lg', label: '宽松', grouped: 'mb-2.5', group: 'mb-6' },
+]
+
+const MSG_GAP_KEY = 'pref-msg-gap'
+
+export function getMsgGap(): MsgGap {
+  const v = localStorage.getItem(MSG_GAP_KEY)
+  return MSG_GAPS.some((g) => g.id === v) ? (v as MsgGap) : 'md'
+}
+
+export function saveMsgGap(id: MsgGap) {
+  localStorage.setItem(MSG_GAP_KEY, id)
+}
+
+/** 取当前间距档对应的两个 mb 类 */
+export function msgGapClasses(id: MsgGap): { grouped: string; group: string } {
+  const g = MSG_GAPS.find((x) => x.id === id) ?? MSG_GAPS[1]
+  return { grouped: g.grouped, group: g.group }
+}
+
 export type ThemeId = 'rose' | 'blue' | 'green' | 'purple'
 
 /** 预设主题;具体色值在 index.css 的 CSS 变量里定义 */

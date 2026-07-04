@@ -28,6 +28,9 @@ export interface ChatItem {
   replyPreview?: string | null
   /** 引用回复指向的消息 id(用于判断被引用消息是否已被撤回) */
   replyTo?: number | null
+  /** 发送时冻结的气泡/字体 id(为空则回退按发送者当前渲染) */
+  bubbleId?: string | null
+  bubbleFont?: string | null
 }
 
 /** 本地待发队列里的一条 */
@@ -47,6 +50,9 @@ interface PendingMsg {
   /** 引用回复 */
   replyTo?: number
   replyPreview?: string
+  /** 发送时冻结的气泡/字体 id */
+  bubbleId?: string
+  bubbleFont?: string
 }
 
 const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
@@ -58,13 +64,15 @@ const pendingKey = (coupleId: string) => `pending-msgs-${coupleId}`
 function savePending(coupleId: string, list: PendingMsg[]) {
   const texts = list
     .filter((p) => p.type !== 'image' && p.type !== 'voice')
-    .map(({ localId, type, content, createdAt, replyTo, replyPreview }) => ({
+    .map(({ localId, type, content, createdAt, replyTo, replyPreview, bubbleId, bubbleFont }) => ({
       localId,
       type,
       content,
       createdAt,
       replyTo,
       replyPreview,
+      bubbleId,
+      bubbleFont,
     }))
   try {
     localStorage.setItem(pendingKey(coupleId), JSON.stringify(texts))
@@ -90,7 +98,12 @@ function loadPending(coupleId: string): PendingMsg[] {
  * - 重连/回前台/网络恢复时按本地最大 id 增量补拉
  * - 发送走乐观更新 + 自动指数退避重试;重试前先按 client_id 查重,绝不产生重复消息
  */
-export function useMessages(coupleId: string, userId: string) {
+export function useMessages(
+  coupleId: string,
+  userId: string,
+  /** 发送者"当前气泡/字体 id"的 ref(由 Chat 每次渲染更新);发送时冻结进消息 */
+  bubbleRef?: { current: { id?: string; font?: string } },
+) {
   const [serverMsgs, setServerMsgs] = useState<Message[]>([])
   const [pending, setPending] = useState<PendingMsg[]>(() => loadPending(coupleId))
   const [loadingInitial, setLoadingInitial] = useState(true)
@@ -372,6 +385,8 @@ export function useMessages(coupleId: string, userId: string) {
                 client_id: msg.localId,
                 reply_to: msg.replyTo ?? null,
                 reply_preview: msg.replyPreview ?? null,
+                bubble_id: msg.bubbleId ?? null,
+                bubble_font: msg.bubbleFont ?? null,
               })
               .select()
               .single()
@@ -409,6 +424,8 @@ export function useMessages(coupleId: string, userId: string) {
         status: 'sending',
         replyTo: reply?.id,
         replyPreview: reply?.preview,
+        bubbleId: bubbleRef?.current.id,
+        bubbleFont: bubbleRef?.current.font,
       }
       setPending((prev) => {
         const next = [...prev, p]
@@ -432,6 +449,8 @@ export function useMessages(coupleId: string, userId: string) {
         status: 'sending',
         blob,
         previewUrl: URL.createObjectURL(blob),
+        bubbleId: bubbleRef?.current.id,
+        bubbleFont: bubbleRef?.current.font,
       }
       setPending((prev) => [...prev, p])
       // 落 IndexedDB:App 被杀/刷新后仍可恢复重发,不静默丢失
@@ -462,6 +481,8 @@ export function useMessages(coupleId: string, userId: string) {
         voiceDur: Math.max(1, Math.round(durationSec)),
         voiceExt: ext,
         voiceMime: mime,
+        bubbleId: bubbleRef?.current.id,
+        bubbleFont: bubbleRef?.current.font,
       }
       setPending((prev) => [...prev, p])
       void putPendingMedia({
@@ -624,6 +645,8 @@ export function useMessages(coupleId: string, userId: string) {
       recalled: m.recalled,
       replyPreview: m.reply_preview,
       replyTo: m.reply_to,
+      bubbleId: m.bubble_id,
+      bubbleFont: m.bubble_font,
     })),
     ...pending.map((p) => ({
       key: p.localId,
@@ -635,6 +658,8 @@ export function useMessages(coupleId: string, userId: string) {
       previewUrl: p.previewUrl,
       replyPreview: p.replyPreview,
       replyTo: p.replyTo,
+      bubbleId: p.bubbleId,
+      bubbleFont: p.bubbleFont,
     })),
   ]
 
