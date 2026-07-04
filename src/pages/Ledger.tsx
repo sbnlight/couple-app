@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { categoryIcon, currencySymbol, CURRENCIES, useExpenses } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import ExpenseForm from '../components/ExpenseForm'
-import { CountUp } from '../components/Fx'
+import { CountUp, FloatLayer } from '../components/Fx'
+import { fireEffect } from '../lib/effects'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Expense } from '../types/db'
 import { t } from '../lib/i18n'
@@ -75,7 +76,7 @@ function TrendChart({ yms, series }: TrendData) {
 const DONUT_COLORS = ['var(--c-primary)', '#f59e0b', '#60a5fa', '#34d399', '#a78bfa', '#94a3b8']
 
 /** 分类占比环形图(纯 SVG) */
-function Donut({ cats, total }: { cats: [string, number][]; total: number }) {
+function Donut({ cats, total, sym }: { cats: [string, number][]; total: number; sym: string }) {
   // 挂载后把每段从 0 长到目标弧长(尊重"减弱动态":直接长好)
   const [grown, setGrown] = useState(
     () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
@@ -90,7 +91,8 @@ function Donut({ cats, total }: { cats: [string, number][]; total: number }) {
   let acc = 0
   return (
     <div className="flex items-center gap-4">
-      <svg viewBox="0 0 100 100" className="h-24 w-24 shrink-0 -rotate-90">
+      <div className="relative h-24 w-24 shrink-0">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
         {cats.map(([cat, amt], i) => {
           const frac = amt / total
           const seg = (
@@ -110,7 +112,16 @@ function Donut({ cats, total }: { cats: [string, number][]; total: number }) {
           acc += frac
           return seg
         })}
-      </svg>
+        </svg>
+        {/* 环中心:本月支出总额,数字滚动 */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[9px] leading-tight text-gray-400">{t('本月支出')}</span>
+          <span className="text-xs font-bold text-primary-dark">
+            {sym}
+            <CountUp value={total} />
+          </span>
+        </div>
+      </div>
       <div className="min-w-0 flex-1 space-y-1">
         {cats.slice(0, 6).map(([cat, amt], i) => (
           <p key={cat} className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -348,9 +359,11 @@ export default function Ledger() {
       if (movedTo) showToast(t('已移到 {m} 月', { m: Number(movedTo.slice(5, 7)) }))
     } else {
       await add(input)
-      // 在"看往月"时记一笔,默认日期是今天 → 存到了别的月份;不提示会让人以为没存上而重记
+      // 记一笔成功:撒一把硬币 + 即时提示(最高频操作,以前同月记完零反馈)
+      fireEffect(input.kind === 'income' ? ['💵', '🤑', '✨'] : ['💰', '🪙', '✨'], 16)
       const savedMonth = input.spent_at.slice(0, 7)
       if (savedMonth !== month) showToast(t('已存到 {m} 月', { m: Number(savedMonth.slice(5, 7)) }))
+      else showToast(t('已记一笔 {a}', { a: `${currencySymbol(input.currency)}${fmtMoney(input.amount)}` }))
     }
   }
 
@@ -480,7 +493,7 @@ export default function Ledger() {
                       {/* 双方支出对比条 */}
                       <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-gray-200">
                         <div
-                          className="bg-primary"
+                          className="bg-primary transition-[width] duration-700 ease-out"
                           style={{ width: `${(s.mineExpense / s.expense) * 100}%` }}
                         />
                       </div>
@@ -520,7 +533,7 @@ export default function Ledger() {
                           const meName = profile?.display_name ?? t('我')
                           const taName = partner?.display_name ?? t('TA')
                           return (
-                            <p className="mt-1.5 rounded-lg bg-soft px-2.5 py-1.5 text-xs text-primary-dark">
+                            <p className="mt-1.5 rounded-lg bg-gradient-to-r from-amber-50 to-rose-50 px-2.5 py-1.5 text-xs font-medium text-primary-dark ring-1 ring-primary/10">
                               {net > 0
                                 ? t('🤝 AA 结算:{who} 该补给你 {amt}', {
                                     who: taName,
@@ -549,7 +562,7 @@ export default function Ledger() {
                             </span>
                             <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
                               <div
-                                className="h-full rounded-full bg-primary opacity-70"
+                                className="h-full rounded-full bg-primary opacity-70 transition-[width] duration-700 ease-out"
                                 style={{ width: `${(amt / s.expense) * 100}%` }}
                               />
                             </div>
@@ -592,7 +605,11 @@ export default function Ledger() {
                 {isCurrentMonth && summaries[0] && summaries[0].expense > 0 && (
                   <>
                     <p className="mb-2 mt-4 text-sm font-medium text-gray-500">{t('本月分类占比')}</p>
-                    <Donut cats={summaries[0].cats} total={summaries[0].expense} />
+                    <Donut
+                      cats={summaries[0].cats}
+                      total={summaries[0].expense}
+                      sym={currencySymbol(summaries[0].currency)}
+                    />
                   </>
                 )}
               </div>
@@ -600,7 +617,8 @@ export default function Ledger() {
 
             {/* 按日流水 */}
             {expenses.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-16 text-gray-300">
+              <div className="relative flex flex-col items-center gap-2 overflow-hidden py-16 text-gray-300">
+                <FloatLayer items={['🪙', '🧾', '💰', '✨']} count={10} />
                 <span className="text-4xl">📒</span>
                 <p className="text-sm">
                   {isCurrentMonth ? t('本月还没有记账,点右下角记一笔吧') : t('这个月没有账目')}
