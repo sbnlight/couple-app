@@ -204,7 +204,7 @@ export default function ChatAppearance({
                       {t('你好呀')}
                     </span>
                     {renderDecos(b.deco, 0.85)}
-                    {renderBubbleArt(b)}
+                    {renderBubbleArt(b, 0.62)}
                   </span>
                   <span className="text-xs text-gray-500">{t(b.label)}</span>
                 </button>

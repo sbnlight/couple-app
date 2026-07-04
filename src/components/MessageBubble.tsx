@@ -94,12 +94,232 @@ function Topper({ type, color }: { type: NonNullable<BubbleStyle['topper']>; col
   }
 }
 
-/** 气泡手绘装饰:顶饰(给自己的气泡用)。
+/* ---------- 原创吉祥物贴纸(QQ「探头」既视感):纯内联 SVG,可离线、无版权 ---------- */
+
+/** 吉祥物挂角定位:比 emoji 挂件更大、更外探,像贴纸叠在气泡角上 */
+const MASCOT_POS: Record<NonNullable<BubbleStyle['mascotPos']>, CSSProperties> = {
+  tl: { top: -20, left: -16 },
+  tr: { top: -20, right: -16 },
+  bl: { bottom: -16, left: -16 },
+  br: { bottom: -16, right: -16 },
+}
+
+/** 一组原创卡通角色(48×48 viewBox),圆润可爱、脸颊带腮红,统一风格 */
+const MASCOTS: Record<string, ReactNode> = {
+  penguin: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <ellipse cx="24" cy="26" rx="15" ry="18" fill="#2f3a4a" />
+      <ellipse cx="24" cy="29" rx="9.5" ry="13" fill="#fbfcff" />
+      <ellipse cx="12" cy="41" rx="4.5" ry="2.4" fill="#f6a723" />
+      <ellipse cx="36" cy="41" rx="4.5" ry="2.4" fill="#f6a723" />
+      <circle cx="18.5" cy="20" r="3.4" fill="#fff" />
+      <circle cx="19" cy="20.4" r="1.7" fill="#2b3440" />
+      <circle cx="29.5" cy="20" r="3.4" fill="#fff" />
+      <circle cx="29" cy="20.4" r="1.7" fill="#2b3440" />
+      <path d="M21.5 24 h5 l-2.5 3.2 z" fill="#f6a723" />
+      <circle cx="14.5" cy="27" r="2.2" fill="#f9c1d1" opacity="0.8" />
+      <circle cx="33.5" cy="27" r="2.2" fill="#f9c1d1" opacity="0.8" />
+    </svg>
+  ),
+  bear: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <circle cx="14" cy="14" r="6" fill="#c98b5e" />
+      <circle cx="34" cy="14" r="6" fill="#c98b5e" />
+      <circle cx="14" cy="14" r="3" fill="#e6b98f" />
+      <circle cx="34" cy="14" r="3" fill="#e6b98f" />
+      <circle cx="24" cy="26" r="16" fill="#c98b5e" />
+      <ellipse cx="24" cy="30" rx="9" ry="7.5" fill="#f0dcc4" />
+      <circle cx="18" cy="23" r="2.1" fill="#4a3527" />
+      <circle cx="30" cy="23" r="2.1" fill="#4a3527" />
+      <ellipse cx="24" cy="28" rx="2.4" ry="1.8" fill="#4a3527" />
+      <path d="M24 29.5 v2.5 M24 32 q-3 2 -5 0 M24 32 q3 2 5 0" stroke="#4a3527" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <circle cx="16" cy="28" r="2" fill="#f4a9b8" opacity="0.7" />
+      <circle cx="32" cy="28" r="2" fill="#f4a9b8" opacity="0.7" />
+    </svg>
+  ),
+  bunny: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <ellipse cx="17" cy="10" rx="4" ry="10" fill="#fff" stroke="#f0d0da" strokeWidth="0.8" />
+      <ellipse cx="31" cy="10" rx="4" ry="10" fill="#fff" stroke="#f0d0da" strokeWidth="0.8" />
+      <ellipse cx="17" cy="11" rx="1.8" ry="6" fill="#f9b8c8" />
+      <ellipse cx="31" cy="11" rx="1.8" ry="6" fill="#f9b8c8" />
+      <circle cx="24" cy="29" r="15" fill="#fff" stroke="#f2e2e8" strokeWidth="0.6" />
+      <circle cx="18.5" cy="27" r="2" fill="#5b4a52" />
+      <circle cx="29.5" cy="27" r="2" fill="#5b4a52" />
+      <path d="M22 31 q2 1.6 4 0" stroke="#e06a86" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      <ellipse cx="24" cy="30.5" rx="1.5" ry="1" fill="#f9b8c8" />
+      <circle cx="16.5" cy="31" r="2.2" fill="#fbccd8" />
+      <circle cx="31.5" cy="31" r="2.2" fill="#fbccd8" />
+    </svg>
+  ),
+  cat: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <path d="M11 8 L16 20 L22 15 Z" fill="#f2a154" />
+      <path d="M37 8 L32 20 L26 15 Z" fill="#f2a154" />
+      <circle cx="24" cy="27" r="16" fill="#f2a154" />
+      <path d="M13 22 h7 M28 22 h7 M12 27 h6 M30 27 h6" stroke="#dd8836" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="18" cy="25" r="2.2" fill="#3a2b20" />
+      <circle cx="30" cy="25" r="2.2" fill="#3a2b20" />
+      <path d="M22.5 29 l1.5 1.5 l1.5 -1.5 z" fill="#e06a86" />
+      <path d="M24 30.5 v2 M24 32 q-2.5 1.5 -4 0 M24 32 q2.5 1.5 4 0" stroke="#3a2b20" strokeWidth="1" fill="none" strokeLinecap="round" />
+      <circle cx="15.5" cy="30" r="2" fill="#f4a9b8" opacity="0.7" />
+      <circle cx="32.5" cy="30" r="2" fill="#f4a9b8" opacity="0.7" />
+    </svg>
+  ),
+  shiba: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <path d="M10 10 L16 22 L21 16 Z" fill="#e6a866" />
+      <path d="M38 10 L32 22 L27 16 Z" fill="#e6a866" />
+      <circle cx="24" cy="27" r="16" fill="#e6a866" />
+      <path d="M24 20 q-9 0 -11 9 q6 4 11 4 q5 0 11 -4 q-2 -9 -11 -9z" fill="#fbe6d2" />
+      <circle cx="18" cy="24" r="2.1" fill="#3a2b20" />
+      <circle cx="30" cy="24" r="2.1" fill="#3a2b20" />
+      <ellipse cx="24" cy="29" rx="2" ry="1.5" fill="#3a2b20" />
+      <path d="M24 30.5 q-2 2 -4 1 M24 30.5 q2 2 4 1" stroke="#3a2b20" strokeWidth="1" fill="none" strokeLinecap="round" />
+      <circle cx="16" cy="29" r="1.8" fill="#f4a9b8" opacity="0.7" />
+      <circle cx="32" cy="29" r="1.8" fill="#f4a9b8" opacity="0.7" />
+    </svg>
+  ),
+  chick: (
+    <svg viewBox="0 0 48 48" width="44" height="44">
+      <circle cx="24" cy="26" r="15" fill="#ffd93b" />
+      <path d="M24 12 q1 -4 3 -3 q-1 3 -3 3z" fill="#ffb703" />
+      <circle cx="19" cy="24" r="2" fill="#3a2b20" />
+      <circle cx="29" cy="24" r="2" fill="#3a2b20" />
+      <path d="M21.5 28 h5 l-2.5 3 z" fill="#ff9505" />
+      <circle cx="16" cy="29" r="2" fill="#ffb0b0" opacity="0.7" />
+      <circle cx="32" cy="29" r="2" fill="#ffb0b0" opacity="0.7" />
+      <path d="M12 34 q3 2 6 1 M36 34 q-3 2 -6 1" stroke="#ffb703" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+    </svg>
+  ),
+  panda: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <circle cx="13" cy="13" r="5.5" fill="#2b2b2b" />
+      <circle cx="35" cy="13" r="5.5" fill="#2b2b2b" />
+      <circle cx="24" cy="27" r="16" fill="#fff" stroke="#ececec" strokeWidth="0.6" />
+      <ellipse cx="17" cy="25" rx="4" ry="5" fill="#2b2b2b" transform="rotate(-15 17 25)" />
+      <ellipse cx="31" cy="25" rx="4" ry="5" fill="#2b2b2b" transform="rotate(15 31 25)" />
+      <circle cx="17.5" cy="25.5" r="1.6" fill="#fff" />
+      <circle cx="30.5" cy="25.5" r="1.6" fill="#fff" />
+      <ellipse cx="24" cy="30" rx="2" ry="1.5" fill="#2b2b2b" />
+      <path d="M24 31 v1.5 M24 32.5 q-2 1.5 -3.5 0 M24 32.5 q2 1.5 3.5 0" stroke="#2b2b2b" strokeWidth="1" fill="none" strokeLinecap="round" />
+    </svg>
+  ),
+  frog: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <circle cx="15" cy="15" r="6" fill="#7cc576" />
+      <circle cx="33" cy="15" r="6" fill="#7cc576" />
+      <circle cx="15" cy="15" r="3" fill="#fff" />
+      <circle cx="33" cy="15" r="3" fill="#fff" />
+      <circle cx="15" cy="15.5" r="1.5" fill="#2b2b2b" />
+      <circle cx="33" cy="15.5" r="1.5" fill="#2b2b2b" />
+      <circle cx="24" cy="29" r="15" fill="#7cc576" />
+      <ellipse cx="24" cy="33" rx="9" ry="6" fill="#c9e8bf" />
+      <path d="M18 31 q6 4 12 0" stroke="#3f7a3a" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <circle cx="17" cy="31" r="2" fill="#f4a9b8" opacity="0.6" />
+      <circle cx="31" cy="31" r="2" fill="#f4a9b8" opacity="0.6" />
+    </svg>
+  ),
+  dino: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <path d="M14 16 l3 -5 l3 5 M20 13 l3 -5 l3 5 M26 15 l3 -5 l3 5" fill="#59b36a" />
+      <ellipse cx="24" cy="28" rx="15" ry="15" fill="#6cc47d" />
+      <ellipse cx="24" cy="32" rx="8" ry="6" fill="#d6f0cf" />
+      <circle cx="18.5" cy="25" r="2.2" fill="#2b3a2b" />
+      <circle cx="29.5" cy="25" r="2.2" fill="#2b3a2b" />
+      <path d="M20 31 q4 2.5 8 0" stroke="#2b6b3a" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      <circle cx="16.5" cy="29" r="1.8" fill="#f6a5b4" opacity="0.7" />
+      <circle cx="31.5" cy="29" r="1.8" fill="#f6a5b4" opacity="0.7" />
+    </svg>
+  ),
+  ghost: (
+    <svg viewBox="0 0 48 48" width="44" height="44">
+      <path d="M10 30 a14 14 0 0 1 28 0 v12 l-4 -3 l-4 3 l-4 -3 l-4 3 l-4 -3 l-4 3 z" fill="#f3f0fb" stroke="#d9d2ef" strokeWidth="0.8" />
+      <circle cx="18.5" cy="26" r="2.3" fill="#5b5170" />
+      <circle cx="29.5" cy="26" r="2.3" fill="#5b5170" />
+      <ellipse cx="24" cy="31" rx="2" ry="2.6" fill="#a99fc4" />
+      <circle cx="15.5" cy="30" r="2" fill="#e3b6c8" opacity="0.7" />
+      <circle cx="32.5" cy="30" r="2" fill="#e3b6c8" opacity="0.7" />
+    </svg>
+  ),
+  duck: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <circle cx="24" cy="26" r="15" fill="#ffdf5d" />
+      <circle cx="19" cy="23" r="2.1" fill="#3a2b20" />
+      <circle cx="29" cy="23" r="2.1" fill="#3a2b20" />
+      <path d="M17 28 q7 5 14 0 q-2 -3 -7 -3 q-5 0 -7 3z" fill="#ff9f1c" />
+      <circle cx="15.5" cy="27" r="2" fill="#ffb3b3" opacity="0.7" />
+      <circle cx="32.5" cy="27" r="2" fill="#ffb3b3" opacity="0.7" />
+      <path d="M9 20 q3 -3 7 -2" stroke="#ffcf4d" strokeWidth="2" fill="none" strokeLinecap="round" />
+    </svg>
+  ),
+  piglet: (
+    <svg viewBox="0 0 48 48" width="46" height="46">
+      <path d="M13 13 l5 4 l-6 2 z" fill="#f6a5c0" />
+      <path d="M35 13 l-5 4 l6 2 z" fill="#f6a5c0" />
+      <circle cx="24" cy="27" r="15" fill="#f9b8cf" />
+      <ellipse cx="24" cy="30" rx="6" ry="4.5" fill="#f291b3" />
+      <ellipse cx="22" cy="30" rx="1" ry="1.4" fill="#c85e86" />
+      <ellipse cx="26" cy="30" rx="1" ry="1.4" fill="#c85e86" />
+      <circle cx="18.5" cy="24" r="2" fill="#5b3346" />
+      <circle cx="29.5" cy="24" r="2" fill="#5b3346" />
+      <circle cx="15.5" cy="28" r="2" fill="#f27ba0" opacity="0.7" />
+      <circle cx="32.5" cy="28" r="2" fill="#f27ba0" opacity="0.7" />
+    </svg>
+  ),
+}
+
+/** 吉祥物缩放的锚点(挂在哪个角就以哪个角为原点收缩,预览缩小时不跑位) */
+const MASCOT_ORIGIN: Record<NonNullable<BubbleStyle['mascotPos']>, string> = {
+  tl: 'top left',
+  tr: 'top right',
+  bl: 'bottom left',
+  br: 'bottom right',
+}
+
+/** 渲染角落吉祥物贴纸(会轻轻摇摆);id 不在注册表则不渲染。
+ * 外层负责定位+缩放,内层跑摇摆动画,两者 transform 互不覆盖。 */
+function Mascot({
+  id,
+  pos = 'br',
+  scale = 1,
+}: {
+  id: string
+  pos?: NonNullable<BubbleStyle['mascotPos']>
+  scale?: number
+}) {
+  const node = MASCOTS[id]
+  if (!node) return null
+  return (
+    <span
+      className="pointer-events-none absolute z-20"
+      style={{
+        ...MASCOT_POS[pos],
+        transform: scale !== 1 ? `scale(${scale})` : undefined,
+        transformOrigin: MASCOT_ORIGIN[pos],
+      }}
+    >
+      <span
+        className="mascot-idle inline-block"
+        style={{ filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.22))' }}
+      >
+        {node}
+      </span>
+    </span>
+  )
+}
+
+/** 气泡手绘装饰:顶饰 + 吉祥物(给发送者的气泡用)。scale 用于 picker 小预览缩放。
  * 说明:早期那种孤立实心小三角尾巴已停用——形状统一改用"非对称圆角当尾巴"
  * (见 bubbleRadius),更干净、能融入渐变与圆角,也不会在渐变气泡上露色差。 */
-export function renderBubbleArt(bubble: BubbleStyle) {
+export function renderBubbleArt(bubble: BubbleStyle, scale = 1) {
   const accent = bubble.accent ?? 'var(--c-primary)'
-  return <>{bubble.topper && <Topper type={bubble.topper} color={accent} />}</>
+  return (
+    <>
+      {bubble.topper && <Topper type={bubble.topper} color={accent} />}
+      {bubble.mascot && <Mascot id={bubble.mascot} pos={bubble.mascotPos} scale={scale} />}
+    </>
+  )
 }
 
 /** 连续消息中的位置:决定气泡贴边角的收放 */
@@ -389,7 +609,12 @@ export default function MessageBubble({
           }}
         >
           {item.type === 'voice' ? (
-            <VoiceBubble item={item} styleObj={bubbleCss(bubble)} cornerStyle={cornerStyle} />
+            // 语音气泡也带上发送者的角落装饰/吉祥物(挂件是绝对定位兄弟,不影响播放按钮)
+            <span className="relative inline-block">
+              <VoiceBubble item={item} styleObj={bubbleCss(bubble)} cornerStyle={cornerStyle} />
+              {renderDecos(bubble.deco)}
+              {renderBubbleArt(bubble)}
+            </span>
           ) : item.type === 'text' ? (
             <div className="relative">
               <div

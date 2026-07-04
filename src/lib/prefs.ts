@@ -99,9 +99,71 @@ export interface BubbleStyle {
     | 'wings'
   /** 顶饰/尾巴的颜色;不填则用气泡主色 */
   accent?: string
+  /** 角落原创吉祥物贴纸(内联 SVG,见 MessageBubble 的 MASCOTS 注册表);QQ「探头」既视感 */
+  mascot?: string
+  /** 吉祥物所在角(默认右下 br) */
+  mascotPos?: 'tl' | 'tr' | 'bl' | 'br'
 }
 
 export const BUBBLE_STYLES: BubbleStyle[] = [
+  // ==== M2 新增(QQ 风):原创吉祥物探头 + 画框级边框 ====
+  // ---- 萌宠伙伴:原创卡通角色从角落探头(轻轻摇摆),浅底深字保证可读 ----
+  { group: '萌宠伙伴', id: 'pal-penguin', label: '企鹅小Q', bg: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', text: '#075985', radius: '20px', border: '1.5px solid #bae6fd', mascot: 'penguin' },
+  { group: '萌宠伙伴', id: 'pal-bear', label: '抱抱熊', bg: 'linear-gradient(135deg, #fef3c7, #fffbeb)', text: '#92400e', radius: '20px', border: '1.5px solid #fde68a', mascot: 'bear' },
+  { group: '萌宠伙伴', id: 'pal-bunny', label: '邦尼兔', bg: 'linear-gradient(135deg, #fdf2f8, #fce7f3)', text: '#9d174d', radius: '20px', border: '1.5px solid #fbcfe8', mascot: 'bunny' },
+  { group: '萌宠伙伴', id: 'pal-cat', label: '橘猫喵', bg: 'linear-gradient(135deg, #fff7ed, #ffedd5)', text: '#9a3412', radius: '20px', border: '1.5px solid #fed7aa', mascot: 'cat' },
+  { group: '萌宠伙伴', id: 'pal-shiba', label: '柴犬君', bg: 'linear-gradient(135deg, #fffbeb, #fef3c7)', text: '#854d0e', radius: '20px', border: '1.5px solid #fde68a', mascot: 'shiba' },
+  { group: '萌宠伙伴', id: 'pal-chick', label: '小鸡黄黄', bg: 'linear-gradient(135deg, #fefce8, #fef9c3)', text: '#854d0e', radius: '20px', border: '1.5px solid #fef08a', mascot: 'chick' },
+  { group: '萌宠伙伴', id: 'pal-panda', label: '团子熊猫', bg: 'linear-gradient(135deg, #f8fafc, #ffffff)', text: '#334155', radius: '20px', border: '1.5px solid #e2e8f0', mascot: 'panda' },
+  { group: '萌宠伙伴', id: 'pal-frog', label: '呱呱蛙', bg: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', text: '#166534', radius: '20px', border: '1.5px solid #bbf7d0', mascot: 'frog' },
+  { group: '萌宠伙伴', id: 'pal-dino', label: '小恐龙', bg: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', text: '#065f46', radius: '20px', border: '1.5px solid #a7f3d0', mascot: 'dino' },
+  { group: '萌宠伙伴', id: 'pal-ghost', label: '幽灵啵', bg: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', text: '#5b21b6', radius: '20px', border: '1.5px solid #ddd6fe', mascot: 'ghost' },
+  { group: '萌宠伙伴', id: 'pal-duck', label: '鸭鸭嘎', bg: 'linear-gradient(135deg, #fefce8, #fffbeb)', text: '#a16207', radius: '20px', border: '1.5px solid #fde68a', mascot: 'duck' },
+  { group: '萌宠伙伴', id: 'pal-piglet', label: '猪猪乖', bg: 'linear-gradient(135deg, #fdf2f8, #fce7f3)', text: '#9d174d', radius: '20px', border: '1.5px solid #fbcfe8', mascot: 'piglet' },
+  { group: '萌宠伙伴', id: 'pal-cat-tr', label: '橘猫探头', bg: 'linear-gradient(135deg, #fff7ed, #ffedd5)', text: '#9a3412', radius: '20px', border: '1.5px solid #fed7aa', mascot: 'cat', mascotPos: 'tr' },
+  { group: '萌宠伙伴', id: 'pal-bunny-tl', label: '兔兔冒头', bg: 'linear-gradient(135deg, #fdf2f8, #fce7f3)', text: '#9d174d', radius: '20px', border: '1.5px solid #fbcfe8', mascot: 'bunny', mascotPos: 'tl' },
+  // ---- 渐变画框:一圈渐变彩边(尊重圆角,mask 挖空法) ----
+  { group: '渐变画框', id: 'gf-rose', label: '玫瑰画框', bg: '#fff5f6', text: '#9f1239', radius: '18px', extraClass: 'bubble-gframe-rose' },
+  { group: '渐变画框', id: 'gf-gold', label: '鎏金画框', bg: '#fffdf5', text: '#78350f', radius: '18px', extraClass: 'bubble-gframe-gold' },
+  { group: '渐变画框', id: 'gf-mint', label: '薄荷画框', bg: '#f2fdfa', text: '#065f46', radius: '18px', extraClass: 'bubble-gframe-mint' },
+  { group: '渐变画框', id: 'gf-violet', label: '香芋画框', bg: '#faf7ff', text: '#6d28d9', radius: '18px', extraClass: 'bubble-gframe-violet' },
+  { group: '渐变画框', id: 'gf-aurora', label: '极光画框', bg: '#f6fbff', text: '#0f766e', radius: '18px', extraClass: 'bubble-gframe-aurora' },
+  { group: '渐变画框', id: 'gf-rose-cat', label: '玫瑰猫框', bg: '#fff5f6', text: '#9f1239', radius: '18px', extraClass: 'bubble-gframe-rose', mascot: 'cat' },
+  { group: '渐变画框', id: 'gf-mint-frog', label: '薄荷蛙框', bg: '#f2fdfa', text: '#065f46', radius: '18px', extraClass: 'bubble-gframe-mint', mascot: 'frog' },
+  { group: '渐变画框', id: 'gf-violet-ghost', label: '香芋幽灵', bg: '#faf7ff', text: '#6d28d9', radius: '18px', extraClass: 'bubble-gframe-violet', mascot: 'ghost' },
+  // ---- 甜心花框:点点花边 / 奶油扇贝 ----
+  { group: '甜心花框', id: 'ff-berry', label: '莓果花框', bg: '#fff5fa', text: '#be185d', radius: '16px', extraClass: 'bubble-frame-berry', deco: [{ emoji: '🍓', pos: 'tr', size: 14, anim: 'bob' }] },
+  { group: '甜心花框', id: 'ff-sky', label: '晴空花框', bg: '#f0f9ff', text: '#0369a1', radius: '16px', extraClass: 'bubble-frame-sky', deco: [{ emoji: '☁️', pos: 'tl', size: 14, anim: 'float' }] },
+  { group: '甜心花框', id: 'ff-scallop', label: '奶油扇贝', bg: '#fff5fa', text: '#9d174d', radius: '14px', extraClass: 'bubble-frame-scallop', deco: [{ emoji: '🍦', pos: 'tr', size: 14 }] },
+  { group: '甜心花框', id: 'ff-scallop-bunny', label: '扇贝兔兔', bg: '#fff5fa', text: '#9d174d', radius: '14px', extraClass: 'bubble-frame-scallop', mascot: 'bunny' },
+  { group: '甜心花框', id: 'ff-berry-piglet', label: '莓果猪猪', bg: '#fff5fa', text: '#be185d', radius: '16px', extraClass: 'bubble-frame-berry', mascot: 'piglet' },
+  { group: '甜心花框', id: 'ff-sky-penguin', label: '晴空企鹅', bg: '#f0f9ff', text: '#075985', radius: '16px', extraClass: 'bubble-frame-sky', mascot: 'penguin' },
+  // ---- 派对时刻:彩纸飘落 / 暖光光斑 ----
+  { group: '派对时刻', id: 'party-confetti', label: '彩纸飞扬', bg: 'linear-gradient(135deg, #a855f7, #6366f1)', text: '#ffffff', radius: '18px', extraClass: 'bubble-confetti', deco: [{ emoji: '🎉', pos: 'tr', size: 16, anim: 'pop' }] },
+  { group: '派对时刻', id: 'party-birthday', label: '生日快乐', bg: 'linear-gradient(135deg, #f0abfc, #d946ef)', text: '#ffffff', radius: '18px', extraClass: 'bubble-confetti', deco: [{ emoji: '🎂', pos: 'tr', size: 17, anim: 'bob' }], mascot: 'chick' },
+  { group: '派对时刻', id: 'party-bokeh', label: '暖光派对', bg: 'linear-gradient(135deg, #fb923c, #ec4899)', text: '#ffffff', radius: '20px', extraClass: 'bubble-bokeh' },
+  { group: '派对时刻', id: 'party-cheer', label: '举杯庆祝', bg: 'linear-gradient(135deg, #f59e0b, #ef4444)', text: '#fff7ed', radius: '18px', extraClass: 'bubble-confetti', deco: [{ emoji: '🥂', pos: 'tr', size: 16, anim: 'swing' }] },
+  { group: '派对时刻', id: 'party-star-bear', label: '星光小熊', bg: 'linear-gradient(135deg, #312e81, #4c1d95)', text: '#e0e7ff', radius: '18px', extraClass: 'bubble-stars', mascot: 'bear' },
+  // ---- 萌宠画框:吉祥物 + 花框/特效 双层可爱 ----
+  { group: '萌宠画框', id: 'pf-penguin', label: '冰蓝企鹅框', bg: '#f0f9ff', text: '#075985', radius: '18px', extraClass: 'bubble-frame-sky', mascot: 'penguin' },
+  { group: '萌宠画框', id: 'pf-panda', label: '竹语熊猫框', bg: '#f0fdf4', text: '#166534', radius: '18px', extraClass: 'bubble-frame-flowers', mascot: 'panda' },
+  { group: '萌宠画框', id: 'pf-duck', label: '暖阳鸭鸭框', bg: '#fffbeb', text: '#a16207', radius: '18px', extraClass: 'bubble-gframe-gold', mascot: 'duck' },
+  { group: '萌宠画框', id: 'pf-shiba', label: '柴犬金框', bg: '#fffdf5', text: '#854d0e', radius: '18px', extraClass: 'bubble-gframe-gold', mascot: 'shiba' },
+  { group: '萌宠画框', id: 'pf-dino', label: '恐龙萤火', bg: 'linear-gradient(160deg, #14532d, #052e16)', text: '#d9f99d', radius: '18px', extraClass: 'bubble-firefly', mascot: 'dino' },
+  { group: '萌宠画框', id: 'pf-frog-lace', label: '蕾丝呱呱', bg: '#ffffff', text: '#166534', radius: '18px', extraClass: 'bubble-frame-lace', mascot: 'frog' },
+  // ---- 萌宠场景:吉祥物 + 动态氛围(下雪/樱吹/星夜/汽泡…) ----
+  { group: '萌宠场景', id: 'ps-penguin-snow', label: '企鹅踏雪', bg: 'linear-gradient(160deg, #7c6f9f, #3b3a5c)', text: '#f1f5f9', radius: '18px', extraClass: 'bubble-snowfall', mascot: 'penguin' },
+  { group: '萌宠场景', id: 'ps-bear-snow', label: '小熊初雪', bg: 'linear-gradient(160deg, #cbd5e1, #94a3b8)', text: '#1e293b', radius: '18px', extraClass: 'bubble-snowfall', mascot: 'bear' },
+  { group: '萌宠场景', id: 'ps-bunny-sakura', label: '兔兔樱吹雪', bg: 'linear-gradient(160deg, #fdf2f8, #fce7f3)', text: '#9d174d', radius: '20px', border: '1px solid #fbcfe8', extraClass: 'bubble-sakura', mascot: 'bunny' },
+  { group: '萌宠场景', id: 'ps-cat-sakura', label: '猫咪赏樱', bg: 'linear-gradient(160deg, #fff1f2, #ffe4e6)', text: '#9f1239', radius: '20px', border: '1px solid #fecdd3', extraClass: 'bubble-sakura', mascot: 'cat' },
+  { group: '萌宠场景', id: 'ps-panda-stars', label: '熊猫望星', bg: 'linear-gradient(135deg, #1e1b4b, #0f172a)', text: '#e0e7ff', radius: '18px', extraClass: 'bubble-stars', mascot: 'panda' },
+  { group: '萌宠场景', id: 'ps-ghost-stars', label: '幽灵夜游', bg: 'linear-gradient(135deg, #312e81, #1e1b4b)', text: '#ede9fe', radius: '18px', extraClass: 'bubble-stars', mascot: 'ghost' },
+  { group: '萌宠场景', id: 'ps-duck-soda', label: '鸭鸭汽水', bg: 'linear-gradient(180deg, #67e8f9, #0ea5e9)', text: '#f0fdff', radius: '20px', extraClass: 'bubble-soda', mascot: 'duck' },
+  { group: '萌宠场景', id: 'ps-frog-soda', label: '蛙蛙冒泡', bg: 'linear-gradient(180deg, #6ee7b7, #10b981)', text: '#f0fdf4', radius: '20px', extraClass: 'bubble-soda', mascot: 'frog' },
+  { group: '萌宠场景', id: 'ps-shiba-shimmer', label: '柴犬流光', bg: 'linear-gradient(135deg, #fcd34d, #f59e0b)', text: '#78350f', radius: '18px', extraClass: 'bubble-shimmer', mascot: 'shiba' },
+  { group: '萌宠场景', id: 'ps-piglet-ripple', label: '猪猪湖心', bg: 'linear-gradient(135deg, #f9a8d4, #ec4899)', text: '#fff0f6', radius: '20px', extraClass: 'bubble-ripple', mascot: 'piglet' },
+  { group: '萌宠场景', id: 'ps-dino-wave', label: '恐龙冲浪', bg: 'linear-gradient(180deg, #38bdf8, #0284c7)', text: '#f0f9ff', radius: '18px', extraClass: 'bubble-wave', mascot: 'dino' },
+  { group: '萌宠场景', id: 'ps-chick-firefly', label: '小鸡萤夏', bg: 'linear-gradient(160deg, #14532d, #052e16)', text: '#d9f99d', radius: '18px', extraClass: 'bubble-firefly', mascot: 'chick' },
   // ---- 臻品:高级光效 + 羽翼(每款精修) ----
   { group: '臻品', id: 'lux-ring', label: '流光彩环', bg: 'linear-gradient(135deg, #2e1065, #1e1b4b)', text: '#ede9fe', radius: '18px', extraClass: 'bubble-ring' },
   { group: '臻品', id: 'lux-aura', label: '梦境光晕', bg: 'linear-gradient(135deg, #ffffff, #fdf2f8)', text: '#9d174d', radius: '20px', extraClass: 'bubble-aura' },
