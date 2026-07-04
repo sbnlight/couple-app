@@ -213,6 +213,29 @@ const isStandalone =
   ('standalone' in navigator && (navigator as { standalone?: boolean }).standalone === true)
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
 
+/**
+ * 功能入口的「彩色图标胶囊」:把已翻译文案(形如「💗 实时触碰」)里开头的 emoji
+ * 抽出来放进一个柔和底色的小圆角方块,后面跟文字。emoji 从 t() 的结果里取,
+ * 不动 i18n 词条;没有空格分隔时优雅降级为纯文字。
+ */
+function EntryLabel({ label, bg }: { label: string; bg: string }) {
+  const i = label.indexOf(' ')
+  if (i < 0) return <span>{label}</span>
+  const emoji = label.slice(0, i)
+  const text = label.slice(i + 1)
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[17px] shadow-sm"
+        style={{ background: bg }}
+      >
+        {emoji}
+      </span>
+      <span className="truncate">{text}</span>
+    </span>
+  )
+}
+
 /** 「我们」设置页:双方信息、小屋名、个性化设置、退出登录 */
 export default function Us() {
   const { profile, partner, couple, refresh, signOut } = useAuth()
@@ -511,7 +534,7 @@ export default function Us() {
             onClick={() => openThumbkiss()}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('💗 实时触碰')}</span>
+            <EntryLabel label={t('💗 实时触碰')} bg="#ffe4e6" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -519,7 +542,7 @@ export default function Us() {
             onClick={() => setFeature('location')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('📍 我的位置')}</span>
+            <EntryLabel label={t('📍 我的位置')} bg="#e0f2fe" />
             <span className="flex items-center gap-2 text-sm text-gray-400">
               {profile?.city ?? ''}
               <span className="text-gray-300">›</span>
@@ -530,7 +553,7 @@ export default function Us() {
             onClick={() => setFeature('quiz')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🎯 默契大考验')}</span>
+            <EntryLabel label={t('🎯 默契大考验')} bg="#fef3c7" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -538,7 +561,7 @@ export default function Us() {
             onClick={() => setFeature('gratitude')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🫙 感谢罐')}</span>
+            <EntryLabel label={t('🫙 感谢罐')} bg="#ccfbf1" />
             <span className="text-gray-300">›</span>
           </button>
           {featureOn(couple, 'daily_qa') && (
@@ -547,7 +570,7 @@ export default function Us() {
               onClick={() => setFeature('qa')}
               className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
             >
-              <span>{t('💬 每日一问')}</span>
+              <EntryLabel label={t('💬 每日一问')} bg="#ede9fe" />
               <span className="text-gray-300">›</span>
             </button>
           )}
@@ -556,7 +579,7 @@ export default function Us() {
             onClick={() => setFeature('wish')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🌠 愿望清单')}</span>
+            <EntryLabel label={t('🌠 愿望清单')} bg="#e0e7ff" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -564,7 +587,7 @@ export default function Us() {
             onClick={() => setFeature('notes')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('💌 留言小纸条')}</span>
+            <EntryLabel label={t('💌 留言小纸条')} bg="#fce7f3" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -572,7 +595,7 @@ export default function Us() {
             onClick={() => setFeature('anniv')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🎀 纪念日与见面日')}</span>
+            <EntryLabel label={t('🎀 纪念日与见面日')} bg="#fee2e2" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -580,7 +603,7 @@ export default function Us() {
             onClick={() => setFeature('report')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🎊 我们的{y}(年度报告)', { y: new Date().getFullYear() })}</span>
+            <EntryLabel label={t('🎊 我们的{y}(年度报告)', { y: new Date().getFullYear() })} bg="#ffedd5" />
             <span className="text-gray-300">›</span>
           </button>
         </div>
@@ -592,7 +615,7 @@ export default function Us() {
             onClick={() => setShowProfileSheet(true)}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('✏️ 修改资料')}</span>
+            <EntryLabel label={t('✏️ 修改资料')} bg="#f1f5f9" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -600,7 +623,7 @@ export default function Us() {
             onClick={() => setFeature('toggles')}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🧩 功能开关')}</span>
+            <EntryLabel label={t('🧩 功能开关')} bg="#dcfce7" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -608,7 +631,7 @@ export default function Us() {
             onClick={() => setShowPwModal(true)}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🔑 修改密码')}</span>
+            <EntryLabel label={t('🔑 修改密码')} bg="#e2e8f0" />
             <span className="text-gray-300">›</span>
           </button>
           <button
@@ -616,7 +639,7 @@ export default function Us() {
             onClick={() => void handleCheckUpdate()}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
-            <span>{t('🔄 检查更新')}</span>
+            <EntryLabel label={t('🔄 检查更新')} bg="#cffafe" />
             <span className="text-gray-300">›</span>
           </button>
         </div>
