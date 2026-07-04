@@ -8,6 +8,32 @@ import { t } from '../lib/i18n'
 
 const PAGE = 50
 
+/** 把命中的关键词高亮(CSP 安全:不用 innerHTML,按索引切分包 <mark>) */
+function Highlight({ text, q }: { text: string; q: string }) {
+  const query = q.trim()
+  if (!query) return <>{text}</>
+  const ql = query.toLowerCase()
+  const lower = text.toLowerCase()
+  const out: Array<string | JSX.Element> = []
+  let i = 0
+  let k = 0
+  while (i < text.length) {
+    const idx = lower.indexOf(ql, i)
+    if (idx < 0) {
+      out.push(text.slice(i))
+      break
+    }
+    if (idx > i) out.push(text.slice(i, idx))
+    out.push(
+      <mark key={k++} className="rounded bg-primary-light px-0.5 text-primary-dark">
+        {text.slice(idx, idx + query.length)}
+      </mark>,
+    )
+    i = idx + query.length
+  }
+  return <>{out}</>
+}
+
 function fmtTime(iso: string) {
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -225,7 +251,7 @@ export default function ChatSearch({
                       {m.recalled
                         ? t('(已撤回)')
                         : m.type === 'text'
-                          ? m.content
+                          ? <Highlight text={m.content} q={keyword} />
                           : m.type === 'image'
                             ? t('🖼 [图片]')
                             : m.type === 'voice'

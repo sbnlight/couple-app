@@ -261,6 +261,7 @@ export default function Chat() {
         navigator.vibrate?.(200)
         setShake(true)
         setTimeout(() => setShake(false), 500)
+        fireEffect(['👋', '👉'], 12) // 被拍一拍:小手掌迸发
       }
     }
   }, [items, loadingInitial, userId])
@@ -436,7 +437,7 @@ export default function Chat() {
       }
     }
     prevLenRef.current = items.length
-  }, [items.length, loadingInitial, mode])
+  }, [items.length, loadingInitial, mode, partnerTyping])
 
   const onScroll = () => {
     const el = listRef.current
@@ -566,20 +567,7 @@ export default function Chat() {
           {partnerIn && <span className="presence-dot mr-1.5 align-middle" title="TA 正在聊天页" />}
           ❤ {couple?.name ?? '双人小屋'}
         </h1>
-        {partnerTyping ? (
-          <p className="flex items-center justify-center gap-1 text-xs text-primary-dark">
-            {t('对方正在输入')}
-            <span className="ml-0.5 inline-flex items-end gap-0.5">
-              {[0, 0.2, 0.4].map((d) => (
-                <span
-                  key={d}
-                  className="typing-dot inline-block h-1 w-1 rounded-full bg-primary-dark"
-                  style={{ animationDelay: `${d}s` }}
-                />
-              ))}
-            </span>
-          </p>
-        ) : partner?.timezone || moodValid(partner) ? (
+        {partner?.timezone || moodValid(partner) ? (
           // 点一下打开「对方近况」:具体时间 / 详细天气 / 心情备注全文。
           // 顶栏只放心情的表情(不放全文,免得放不下)。
           <button
@@ -746,6 +734,7 @@ export default function Chat() {
                             lastNudgeRef.current = Date.now()
                             if (mode === 'history') await backToLatest()
                             navigator.vibrate?.(60)
+                            fireEffect(['👋', '👉'], 12) // 拍一拍:发方也给一发手掌反馈
                             sendNudge()
                           }
                         : undefined
@@ -764,6 +753,20 @@ export default function Chat() {
               </button>
             )}
           </>
+        )}
+        {/* 「正在输入」小气泡:贴在消息流底部,更有临场感(取代原顶栏三点) */}
+        {partnerTyping && mode === 'live' && (
+          <div className="mt-1 flex justify-start px-2">
+            <span className="chat-bubble recv-skin inline-flex items-center gap-1 rounded-2xl rounded-bl-sm px-3.5 py-3">
+              {[0, 0.2, 0.4].map((d) => (
+                <span
+                  key={d}
+                  className="typing-dot inline-block h-1.5 w-1.5 rounded-full bg-current opacity-60"
+                  style={{ animationDelay: `${d}s` }}
+                />
+              ))}
+            </span>
+          </div>
         )}
       </div>
 

@@ -430,6 +430,7 @@ function VoiceBubble({
   cornerStyle?: CSSProperties
 }) {
   const [playing, setPlaying] = useState(false)
+  const [prog, setProg] = useState(0) // 播放进度 0..1,用于波形双色
   const audioRef = useRef<HTMLAudioElement | null>(null)
   let path = ''
   let dur = 0
@@ -466,7 +467,11 @@ function VoiceBubble({
     if (!url) return
     const audio = new Audio(url)
     audioRef.current = audio
-    audio.onended = () => setPlaying(false)
+    audio.ontimeupdate = () => setProg(audio.duration ? audio.currentTime / audio.duration : 0)
+    audio.onended = () => {
+      setPlaying(false)
+      setProg(0)
+    }
     audio.onpause = () => setPlaying(false)
     claimVoicePlayback(audio)
     try {
@@ -497,13 +502,21 @@ function VoiceBubble({
     >
       <span>{unsent ? (item.status === 'failed' ? '⚠' : '⏳') : playing ? '⏸' : '▶'}</span>
       <span className="flex flex-1 items-center gap-0.5 overflow-hidden">
-        {[3, 7, 5, 9, 4, 8, 5].map((h, i) => (
-          <span
-            key={i}
-            className={`w-0.5 rounded-full ${playing ? 'animate-pulse' : ''}`}
-            style={{ height: h + 4, background: 'currentColor', opacity: unsent ? 0.4 : 0.75 }}
-          />
-        ))}
+        {[3, 7, 5, 9, 4, 8, 5].map((h, i) => {
+          // 波形按播放进度双色:已播的柱亮、未播的柱淡(未上传统一淡)
+          const played = (i + 1) / 7 <= prog
+          return (
+            <span
+              key={i}
+              className="w-0.5 rounded-full transition-opacity"
+              style={{
+                height: h + 4,
+                background: 'currentColor',
+                opacity: unsent ? 0.4 : played ? 1 : 0.32,
+              }}
+            />
+          )
+        })}
       </span>
       <span className="shrink-0 text-sm">{dur}"</span>
     </button>
@@ -628,7 +641,7 @@ export default function MessageBubble({
               >
                 {item.replyPreview && (
                   <div
-                    className="mb-1 max-w-full truncate rounded-md px-2 py-0.5 text-xs opacity-90"
+                    className="mb-1 max-w-full truncate rounded-md border-l-2 border-primary px-2 py-0.5 text-xs opacity-90"
                     style={{ background: 'rgba(127,127,127,0.18)' }}
                   >
                     {replyRecalled ? t('该消息已撤回') : item.replyPreview}
