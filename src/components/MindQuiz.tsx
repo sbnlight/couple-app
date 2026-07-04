@@ -12,13 +12,16 @@ interface QRow {
   quiz_id: number
   user_id: string
   choice: number
-  /** 选它的原因/悄悄话(双方都答完才互相可见);今日行才查这列 */
+  /** 选它的原因/悄悄话(双方都答完才互相可见) */
   note?: string | null
+  /** 最后改动时间(0023 起),用于「对方改了留言」提醒 */
+  updated_at?: string | null
 }
 
 /**
  * 默契双人问答(全屏页):每天一道选择题,两人各选一项,都答完揭晓是否默契。
- * 揭晓在客户端做(答完才显示对方选择);数据存 quiz_answers(RLS 限本小屋成员)。
+ * 支持:查看历史 / 随时回去编辑自己往日的留言 / 对方改动后打开时高亮提示。
+ * 揭晓在客户端做(答完才显示对方选择),服务端 RLS(0022)兜底「答完才可见对方」。
  */
 export default function MindQuiz({
   coupleId,
@@ -47,53 +50,65 @@ export default function MindQuiz({
       window.clearInterval(timer)
     }
   }, [dayTz])
-  const { id: quizId, quiz } = quizForDate(today)
-  const [rows, setRows] = useState<QRow[]>([])
+  const { quiz } = quizForDate(today)
+  const [all, setAll] = useState<QRow[]>([]) // 所有行(今天 + 历史)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  // 全部历史(算默契值)
-  const [history, setHistory] = useState<QRow[]>([])
-  // 我的留言草稿(只在首次载入我的行时用服务端值初始化,之后由我控制,避免打字被 load 覆盖)
+  // 今日我的留言草稿(只在首次载入我的行时用服务端值初始化,之后由我控制,避免打字被 load 覆盖)
   const [noteDraft, setNoteDraft] = useState('')
   const [noteSaved, setNoteSaved] = useState(false)
   const noteInitRef = useRef(false)
+  // 对方改动提醒:哪些日期 TA 更新过(比我上次看到的新)
+  const [changedDates, setChangedDates] = useState<Set<string>>(new Set())
+  const [showHistory, setShowHistory] = useState(false)
+  // 编辑历史某天我的留言
+  const [editingDate, setEditingDate] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState('')
+
+  const SEEN_KEY = `quiz-seen-${coupleId}`
 
   const load = useCallback(async () => {
-    const [todayRes, allRes] = await Promise.all([
-      supabase
-        .from('quiz_answers')
-        .select('quiz_date, quiz_id, user_id, choice, note')
-        .eq('couple_id', coupleId)
-        .eq('quiz_date', today),
-      supabase
-        .from('quiz_answers')
-        .select('quiz_date, quiz_id, user_id, choice')
-        .eq('couple_id', coupleId),
-    ])
-    // 弱网超时:保留已加载的答案,别清空成「未作答」(否则刚提交的答案会瞬间消失)
-    if (todayRes.error || allRes.error) {
-      console.warn('[MindQuiz load]', todayRes.error ?? allRes.error)
+    const { data, error } = await supabase
+      .from('quiz_answers')
+      .select('quiz_date, quiz_id, user_id, choice, note, updated_at')
+      .eq('couple_id', coupleId)
+      .order('quiz_date', { ascending: false })
+    // 弱网超时:保留已加载内容,别清空
+    if (error) {
+      console.warn('[MindQuiz load]', error)
       setLoading(false)
       return
     }
-    setRows((todayRes.data as QRow[] | null) ?? [])
-    setHistory((allRes.data as QRow[] | null) ?? [])
+    const rows = (data as QRow[] | null) ?? []
+    setAll(rows)
     setLoading(false)
-  }, [coupleId, today])
+    // 对方改动提醒:TA 的行 updated_at 比我上次看到的新 → 高亮那些日期(并把「已看到」推进到最新)
+    const lastSeen = localStorage.getItem(SEEN_KEY) ?? ''
+    const partnerRows = rows.filter((r) => r.user_id !== userId)
+    const changed = new Set(
+      partnerRows.filter((r) => (r.updated_at ?? '') > lastSeen).map((r) => r.quiz_date),
+    )
+    if (changed.size > 0) {
+      setChangedDates(changed)
+      const latest = partnerRows.reduce((m, r) => ((r.updated_at ?? '') > m ? r.updated_at! : m), lastSeen)
+      localStorage.setItem(SEEN_KEY, latest)
+    }
+  }, [coupleId, userId, SEEN_KEY])
 
   useEffect(() => {
     void load()
   }, [load])
 
+  const rows = all.filter((r) => r.quiz_date === today)
   const mine = rows.find((r) => r.user_id === userId)
   const theirs = rows.find((r) => r.user_id !== userId)
   const bothAnswered = Boolean(mine && theirs)
   const matched = bothAnswered && mine!.choice === theirs!.choice
 
-  // 默契值:历史里两人都答过的日期中,选择相同的比例
+  // 按日期分组:既算默契值,也用于历史列表
   const byDate = new Map<string, QRow[]>()
-  for (const r of history) {
+  for (const r of all) {
     const list = byDate.get(r.quiz_date)
     if (list) list.push(r)
     else byDate.set(r.quiz_date, [r])
@@ -110,19 +125,42 @@ export default function MindQuiz({
   }
   const rate = bothDays > 0 ? Math.round((matchDays / bothDays) * 100) : null
 
+  // 历史(我答过的往日,最新在前):可查看、可编辑我的留言
+  const historyDays = [...byDate.entries()]
+    .filter(([d]) => d < today)
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([date, list]) => {
+      const m = list.find((r) => r.user_id === userId)
+      const th = list.find((r) => r.user_id !== userId)
+      return { date, m, th, matched: Boolean(m && th && m.choice === th.choice) }
+    })
+    .filter((d) => d.m) // 只列我答过的天(才能编辑我的留言)
+
+  /** upsert 某天的「选项 + 留言」(幂等);date 缺省今天 */
+  const upsertAnswer = async (date: string, choice: number, note: string | null | undefined) => {
+    const qid = quizForDate(date).id
+    await withRetry(async () => {
+      const payload: Record<string, unknown> = {
+        couple_id: coupleId,
+        quiz_date: date,
+        quiz_id: qid,
+        user_id: userId,
+        choice,
+      }
+      if (note !== undefined) payload.note = note
+      const { error } = await supabase
+        .from('quiz_answers')
+        .upsert(payload, { onConflict: 'couple_id,quiz_date,user_id' })
+      if (error) throw error
+    })
+  }
+
   const answer = async (choice: number) => {
     if (busy) return
     setBusy(true)
     try {
       setErr('')
-      // 幂等 upsert(onConflict),弱网可安全重试;真报错(如迁移漏跑)会如实抛出
-      await withRetry(async () => {
-        const { error } = await supabase.from('quiz_answers').upsert(
-          { couple_id: coupleId, quiz_date: today, quiz_id: quizId, user_id: userId, choice },
-          { onConflict: 'couple_id,quiz_date,user_id' },
-        )
-        if (error) throw error
-      })
+      await upsertAnswer(today, choice, undefined)
       await load()
     } catch (e) {
       setErr(friendlyWriteError(e))
@@ -131,7 +169,7 @@ export default function MindQuiz({
     }
   }
 
-  // 首次拿到我的行时,用服务端已存的留言初始化草稿(仅一次)
+  // 首次拿到我的今日行时,用服务端已存的留言初始化草稿(仅一次)
   useEffect(() => {
     if (!noteInitRef.current && mine) {
       noteInitRef.current = true
@@ -139,27 +177,30 @@ export default function MindQuiz({
     }
   }, [mine])
 
-  /** 保存我的留言(连同当前选项一起 upsert,幂等) */
+  /** 保存今日留言(连当前选项一起 upsert) */
   const saveNote = async () => {
     if (busy || !mine) return
     setBusy(true)
     setErr('')
     try {
-      await withRetry(async () => {
-        const { error } = await supabase.from('quiz_answers').upsert(
-          {
-            couple_id: coupleId,
-            quiz_date: today,
-            quiz_id: quizId,
-            user_id: userId,
-            choice: mine.choice,
-            note: noteDraft.trim() || null,
-          },
-          { onConflict: 'couple_id,quiz_date,user_id' },
-        )
-        if (error) throw error
-      })
+      await upsertAnswer(today, mine.choice, noteDraft.trim() || null)
       setNoteSaved(true)
+      await load()
+    } catch (e) {
+      setErr(friendlyWriteError(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 保存历史某天我的留言 */
+  const saveHistoryNote = async (date: string, choice: number) => {
+    if (busy) return
+    setBusy(true)
+    setErr('')
+    try {
+      await upsertAnswer(date, choice, editDraft.trim() || null)
+      setEditingDate(null)
       await load()
     } catch (e) {
       setErr(friendlyWriteError(e))
@@ -189,6 +230,13 @@ export default function MindQuiz({
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* 对方改动提醒 */}
+        {changedDates.size > 0 && (
+          <div className="modal-pop mb-3 flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-500 ring-1 ring-rose-100">
+            💬 {t('{name} 更新了 {n} 天的留言,下面高亮的看看吧', { name: partnerName, n: changedDates.size })}
+          </div>
+        )}
+
         <div className="rounded-2xl bg-white p-5">
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-400">{t('今日一题 · {d}', { d: today })}</p>
@@ -241,7 +289,7 @@ export default function MindQuiz({
                     : t('这次没选到一起,聊聊为什么呀~')}
             </p>
           )}
-          {/* 我的留言(答完选项后出现):写选它的原因,答完双方后 TA 才能看到 */}
+          {/* 今日我的留言(答完选项后出现) */}
           {mine && (
             <div className="mt-4 border-t border-line pt-3">
               <p className="text-xs text-gray-400">
@@ -269,7 +317,7 @@ export default function MindQuiz({
             </div>
           )}
 
-          {/* 揭晓:双方都答完 → 显示对方的留言 */}
+          {/* 揭晓:双方都答完 → 显示对方的今日留言 */}
           {bothAnswered && theirs && (
             <div className="mt-3 rounded-xl bg-soft p-3">
               <p className="text-xs text-gray-400">{t('{name}的留言', { name: partnerName })}</p>
@@ -286,8 +334,105 @@ export default function MindQuiz({
           )}
         </div>
 
+        {/* 历史:查看往日 + 编辑我的留言 */}
+        {historyDays.length > 0 && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="flex w-full items-center justify-between rounded-xl bg-white px-4 py-3 text-sm text-gray-600"
+            >
+              <span>{t('📜 历史默契')}</span>
+              <span className="text-xs text-gray-400">
+                {showHistory ? t('收起') : t('展开 {n} 天', { n: historyDays.length })}
+              </span>
+            </button>
+
+            {showHistory && (
+              <div className="mt-2 space-y-2">
+                {historyDays.map((d) => {
+                  const q = quizForDate(d.date).quiz
+                  const changed = changedDates.has(d.date)
+                  return (
+                    <div
+                      key={d.date}
+                      className={`rounded-2xl bg-white p-4 ${changed ? 'ring-2 ring-rose-300' : ''}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-400">{d.date}</p>
+                        {changed && <span className="text-[10px] text-rose-400">{t('· TA 有更新')}</span>}
+                        {d.matched && <span className="text-xs">💞</span>}
+                      </div>
+                      <p className="mt-1 text-sm font-medium">{q.q}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {t('你')}:{q.options[d.m!.choice]}
+                        {d.th && ` · ${partnerName}:${q.options[d.th.choice]}`}
+                      </p>
+
+                      {/* 我的留言(可编辑) */}
+                      {editingDate === d.date ? (
+                        <div className="mt-2">
+                          <textarea
+                            className="input w-full resize-none"
+                            rows={2}
+                            maxLength={200}
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                          />
+                          <div className="mt-1.5 flex gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void saveHistoryNote(d.date, d.m!.choice)}
+                              className="btn-primary flex-1 rounded-full py-1.5 text-xs disabled:opacity-60"
+                            >
+                              {t('保存')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingDate(null)}
+                              className="flex-1 rounded-full border border-line py-1.5 text-xs text-gray-500"
+                            >
+                              {t('取消')}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-start justify-between gap-2 rounded-lg bg-soft px-2.5 py-1.5">
+                          <p className="min-w-0 flex-1 whitespace-pre-wrap text-xs text-gray-600">
+                            <span className="text-gray-400">{t('我的留言:')}</span>
+                            {d.m!.note ? d.m!.note : t('(未写)')}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDate(d.date)
+                              setEditDraft(d.m!.note ?? '')
+                            }}
+                            className="shrink-0 text-xs text-primary-dark"
+                          >
+                            {t('✏️ 编辑')}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* TA 的留言 */}
+                      {d.th && (
+                        <p className="mt-1.5 whitespace-pre-wrap rounded-lg bg-rose-50/60 px-2.5 py-1.5 text-xs text-gray-600">
+                          <span className="text-gray-400">{t('{name}的留言:', { name: partnerName })}</span>
+                          {d.th.note ? d.th.note : t('(没有留言)')}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         <p className="mt-4 px-1 text-xs text-gray-300">
-          {t('题库共 {n} 题,每天一道循环;可以随时改答案', { n: QUIZZES.length })}
+          {t('题库共 {n} 题,每天一道循环;答案与留言都可随时回去改', { n: QUIZZES.length })}
         </p>
       </div>
     </div>

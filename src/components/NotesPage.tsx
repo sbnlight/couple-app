@@ -47,6 +47,10 @@ export default function NotesPage({
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
+  // 对方改动提醒 + 编辑自己的纸条
+  const [changedIds, setChangedIds] = useState<Set<number>>(new Set())
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editDraft, setEditDraft] = useState('')
 
   const load = useCallback(async () => {
     const [notesRes, lockedRes] = await Promise.all([
@@ -59,7 +63,21 @@ export default function NotesPage({
         .limit(100),
       supabase.rpc('locked_notes_info', { cid: coupleId }),
     ])
-    if (notesRes.data) setNotes(notesRes.data as Note[])
+    if (notesRes.data) {
+      const rows = notesRes.data as Note[]
+      setNotes(rows)
+      // 对方改动提醒:TA 写的已解锁纸条 updated_at 比我上次看到的新 → 高亮
+      const SEEN_KEY = `notes-seen-${coupleId}`
+      const lastSeen = localStorage.getItem(SEEN_KEY) ?? ''
+      const upAt = (n: Note) => (n as Note & { updated_at?: string | null }).updated_at ?? ''
+      const partnerNotes = rows.filter((n) => n.author_id !== userId)
+      const changed = new Set(partnerNotes.filter((n) => upAt(n) > lastSeen).map((n) => n.id))
+      if (changed.size > 0) {
+        setChangedIds(changed)
+        const latest = partnerNotes.reduce((m, n) => (upAt(n) > m ? upAt(n) : m), lastSeen)
+        localStorage.setItem(SEEN_KEY, latest)
+      }
+    }
     // 弱网超时:保留上次的待开启信息,不静默清零
     if (!lockedRes.error) {
       const info = (lockedRes.data as { cnt: number; next_unlock: string | null }[] | null)?.[0]
@@ -67,7 +85,7 @@ export default function NotesPage({
       setNextUnlock(info?.next_unlock ?? null)
     }
     setLoading(false)
-  }, [coupleId])
+  }, [coupleId, userId])
 
   useEffect(() => {
     void load()
@@ -125,6 +143,25 @@ export default function NotesPage({
     }
   }
 
+  /** 编辑自己写的纸条内容 */
+  const saveNoteEdit = async (id: number) => {
+    if (busy) return
+    setBusy(true)
+    setErr('')
+    try {
+      await withRetry(async () => {
+        const { error } = await supabase.from('notes').update({ content: editDraft }).eq('id', id)
+        if (error) throw error
+      })
+      setEditingId(null)
+      await load()
+    } catch (e) {
+      setErr(friendlyWriteError(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const received = notes.filter((n) => n.author_id !== userId)
   const sent = notes.filter((n) => n.author_id === userId)
 
@@ -172,12 +209,20 @@ export default function NotesPage({
               </div>
             )}
 
+            {changedIds.size > 0 && (
+              <div className="modal-pop mb-3 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-500 ring-1 ring-rose-100">
+                💬 {t('{name} 改动了 {n} 张纸条,高亮的看看吧', { name: partnerName, n: changedIds.size })}
+              </div>
+            )}
             {/* 收到的(已解锁) */}
             {received.length > 0 && (
               <>
                 <p className="mb-1.5 px-1 text-xs text-gray-400">{t('收到的纸条')}</p>
                 {received.map((n) => (
-                  <div key={n.id} className="mb-3 rounded-2xl bg-white p-4">
+                  <div
+                    key={n.id}
+                    className={`mb-3 rounded-2xl bg-white p-4 ${changedIds.has(n.id) ? 'ring-2 ring-rose-300' : ''}`}
+                  >
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{n.content}</p>
                     <p className="mt-2 text-xs text-gray-300">
                       {t('{name} · {a} 写下 · {b} 开启', {
@@ -199,16 +244,57 @@ export default function NotesPage({
                   const locked = new Date(n.unlock_at).getTime() > Date.now()
                   return (
                     <div key={n.id} className="mb-3 rounded-2xl bg-white p-4">
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{n.content}</p>
+                      {editingId === n.id ? (
+                        <div>
+                          <textarea
+                            className="input w-full resize-none"
+                            rows={3}
+                            maxLength={500}
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                          />
+                          <div className="mt-1.5 flex gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void saveNoteEdit(n.id)}
+                              className="btn-primary flex-1 rounded-full py-1.5 text-xs disabled:opacity-60"
+                            >
+                              {t('保存')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="flex-1 rounded-full border border-line py-1.5 text-xs text-gray-500"
+                            >
+                              {t('取消')}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed">{n.content}</p>
+                      )}
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-300">
                         <span>
                           {locked
                             ? t('🔒 {t} 对 TA 开启', { t: fmtTime(n.unlock_at) })
                             : t('✅ TA 已可查看')}
                         </span>
-                        <button type="button" onClick={() => void remove(n)} className="px-1">
-                          {t('撕掉')}
-                        </button>
+                        <span className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(n.id)
+                              setEditDraft(n.content)
+                            }}
+                            className="px-1"
+                          >
+                            {t('编辑')}
+                          </button>
+                          <button type="button" onClick={() => void remove(n)} className="px-1">
+                            {t('撕掉')}
+                          </button>
+                        </span>
                       </div>
                     </div>
                   )

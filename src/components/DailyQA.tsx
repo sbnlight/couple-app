@@ -81,6 +81,10 @@ export default function DailyQA({
   const [editing, setEditing] = useState(false)
   const [err, setErr] = useState('')
   const [viewer, setViewer] = useState<string | null>(null)
+  // 对方改动提醒 + 历史留言编辑
+  const [changedDates, setChangedDates] = useState<Set<string>>(new Set())
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editContentDraft, setEditContentDraft] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -105,8 +109,20 @@ export default function DailyQA({
     setMine(mineRow)
     setTheirs(theirsRow)
     setTheyAnswered(Boolean(partnerRes.data))
-    setHistory((histRes.data as DailyAnswer[] | null) ?? [])
+    const hist = (histRes.data as DailyAnswer[] | null) ?? []
+    setHistory(hist)
     setLoading(false)
+    // 对方改动提醒:TA 往日回答的 updated_at 比我上次看到的新 → 高亮那些日期
+    const SEEN_KEY = `qa-seen-${coupleId}`
+    const lastSeen = localStorage.getItem(SEEN_KEY) ?? ''
+    const upAt = (a: DailyAnswer) => (a as DailyAnswer & { updated_at?: string | null }).updated_at ?? ''
+    const partnerHist = hist.filter((a) => a.user_id !== userId)
+    const changed = new Set(partnerHist.filter((a) => upAt(a) > lastSeen).map((a) => a.question_date))
+    if (changed.size > 0) {
+      setChangedDates(changed)
+      const latest = partnerHist.reduce((m, a) => (upAt(a) > m ? upAt(a) : m), lastSeen)
+      localStorage.setItem(SEEN_KEY, latest)
+    }
     // 默契时刻:双方都答完今天的问题,撒一次花(每天每设备一次)
     if (mineRow && theirsRow) {
       const key = `qa-fx-${today}`
@@ -194,6 +210,28 @@ export default function DailyQA({
       await load() // 答完即可看到对方的答案
     } catch (e) {
       // 不再静默丢弃:给出可诊断的提示,草稿保留可重试
+      setErr(friendlyWriteError(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 保存历史某天我的回答文字(图片保持不变,仅改文字) */
+  const saveHistoryEdit = async (id: number) => {
+    if (busy) return
+    setBusy(true)
+    setErr('')
+    try {
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('daily_answers')
+          .update({ content: editContentDraft })
+          .eq('id', id)
+        if (error) throw error
+      })
+      setEditingId(null)
+      await load()
+    } catch (e) {
       setErr(friendlyWriteError(e))
     } finally {
       setBusy(false)
@@ -342,9 +380,17 @@ export default function DailyQA({
         {/* 往期回顾 */}
         {historyByDate.size > 0 && (
           <div className="mt-4">
+            {changedDates.size > 0 && (
+              <div className="modal-pop mb-2 rounded-xl bg-rose-50 px-3 py-2.5 text-xs text-rose-500 ring-1 ring-rose-100">
+                💬 {t('{name} 更新了 {n} 天的回答,下面高亮的看看吧', { name: partnerName, n: changedDates.size })}
+              </div>
+            )}
             <p className="mb-2 px-1 text-xs text-gray-400">{t('往期回顾')}</p>
             {[...historyByDate.entries()].map(([date, answers]) => (
-              <div key={date} className="mb-3 rounded-2xl bg-white p-4">
+              <div
+                key={date}
+                className={`mb-3 rounded-2xl bg-white p-4 ${changedDates.has(date) ? 'ring-2 ring-rose-300' : ''}`}
+              >
                 <p className="text-xs text-gray-400">{date}</p>
                 <p className="mt-1 text-sm font-medium">{questionForDate(date)}</p>
                 {answers.map((a) => (
@@ -352,7 +398,51 @@ export default function DailyQA({
                     <span className="text-gray-400">
                       {a.user_id === userId ? t('我') : partnerName}:
                     </span>
-                    {a.content}
+                    {editingId === a.id ? (
+                      <div className="mt-1">
+                        <textarea
+                          className="input w-full resize-none"
+                          rows={2}
+                          maxLength={500}
+                          value={editContentDraft}
+                          onChange={(e) => setEditContentDraft(e.target.value)}
+                        />
+                        <div className="mt-1 flex gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void saveHistoryEdit(a.id)}
+                            className="btn-primary flex-1 rounded-full py-1 text-xs disabled:opacity-60"
+                          >
+                            {t('保存')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="flex-1 rounded-full border border-line py-1 text-xs text-gray-500"
+                          >
+                            {t('取消')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {a.content}
+                        {a.user_id === userId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(a.id)
+                              setEditContentDraft(a.content)
+                            }}
+                            className="ml-1.5 align-middle text-xs text-primary-dark"
+                            aria-label="编辑我的回答"
+                          >
+                            ✏️
+                          </button>
+                        )}
+                      </>
+                    )}
                     {a.image_paths && a.image_paths.length > 0 && (
                       <div className="mt-1.5 grid grid-cols-4 gap-1">
                         {a.image_paths.map((p) => (
