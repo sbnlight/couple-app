@@ -19,6 +19,7 @@ import FeatureToggles, { dayTzOf, featureOn } from '../components/FeatureToggles
 import MoodCard from '../components/MoodCard'
 import TwoCityCard from '../components/TwoCityCard'
 import LocationSetting from '../components/LocationSetting'
+import GratitudeJar from '../components/GratitudeJar'
 import { openThumbkiss } from '../lib/thumbkissStore'
 import LoveTree from '../components/LoveTree'
 import MindQuiz from '../components/MindQuiz'
@@ -221,7 +222,17 @@ export default function Us() {
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
   /** 当前打开的功能页 */
   const [feature, setFeature] = useState<
-    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | 'touch' | 'quiz' | 'location' | null
+    | 'qa'
+    | 'wish'
+    | 'notes'
+    | 'anniv'
+    | 'report'
+    | 'toggles'
+    | 'touch'
+    | 'quiz'
+    | 'location'
+    | 'gratitude'
+    | null
   >(null)
   const [showPwModal, setShowPwModal] = useState(false)
   const anniversaries = useAnniversaries(couple!.id)
@@ -526,6 +537,14 @@ export default function Us() {
             <span>{t('🎯 默契大考验')}</span>
             <span className="text-gray-300">›</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setFeature('gratitude')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>{t('🫙 感谢罐')}</span>
+            <span className="text-gray-300">›</span>
+          </button>
           {featureOn(couple, 'daily_qa') && (
             <button
               type="button"
@@ -811,6 +830,15 @@ export default function Us() {
           city={profile.city}
           tz={profile.timezone}
           onSaved={refresh}
+          onClose={() => setFeature(null)}
+        />
+      )}
+
+      {feature === 'gratitude' && (
+        <GratitudeJar
+          coupleId={couple!.id}
+          userId={profile!.id}
+          partnerName={partner?.display_name ?? t('TA')}
           onClose={() => setFeature(null)}
         />
       )}

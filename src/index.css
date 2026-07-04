@@ -1172,6 +1172,26 @@ html.dark .recv-paper {
   animation: deco-float 4s ease-in-out infinite;
 }
 
+/* 感谢罐:点"摇一摇"时罐子晃两下 */
+@keyframes jar-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-9deg);
+  }
+  45% {
+    transform: rotate(7deg);
+  }
+  70% {
+    transform: rotate(-4deg);
+  }
+}
+.jar-shake {
+  animation: jar-shake 0.6s ease-in-out;
+}
+
 /* 轻提示 toast:从顶部轻轻滑入淡入(全局最频繁的反馈,别再生硬地闪现) */
 @keyframes toast-in {
   from {
@@ -1593,6 +1613,7 @@ html.dark .recv-paper {
   .love-milestone-glow,
   .toast-in,
   .tab-active-icon,
+  .jar-shake,
   .typing-dot,
   .today-glow,
   .city-dash,

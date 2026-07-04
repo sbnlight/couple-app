@@ -81,6 +81,15 @@ export interface Note {
   created_at: string
 }
 
+/** 感谢罐/夸夸罐里的一张小纸条 */
+export interface Gratitude {
+  id: number
+  couple_id: string
+  author_id: string
+  content: string
+  created_at: string
+}
+
 /** 每日打卡(UTC 日期) */
 export interface Checkin {
   couple_id: string
