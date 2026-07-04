@@ -50,6 +50,7 @@ export default function MomentsCard({
   const [checkedToday, setCheckedToday] = useState(false)
   const [theirCheckedToday, setTheirCheckedToday] = useState(false)
   const [streakMine, setStreakMine] = useState(0)
+  const [myDays, setMyDays] = useState<Set<string>>(() => new Set()) // 我的打卡日期集合(近 7 天圆点)
   const lastMissRef = useRef(0)
   // 想你 composer(可选表情 + 悄悄话)
   const [missOpen, setMissOpen] = useState(false)
@@ -91,6 +92,7 @@ export default function MomentsCard({
       const rows = checkRes.data as Checkin[]
       const mine = new Set(rows.filter((r) => r.user_id === userId).map((r) => r.day))
       const theirs = new Set(rows.filter((r) => r.user_id !== userId).map((r) => r.day))
+      setMyDays(mine)
       setCheckedToday(mine.has(today))
       setTheirCheckedToday(theirs.has(today))
       mineStreak = streakOf(mine, today)
@@ -228,6 +230,26 @@ export default function MomentsCard({
           </>
         )}
       </p>
+      {checkinEnabled && (
+        <div className="mt-2 flex items-center justify-center gap-1.5" title={t('你最近 7 天的打卡')}>
+          {(() => {
+            const days: string[] = []
+            let d = todayInTz(dayTz)
+            for (let i = 0; i < 7; i++) {
+              days.unshift(d)
+              d = prevUtcDay(d)
+            }
+            return days.map((day) => (
+              <span
+                key={day}
+                className={`h-2.5 w-2.5 rounded-full ${
+                  myDays.has(day) ? 'bg-rose-400' : 'border border-gray-200'
+                }`}
+              />
+            ))
+          })()}
+        </div>
+      )}
 
       {/* 想你 composer:居中卡片 + 深色遮罩。用 Portal 挂到 body,避免被 .page-in 的
           入场动画 transform 困住而跑到页面顶部——始终屏幕正中央显示。 */}

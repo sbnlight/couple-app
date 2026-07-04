@@ -150,8 +150,18 @@ export default function Thumbkiss({ onClose }: { onClose: () => void }) {
               style={{ animationDelay: `${d}s` }}
             />
           ))}
+        {/* 我已按住、还没连上:向外荡「正在寻找 TA」的涟漪 */}
+        {myTouch &&
+          !connected &&
+          [0, 0.8].map((d) => (
+            <span
+              key={`s${d}`}
+              className="kiss-ripple pointer-events-none absolute inset-0 rounded-full border-2 border-rose-200 opacity-60"
+              style={{ animationDelay: `${d}s` }}
+            />
+          ))}
         <span
-          className={`relative z-10 text-7xl ${connected ? 'bubble-beat inline-block' : ''}`}
+          className={`relative z-10 text-7xl ${connected || !myTouch ? 'bubble-beat inline-block' : ''}`}
         >
           {connected ? '💗' : '🤍'}
         </span>
@@ -165,11 +175,15 @@ export default function Thumbkiss({ onClose }: { onClose: () => void }) {
           {t('TA')} {partnerTouch ? '●' : '○'}
         </span>
       </div>
-      {!partnerPresent && (
+      {!partnerPresent ? (
         <p className="relative z-10 mt-4 text-center text-xs text-gray-300">
           {t('TA 不在线时,可以先按住等 TA 来~')}
         </p>
-      )}
+      ) : !connected ? (
+        <p className="relative z-10 mt-4 text-center text-xs text-rose-400">
+          {t('TA 也在这儿 💫 一起按住试试')}
+        </p>
+      ) : null}
     </div>
   )
 }

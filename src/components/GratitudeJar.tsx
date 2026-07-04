@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import { fireEffect } from '../lib/effects'
+import { FloatLayer } from './Fx'
 import type { Gratitude } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -124,8 +125,9 @@ export default function GratitudeJar({
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* 罐子 + 摇一摇 */}
-        <div className="rounded-2xl bg-gradient-to-b from-amber-50 to-rose-50 p-6 text-center">
-          <div className={`text-7xl ${shaking ? 'jar-shake' : ''}`}>🫙</div>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-amber-50 to-rose-50 p-6 text-center">
+          {notes.length > 0 && <FloatLayer items={['💛', '💗', '✨']} count={8} />}
+          <div className={`relative text-7xl ${shaking ? 'jar-shake' : ''}`}>🫙</div>
           <p className="mt-2 text-sm text-gray-500">
             {loading
               ? t('打开罐子…')

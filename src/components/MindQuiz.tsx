@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { todayInTz } from '../lib/time'
+import { CountUp } from './Fx'
 import { quizForDate, QUIZZES } from '../lib/quizzes'
 import { fireEffect } from '../lib/effects'
 import { withRetry, friendlyWriteError } from '../lib/net'
@@ -192,8 +193,8 @@ export default function MindQuiz({
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-400">{t('今日一题 · {d}', { d: today })}</p>
             {rate !== null && (
-              <span className="rounded-full bg-soft px-2 py-0.5 text-xs text-primary-dark">
-                {t('默契 {n}%', { n: rate })}
+              <span className="rounded-full bg-soft px-2 py-0.5 text-xs font-medium text-primary-dark">
+                {t('默契')} <CountUp value={rate} suffix="%" />
               </span>
             )}
           </div>
@@ -216,7 +217,7 @@ export default function MindQuiz({
                       iPicked
                         ? 'border-primary bg-soft font-medium text-primary-dark'
                         : 'border-line'
-                    }`}
+                    } ${matched && iPicked ? 'today-glow' : ''}`}
                   >
                     <span>{opt}</span>
                     <span className="flex gap-1 text-xs">

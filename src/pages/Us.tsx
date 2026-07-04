@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { compressImage, extFromType } from '../lib/image'
-import { daysUntil } from '../lib/time'
+import { daysUntil, todayInTz } from '../lib/time'
 import { useAnniversaries } from '../hooks/useAnniversaries'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import Avatar from '../components/Avatar'
@@ -272,6 +272,7 @@ export default function Us() {
   // 下一个里程碑(用于"再过 N 天就 XXX 天啦")
   const MILESTONES = [100, 200, 365, 520, 700, 1000, 1314, 2000, 3000, 3650, 5000]
   const nextMilestone = MILESTONES.find((m) => m > days) ?? null
+  const prevMilestone = [...MILESTONES].reverse().find((m) => m <= days) ?? 0
   const isMilestoneDay = hasTogether && MILESTONES.includes(days)
 
   // 在一起满里程碑那天(如 520/1314/1000 天),进入「我们」页撒一次花庆祝(每天每设备一次)
@@ -282,6 +283,20 @@ export default function Us() {
     sessionStorage.setItem(key, '1')
     fireEffect(['🎉', '💕', '✨', '🥳'], 44)
   }, [isMilestoneDay, days])
+
+  // 见面日 / 任一纪念日「就是今天」:进「我们」页也撒一次花(每天每设备一次),
+  // 补齐此前只有恋爱里程碑当天庆祝、纪念日/见面日却无粒子的不对称
+  const specialDayTz = dayTzOf(couple)
+  const meetToday = Boolean(couple?.next_meet_date && daysUntil(couple.next_meet_date, specialDayTz) === 0)
+  const annivToday = anniversaries.list.some((a) => daysUntil(a.anniv_date, specialDayTz) === 0)
+  useEffect(() => {
+    if (!meetToday && !annivToday) return
+    const key = `special-day-${todayInTz(specialDayTz)}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+    fireEffect(['🎀', '🎉', '✨'], 40)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meetToday, annivToday])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -427,9 +442,20 @@ export default function Us() {
                   <span className="text-base font-normal">{t('天')} ❤️</span>
                 </p>
                 {nextMilestone && (
-                  <p className="mt-0.5 text-xs text-gray-400">
-                    {t('再过 {n} 天就 {m} 天啦 🎉', { n: nextMilestone - days, m: nextMilestone })}
-                  </p>
+                  <>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {t('再过 {n} 天就 {m} 天啦 🎉', { n: nextMilestone - days, m: nextMilestone })}
+                    </p>
+                    {/* 距下一里程碑的进度条 */}
+                    <div className="mx-auto mt-2 h-1.5 w-2/3 overflow-hidden rounded-full bg-white/60">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-rose-400 via-pink-400 to-violet-400 transition-[width] duration-700"
+                        style={{
+                          width: `${Math.max(3, Math.round(((days - prevMilestone) / (nextMilestone - prevMilestone)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             </div>
