@@ -193,6 +193,77 @@ export async function weatherForTz(
   return weatherForCoords(coords[0], coords[1])
 }
 
+export interface WeatherDaily {
+  date: string
+  max: number
+  min: number
+  emoji: string
+}
+export interface WeatherDetail {
+  emoji: string
+  temp: number
+  daily: WeatherDaily[]
+}
+
+const detailCache = new Map<string, { at: number; value: WeatherDetail | null }>()
+
+/** 详细天气(当前 + 未来 5 天最高/最低/天气);缓存 30 分钟。给"点开看详情"用。 */
+export async function weatherDetailForCoords(lat: number, lng: number): Promise<WeatherDetail | null> {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`
+  const hit = detailCache.get(key)
+  if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit.value
+  try {
+    const res = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5&timezone=auto`,
+      { signal: timeoutSignal(8000) },
+    )
+    const j = (await res.json()) as {
+      current?: { temperature_2m?: number; weather_code?: number }
+      daily?: {
+        time?: string[]
+        weather_code?: number[]
+        temperature_2m_max?: number[]
+        temperature_2m_min?: number[]
+      }
+    }
+    const cur = j.current
+    if (!cur || typeof cur.temperature_2m !== 'number') {
+      detailCache.set(key, { at: Date.now(), value: null })
+      return null
+    }
+    const d = j.daily
+    const daily: WeatherDaily[] = []
+    if (d?.time) {
+      for (let i = 0; i < d.time.length; i++) {
+        daily.push({
+          date: d.time[i],
+          max: Math.round(d.temperature_2m_max?.[i] ?? 0),
+          min: Math.round(d.temperature_2m_min?.[i] ?? 0),
+          emoji: codeEmoji(d.weather_code?.[i] ?? 3),
+        })
+      }
+    }
+    const value: WeatherDetail = {
+      emoji: codeEmoji(cur.weather_code ?? 3),
+      temp: Math.round(cur.temperature_2m),
+      daily,
+    }
+    detailCache.set(key, { at: Date.now(), value })
+    return value
+  } catch {
+    detailCache.set(key, { at: Date.now(), value: null })
+    return null
+  }
+}
+
+/** 按时区代表城市取详细天气(精确坐标缺失时的回退) */
+export async function weatherDetailForTz(tz: string | null): Promise<WeatherDetail | null> {
+  if (!tz) return null
+  const coords = TZ_COORDS[tz]
+  if (!coords) return null
+  return weatherDetailForCoords(coords[0], coords[1])
+}
+
 /** 浏览器定位坐标 → 具体城市名(BigDataCloud 免费逆地理编码,无需密钥、支持中文) */
 export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {

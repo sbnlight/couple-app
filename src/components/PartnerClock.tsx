@@ -18,9 +18,10 @@ export default function PartnerClock({
 
   const info = timeInZone(tz ?? null)
   if (!info) return null
+  // 只在夜里显示 🌙(表示"那边是晚上");白天不显示☀️——避免和旁边的天气图标(如☁️多云)打架
   return (
     <>
-      {prefix ?? t('TA那边现在')} {info.hm} {info.night ? '🌙' : '☀️'}
+      {prefix ?? t('TA那边现在')} {info.hm} {info.night ? '🌙' : ''}
     </>
   )
 }

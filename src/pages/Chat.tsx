@@ -20,13 +20,14 @@ import { supabase } from '../lib/supabase'
 import { getSignedUrl } from '../lib/storage'
 import { onLive, onPartnerInChat, sendLive, trackInChat } from '../lib/live'
 import { fireEffect, keywordEffect } from '../lib/effects'
-import { weatherForTz } from '../lib/weather'
+import { weatherForCoords, weatherForTz } from '../lib/weather'
 import MessageBubble from '../components/MessageBubble'
 import ChatPanel from '../components/ChatPanel'
 import ChatSearch from '../components/ChatSearch'
 import ChatAppearance from '../components/ChatAppearance'
 import { FloatLayer } from '../components/Fx'
 import PartnerClock from '../components/PartnerClock'
+import PartnerStatus from '../components/PartnerStatus'
 import { moodValid } from '../components/MoodCard'
 import { t } from '../lib/i18n'
 
@@ -85,6 +86,7 @@ export default function Chat() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
   const [actionTarget, setActionTarget] = useState<{ item: ChatItem; rect: DOMRect } | null>(
     null,
   )
@@ -201,16 +203,31 @@ export default function Chat() {
   }, [typingUntil])
   const partnerTyping = typingUntil > Date.now()
 
-  // 对方城市天气
+  // 对方城市天气:优先精确坐标(profiles.lat/lng),否则按时区。
+  // 自动刷新:每 30 分钟一次 + 回到前台时一次,不用手动操作。(open-meteo 结果本身缓存 30 分钟)
   useEffect(() => {
     let cancelled = false
-    void weatherForTz(partner?.timezone ?? null).then((w) => {
-      if (!cancelled) setWeather(w)
-    })
+    const fetchW = () => {
+      const p =
+        partner?.lat != null && partner?.lng != null
+          ? weatherForCoords(partner.lat, partner.lng)
+          : weatherForTz(partner?.timezone ?? null)
+      void p.then((w) => {
+        if (!cancelled) setWeather(w)
+      })
+    }
+    fetchW()
+    const timer = setInterval(fetchW, 30 * 60 * 1000)
+    const onVisible = () => {
+      if (!document.hidden) fetchW()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [partner?.timezone])
+  }, [partner?.lat, partner?.lng, partner?.timezone])
 
   // 新到消息的反应:对方文本命中关键词 → 表情雨;对方拍一拍 → 震动+抖动
   useEffect(() => {
@@ -540,16 +557,22 @@ export default function Chat() {
             </span>
           </p>
         ) : partner?.timezone || moodValid(partner) ? (
-          <p className="text-xs text-gray-400">
+          // 点一下打开「对方近况」:具体时间 / 详细天气 / 心情备注全文。
+          // 顶栏只放心情的表情(不放全文,免得放不下)。
+          <button
+            type="button"
+            onClick={() => setStatusOpen(true)}
+            className="mx-auto flex items-center gap-1 text-xs text-gray-400 active:opacity-70"
+          >
             <PartnerClock tz={partner?.timezone ?? null} />
             {weather && (
-              <>
-                {' '}
-                · {weather.emoji} {weather.temp}°C
-              </>
+              <span>
+                · {weather.emoji} {weather.temp}°
+              </span>
             )}
-            {moodValid(partner) && <> · {moodValid(partner)}</>}
-          </p>
+            {moodValid(partner) && <span>· {moodValid(partner)!.split(' ')[0]}</span>}
+            <span className="text-gray-300">›</span>
+          </button>
         ) : partner ? (
           // 对方时区还没同步(TA 用新版打开一次 App 就会自动写入),先给个说明而不是空白
           <p className="text-xs text-gray-300">
@@ -853,6 +876,8 @@ export default function Chat() {
       )}
 
       {/* 聊天外观设置 */}
+      {statusOpen && <PartnerStatus partner={partner} onClose={() => setStatusOpen(false)} />}
+
       {appearanceOpen && (
         <ChatAppearance
           userId={userId}
