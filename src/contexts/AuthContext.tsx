@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { withRetry } from '../lib/net'
 import { deviceTimezone } from '../lib/time'
 import { initLive, teardownLive } from '../lib/live'
 import type { Couple, Profile } from '../types/db'
@@ -65,11 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const p = (profileRes.data as Profile | null) ?? null
     const c = (coupleRes.data as Couple | null) ?? null
 
-    // 设备时区变了(出差/旅行)就自动同步到个人资料,对方看到的"当地时间"随之更新
+    // 设备时区变了(出差/旅行)就自动同步到个人资料,对方看到的"当地时间"随之更新。
+    // 弱网重试(iOS/国内易丢包):以前是 fire-and-forget 单发,一旦失败对方永远看不到你的
+    // 当地时间;这里改为退避重试,失败也不阻塞加载,下次开 App / 回前台还会再试。
     const tz = deviceTimezone()
     if (p && tz && p.timezone !== tz) {
       p.timezone = tz
-      void supabase.from('profiles').update({ timezone: tz }).eq('id', uid)
+      void withRetry(async () => {
+        const { error } = await supabase.from('profiles').update({ timezone: tz }).eq('id', uid)
+        if (error) throw error
+      }).catch(() => {})
     }
 
     setProfile(p)

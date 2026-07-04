@@ -16,7 +16,7 @@ import WishList from '../components/WishList'
 import NotesPage from '../components/NotesPage'
 import YearReport from '../components/YearReport'
 import FeatureToggles, { dayTzOf, featureOn } from '../components/FeatureToggles'
-import MoodCard, { moodValid } from '../components/MoodCard'
+import MoodCard from '../components/MoodCard'
 import TwoCityCard from '../components/TwoCityCard'
 import { openThumbkiss } from '../lib/thumbkissStore'
 import LoveTree from '../components/LoveTree'
@@ -377,11 +377,6 @@ export default function Us() {
               <span className="text-xs text-gray-400">
                 <PartnerClock tz={partner?.timezone} prefix={t('那边')} />
               </span>
-              {moodValid(partner) && (
-                <span className="rounded-full bg-soft px-2 py-0.5 text-xs text-primary-dark">
-                  {moodValid(partner)}
-                </span>
-              )}
             </div>
           </div>
 
