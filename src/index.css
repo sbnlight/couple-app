@@ -1831,6 +1831,11 @@ html.dark .recv-paper {
   .tree-progress,
   .tree-var-gold,
   .tree-var-aurora,
+  .chat-shake,
+  .presence-dot,
+  .msg-highlight,
+  .animate-pulse,
+  .animate-bounce,
   .modal-pop,
   .msg-in-me,
   .msg-in-you {

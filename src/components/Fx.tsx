@@ -56,6 +56,9 @@ export function CountUp({
 
 /** 缓缓上浮的装饰层(爱心/星星/彩纸等);放在 relative 容器内当氛围底。 */
 export function FloatLayer({ items, count = 12 }: { items: string[]; count?: number }) {
+  // 尊重系统「减少动态」:整层不渲染(氛围浮层是纯装饰,静态平铺反而难看)
+  if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+    return null
   const drops = Array.from({ length: count }, (_, i) => ({
     key: i,
     e: items[i % items.length],

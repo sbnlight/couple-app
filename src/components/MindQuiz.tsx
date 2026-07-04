@@ -32,7 +32,20 @@ export default function MindQuiz({
   dayTz: string
   onClose: () => void
 }) {
-  const today = todayInTz(dayTz)
+  const [today, setToday] = useState(() => todayInTz(dayTz))
+  // 跨午夜自动换日:回前台/每分钟比对换日时区的日期,变了就刷新「今天」(load 依赖 today 会自动重载)
+  useEffect(() => {
+    const check = () => setToday((p) => (p === todayInTz(dayTz) ? p : todayInTz(dayTz)))
+    const onVis = () => {
+      if (!document.hidden) check()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    const timer = window.setInterval(check, 60_000)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.clearInterval(timer)
+    }
+  }, [dayTz])
   const { id: quizId, quiz } = quizForDate(today)
   const [rows, setRows] = useState<QRow[]>([])
   const [loading, setLoading] = useState(true)

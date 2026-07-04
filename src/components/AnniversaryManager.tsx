@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { daysUntil } from '../lib/time'
+import { dayTzOf } from './FeatureToggles'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Anniversary, Couple } from '../types/db'
 import { t } from '../lib/i18n'
@@ -122,7 +123,7 @@ export default function AnniversaryManager({
         ? t('还有 {n} 天 · 第 {y} 周年', { n: days, y: years })
         : t('还有 {n} 天', { n: days })
     }
-    const n = daysUntil(a.anniv_date)
+    const n = daysUntil(a.anniv_date, dayTzOf(couple))
     if (n > 0) return t('还有 {n} 天', { n })
     if (n === 0) return t('就是今天 🎉')
     return t('第 {n} 天', { n: -n + 1 })

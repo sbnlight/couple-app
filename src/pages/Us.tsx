@@ -440,19 +440,19 @@ export default function Us() {
           )}
 
           {/* 倒数事件:见面 + 纪念日,统一成居中小药丸(视觉一致) */}
-          {((couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0) ||
+          {((couple?.next_meet_date && daysUntil(couple.next_meet_date, dayTzOf(couple)) >= 0) ||
             anniversaries.list.length > 0) && (
             <div className="mt-3 flex flex-wrap justify-center gap-2 border-t border-line pt-3">
-              {couple?.next_meet_date && daysUntil(couple.next_meet_date) >= 0 && (
+              {couple?.next_meet_date && daysUntil(couple.next_meet_date, dayTzOf(couple)) >= 0 && (
                 <span
                   className={`rounded-full bg-soft px-3 py-1 text-xs text-primary-dark ${
-                    daysUntil(couple.next_meet_date) === 0 ? 'today-glow' : ''
+                    daysUntil(couple.next_meet_date, dayTzOf(couple)) === 0 ? 'today-glow' : ''
                   }`}
                 >
                   {t('✈️ 见面')} ·{' '}
-                  {daysUntil(couple.next_meet_date) === 0
+                  {daysUntil(couple.next_meet_date, dayTzOf(couple)) === 0
                     ? t('就是今天!')
-                    : t('还有 {n} 天', { n: daysUntil(couple.next_meet_date) })}
+                    : t('还有 {n} 天', { n: daysUntil(couple.next_meet_date, dayTzOf(couple)) })}
                 </span>
               )}
               {anniversaries.list.map((a) => {
@@ -472,7 +472,7 @@ export default function Us() {
                         ? t('还有 {n} 天 · 第 {y} 周年', { n: dd2, y: yrs })
                         : t('还有 {n} 天', { n: dd2 })
                 } else {
-                  const n = daysUntil(a.anniv_date)
+                  const n = daysUntil(a.anniv_date, dayTzOf(couple))
                   label =
                     n > 0 ? t('还有 {n} 天', { n }) : n === 0 ? t('就是今天 🎉') : t('第 {n} 天', { n: -n + 1 })
                 }

@@ -71,6 +71,7 @@ export default function YearReport({
   const [stats, setStats] = useState<Stats | null>(null)
 
   useEffect(() => {
+    let ignore = false // 快速切换年份时丢弃过期请求,避免旧年份数据覆盖新年份
     const startISO = `${year}-01-01T00:00:00Z`
     const startDate = `${year}-01-01`
     void (async () => {
@@ -141,6 +142,7 @@ export default function YearReport({
 
       const wishes = (wishesRes.data as { done: boolean }[] | null) ?? []
 
+      if (ignore) return
       setStats({
         days:
           Math.floor((Date.now() - new Date(coupleCreatedAt).getTime()) / 86_400_000) + 1,
@@ -161,6 +163,9 @@ export default function YearReport({
         notes: notesRes.count ?? 0,
       })
     })()
+    return () => {
+      ignore = true
+    }
   }, [coupleId, userId, year, coupleCreatedAt])
 
   const containerRef = useRef<HTMLDivElement>(null)

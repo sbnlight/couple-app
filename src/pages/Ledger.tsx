@@ -36,30 +36,33 @@ function TrendChart({ yms, series }: TrendData) {
   const W = 320
   const H = 120
   const PAD = 16
-  const max = Math.max(1, ...series.flatMap((s) => s.values))
   // 防除零:只有一个点时分母用 1(实际 yms 恒为 6,这里仅稳健兜底)
   const x = (i: number) => PAD + (i * (W - 2 * PAD)) / Math.max(1, yms.length - 1)
-  const y = (v: number) => H - 24 - (v / max) * (H - 42)
+  // 每条币种各用自己的 max 归一,避免 ¥ 与 $ 量级悬殊时小额币种被压平贴底、趋势失真
+  const y = (v: number, m: number) => H - 24 - (v / m) * (H - 42)
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-      {series.map((s, si) => (
-        <g key={s.currency}>
-          <polyline
-            fill="none"
-            stroke={TREND_COLORS[si]}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            pathLength={1}
-            className="chart-draw"
-            style={{ animationDelay: `${0.15 + si * 0.25}s` }}
-            points={s.values.map((v, i) => `${x(i)},${y(v)}`).join(' ')}
-          />
-          {s.values.map((v, i) => (
-            <circle key={i} cx={x(i)} cy={y(v)} r="3" fill={TREND_COLORS[si]} className="chart-dot" />
-          ))}
-        </g>
-      ))}
+      {series.map((s, si) => {
+        const sMax = Math.max(1, ...s.values)
+        return (
+          <g key={s.currency}>
+            <polyline
+              fill="none"
+              stroke={TREND_COLORS[si]}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              pathLength={1}
+              className="chart-draw"
+              style={{ animationDelay: `${0.15 + si * 0.25}s` }}
+              points={s.values.map((v, i) => `${x(i)},${y(v, sMax)}`).join(' ')}
+            />
+            {s.values.map((v, i) => (
+              <circle key={i} cx={x(i)} cy={y(v, sMax)} r="3" fill={TREND_COLORS[si]} className="chart-dot" />
+            ))}
+          </g>
+        )
+      })}
       {yms.map((ym, i) => (
         <text key={ym} x={x(i)} y={H - 6} textAnchor="middle" fontSize="10" fill="#9ca3af">
           {Number(ym.slice(5))}月
@@ -203,6 +206,7 @@ export default function Ledger() {
 
   // 近 6 个月支出趋势(记账有增删改时跟着 expenses 一起刷新)
   useEffect(() => {
+    let ignore = false // 弱网/连续增删下丢弃过期请求,避免旧结果覆盖新结果
     const now = new Date()
     const yms: string[] = []
     for (let i = 5; i >= 0; i--) {
@@ -220,7 +224,7 @@ export default function Ledger() {
         .eq('kind', 'expense')
         .gte('spent_at', start)
         .lt('spent_at', end)
-      if (error || !data) return
+      if (error || !data || ignore) return
       const map = new Map<string, number[]>()
       for (const row of data as { spent_at: string; amount: number; currency: string }[]) {
         const idx = yms.indexOf(row.spent_at.slice(0, 7))
@@ -236,8 +240,11 @@ export default function Ledger() {
         .map(([currency, values]) => ({ currency, values }))
         .sort((a, b) => b.values.reduce((s, v) => s + v, 0) - a.values.reduce((s, v) => s + v, 0))
         .slice(0, 2) // 最多画两条线,多了看不清
-      setTrend({ yms, series })
+      if (!ignore) setTrend({ yms, series })
     })()
+    return () => {
+      ignore = true
+    }
   }, [couple, expenses])
 
   // 环比文案(主货币:本月 vs 上月)

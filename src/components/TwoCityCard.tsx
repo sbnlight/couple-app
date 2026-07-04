@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { cityLabelForTz, distanceKm, haversineKm, weatherForCoords, weatherForTz } from '../lib/weather'
+import { LIVE_REFRESH_MS } from '../lib/time'
 import { t } from '../lib/i18n'
 
 type W = { emoji: string; temp: number } | null
@@ -65,12 +66,26 @@ function CityCol({
   useEffect(() => {
     let cancelled = false
     // 有精确坐标就按坐标查天气,否则回退按时区代表城市
-    const p = lat != null && lng != null ? weatherForCoords(lat, lng) : weatherForTz(tz)
-    void p.then((w) => {
-      if (!cancelled) setWeather(w)
-    })
+    const fetchW = () => {
+      const p = lat != null && lng != null ? weatherForCoords(lat, lng) : weatherForTz(tz)
+      void p.then((w) => {
+        // 失败(null)不覆盖已有,避免首拉失败后卡在「白天/夜晚」文字;下次定时/回前台再试
+        if (!cancelled && w) setWeather(w)
+      })
+    }
+    fetchW()
+    // 定时刷新 + 回到前台补拉(与顶栏/双城的实时节奏一致),不再「只拉一次」
+    const timer = setInterval(() => {
+      if (!document.hidden) fetchW()
+    }, LIVE_REFRESH_MS)
+    const onVisible = () => {
+      if (!document.hidden) fetchW()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [tz, lat, lng])
 

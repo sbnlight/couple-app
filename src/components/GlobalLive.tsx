@@ -5,6 +5,7 @@ import { onLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
 import { isThumbkissOpen, openThumbkiss } from '../lib/thumbkissStore'
 import { daysUntil } from '../lib/time'
+import { dayTzOf } from './FeatureToggles'
 import { t } from '../lib/i18n'
 
 /**
@@ -56,7 +57,7 @@ export default function GlobalLive() {
     if (sessionStorage.getItem(key)) return
 
     let title: string | null = null
-    if (couple?.next_meet_date && daysUntil(couple.next_meet_date) === 0) {
+    if (couple?.next_meet_date && daysUntil(couple.next_meet_date, dayTzOf(couple)) === 0) {
       title = t('今天就要见面啦 ✈️')
     } else {
       const md = todayLocal.slice(5)

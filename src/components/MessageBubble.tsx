@@ -440,6 +440,9 @@ function VoiceBubble({
   } catch {
     // 旧数据或未上传完成
   }
+  // 待发/失败的语音 content 为空,parse 不出时长 → 用队列里带的 voiceDur 兜底,不再显示 0"
+  if (!dur && item.voiceDur) dur = item.voiceDur
+  const unsent = !path // 还没上传,没有可播放的 path
 
   const toggle = async () => {
     const existing = audioRef.current
@@ -492,13 +495,13 @@ function VoiceBubble({
         width: 92 + Math.min(dur, 60) * 2,
       }}
     >
-      <span>{playing ? '⏸' : '▶'}</span>
+      <span>{unsent ? (item.status === 'failed' ? '⚠' : '⏳') : playing ? '⏸' : '▶'}</span>
       <span className="flex flex-1 items-center gap-0.5 overflow-hidden">
         {[3, 7, 5, 9, 4, 8, 5].map((h, i) => (
           <span
             key={i}
             className={`w-0.5 rounded-full ${playing ? 'animate-pulse' : ''}`}
-            style={{ height: h + 4, background: 'currentColor', opacity: 0.75 }}
+            style={{ height: h + 4, background: 'currentColor', opacity: unsent ? 0.4 : 0.75 }}
           />
         ))}
       </span>

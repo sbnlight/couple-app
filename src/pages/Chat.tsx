@@ -420,14 +420,30 @@ export default function Chat() {
     return s
   }, [items])
 
+  // 未读新消息:仅 live 模式滚上去看历史时,新消息到达但没贴底 → 记数,底部显示药丸
+  const [liveUnread, setLiveUnread] = useState(0)
+  const prevLenRef = useRef(0)
+
   useLayoutEffect(() => {
     const el = listRef.current
-    if (el && stickRef.current && mode === 'live') el.scrollTop = el.scrollHeight
+    if (mode === 'live') {
+      if (el && stickRef.current) {
+        el.scrollTop = el.scrollHeight
+        setLiveUnread(0)
+      } else if (items.length > prevLenRef.current) {
+        // 滚上去了,新来的消息没被自动滚到 → 累计未读
+        setLiveUnread((n) => n + (items.length - prevLenRef.current))
+      }
+    }
+    prevLenRef.current = items.length
   }, [items.length, loadingInitial, mode])
 
   const onScroll = () => {
     const el = listRef.current
-    if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    stickRef.current = atBottom
+    if (atBottom) setLiveUnread(0)
   }
 
   // 图片/表情包异步加载完成后,<img> 撑高发生在上面 items 贴底 effect 之后,
@@ -437,9 +453,12 @@ export default function Chat() {
     if (el && stickRef.current && mode === 'live') el.scrollTop = el.scrollHeight
   }
 
+  const toastTimerRef = useRef<number | undefined>(undefined)
   const showToast = (msg: string) => {
     setToast(msg)
-    setTimeout(() => setToast(''), 2500)
+    // 先清掉上一条的定时器,否则连续两条提示时前一个会提前把后一条清空(闪一下就没)
+    window.clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = window.setTimeout(() => setToast(''), 2500)
   }
 
   /** 加载更早消息并保持滚动位置不跳动 */
@@ -759,6 +778,22 @@ export default function Chat() {
           className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50vw-13rem))] rounded-full bg-primary px-3.5 py-2 text-sm text-white shadow-lg"
         >
           {t('↓ 回到最新')}
+        </button>
+      )}
+
+      {/* live 模式滚上去看历史时:有新消息 → 提示并可一键回底 */}
+      {mode === 'live' && liveUnread > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            stickRef.current = true
+            setLiveUnread(0)
+            const el = listRef.current
+            if (el) el.scrollTop = el.scrollHeight
+          }}
+          className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50vw-13rem))] rounded-full bg-primary px-3.5 py-2 text-sm text-white shadow-lg"
+        >
+          {t('↓ {n} 条新消息', { n: liveUnread })}
         </button>
       )}
 

@@ -43,11 +43,13 @@ export function deviceTimezone(): string | null {
  * 目标日期(YYYY-MM-DD,按本地时区)距离今天的天数:
  * >0 未来还有 n 天;=0 就是今天;<0 已过去 n 天
  */
-export function daysUntil(dateStr: string): number {
+export function daysUntil(dateStr: string, tz?: string | null): number {
   const [y, m, d] = dateStr.split('-').map(Number)
-  const target = new Date(y, m - 1, d).getTime()
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const target = Date.UTC(y, m - 1, d)
+  // 用两人共用的换日时区算「今天」,保证异地两端看到一致的倒数(缺省回退 UTC)。
+  // 全程用 Date.UTC 做纯日期算术,避开本地时区/DST 干扰。
+  const [cy, cm, cd] = todayInTz(tz ?? null).split('-').map(Number)
+  const today = Date.UTC(cy, cm - 1, cd)
   return Math.round((target - today) / 86_400_000)
 }
 

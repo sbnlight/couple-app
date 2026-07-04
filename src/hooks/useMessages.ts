@@ -32,6 +32,8 @@ export interface ChatItem {
   /** 发送时冻结的气泡/字体 id(为空则回退按发送者当前渲染) */
   bubbleId?: string | null
   bubbleFont?: string | null
+  /** 语音时长(秒);待发/未上传的语音 content 为空,用它兜底显示时长 */
+  voiceDur?: number
 }
 
 /** 本地待发队列里的一条 */
@@ -128,6 +130,16 @@ export function useMessages(
   useEffect(() => {
     pendingRef.current = pending
   }, [pending])
+
+  // 卸载时回收所有待发预览 object URL(mergeServer 只在「确认落库」时回收;一直失败的
+  // 媒体在切页/卸载时不回收就会随反复进出聊天页缓慢泄漏)。重挂时恢复逻辑会重新创建。
+  useEffect(() => {
+    return () => {
+      for (const p of pendingRef.current) {
+        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl)
+      }
+    }
+  }, [])
 
   // 恢复上次未发出的图片/语音(存在 IndexedDB):重开后作为 failed 可手动重试,
   // 不再静默消失。若其实已发送成功(client_id 已落库),重试时会被去重并清理。
@@ -665,6 +677,7 @@ export function useMessages(
       replyTo: p.replyTo,
       bubbleId: p.bubbleId,
       bubbleFont: p.bubbleFont,
+      voiceDur: p.voiceDur,
     })),
   ]
 

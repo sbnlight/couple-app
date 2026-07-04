@@ -9,6 +9,8 @@ export interface FxDetail {
 }
 
 export function fireEffect(emojis: string[], count = 26) {
+  // 尊重系统「减少动态」:直接在源头拦住,EffectHost 收不到事件 → 不下全屏表情雨
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   window.dispatchEvent(new CustomEvent<FxDetail>('couple-fx', { detail: { emojis, count } }))
 }
 
