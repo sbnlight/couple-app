@@ -1,9 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { withRetry } from '../lib/net'
 import { deviceTimezone, LIVE_REFRESH_MS } from '../lib/time'
+import { reverseGeocode } from '../lib/weather'
+import { getAutoLocation } from '../lib/prefs'
 import { initLive, teardownLive } from '../lib/live'
 import type { Couple, Profile } from '../types/db'
 
@@ -154,6 +156,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, LIVE_REFRESH_MS)
     return () => clearInterval(timer)
   }, [partnerId])
+
+  // 自动更新「我的位置」:开关默认关(在「我的位置」面板里开)。开启后——授权一次,
+  // 之后每次打开 / 回到前台,静默用 GPS 把我的精确城市/坐标写回 profiles,不用手动。
+  // 仅前台 + 开关开 + 授权可用时进行;失败/被拒静默回退手动;最多每 3 分钟一次。
+  const lastLocRef = useRef(0)
+  useEffect(() => {
+    if (!userId || !('geolocation' in navigator)) return
+    let cancelled = false
+    const run = () => {
+      if (document.hidden || !getAutoLocation()) return
+      if (Date.now() - lastLocRef.current < 3 * 60 * 1000) return
+      lastLocRef.current = Date.now()
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          if (cancelled) return
+          const { latitude, longitude } = pos.coords
+          const name = await reverseGeocode(latitude, longitude)
+          await withRetry(async () => {
+            const patch: { city?: string; lat: number; lng: number } = {
+              lat: latitude,
+              lng: longitude,
+            }
+            if (name) patch.city = name
+            const { error } = await supabase.from('profiles').update(patch).eq('id', userId)
+            if (error) throw error
+          }).catch(() => {})
+          if (cancelled) return
+          // 只重拉自己这一行(顶栏/双城卡片里的「我」随之更新),不动 couple,避免重建实时通道
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle()
+          if (data && !cancelled) setProfile(data as Profile)
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
+      )
+    }
+    run()
+    const onVisible = () => {
+      if (!document.hidden) run()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [userId])
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()

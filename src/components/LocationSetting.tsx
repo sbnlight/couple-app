@@ -4,6 +4,7 @@ import { withRetry, friendlyWriteError } from '../lib/net'
 import { cityLabelForTz, reverseGeocode, searchCity } from '../lib/weather'
 import type { CityHit } from '../lib/weather'
 import { t } from '../lib/i18n'
+import { getAutoLocation, setAutoLocation } from '../lib/prefs'
 
 /**
  * 「我的位置」设置(底部弹层):把位置精确到具体城市。
@@ -30,6 +31,7 @@ export default function LocationSetting({
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<CityHit[]>([])
   const [searching, setSearching] = useState(false)
+  const [auto, setAuto] = useState(getAutoLocation())
 
   const save = async (patch: { city: string | null; lat: number | null; lng: number | null }) => {
     setBusy(true)
@@ -49,7 +51,7 @@ export default function LocationSetting({
     onClose()
   }
 
-  const useCurrentLocation = () => {
+  const captureCurrentLocation = () => {
     if (!('geolocation' in navigator)) {
       setErr(t('这台设备不支持定位,请手动搜索城市'))
       return
@@ -100,10 +102,41 @@ export default function LocationSetting({
         <button
           type="button"
           disabled={busy}
-          onClick={useCurrentLocation}
+          onClick={captureCurrentLocation}
           className="btn-primary w-full rounded-full py-3 disabled:opacity-60"
         >
           {busy ? t('定位中…') : t('使用当前位置')}
+        </button>
+
+        {/* 自动更新开关:开启即授权并定位一次,之后每次打开 App 自动刷新到精确城市 */}
+        <button
+          type="button"
+          onClick={() => {
+            const on = !auto
+            setAuto(on)
+            setAutoLocation(on)
+            if (on) captureCurrentLocation()
+          }}
+          className={`mt-3 flex w-full items-center justify-between rounded-xl bg-soft px-4 py-3 text-left text-sm ${
+            auto ? 'text-primary-dark' : 'text-gray-500'
+          }`}
+        >
+          <span className="flex flex-col">
+            <span>{t('自动更新我的位置')}</span>
+            <span className="mt-0.5 text-xs text-gray-400">
+              {t('授权一次,之后每次打开自动刷新到精确城市')}
+            </span>
+          </span>
+          <span
+            className="relative ml-3 h-5 w-9 shrink-0 rounded-full transition-colors"
+            style={{ background: auto ? 'var(--c-primary)' : '#d1d5db' }}
+          >
+            <span
+              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                auto ? 'left-[1.125rem]' : 'left-0.5'
+              }`}
+            />
+          </span>
         </button>
 
         <div className="mt-4 flex gap-2">

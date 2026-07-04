@@ -64,7 +64,10 @@ export default function YearReport({
   coupleCreatedAt: string
   onClose: () => void
 }) {
-  const year = new Date().getFullYear()
+  const thisYear = new Date().getFullYear()
+  const firstYear = new Date(coupleCreatedAt).getFullYear()
+  // 支持回看往年报告:默认今年,可在封面用 ‹ › 切换(不早于在一起的第一年、不晚于今年)
+  const [year, setYear] = useState(thisYear)
   const [stats, setStats] = useState<Stats | null>(null)
 
   useEffect(() => {
@@ -256,9 +259,35 @@ export default function YearReport({
           >
             <FloatLayer items={['❤️', '💕', '✨', '💖', '🎊']} />
             <span className="year-pulse text-7xl drop-shadow-lg">❤️</span>
-            <p {...reveal(0, 1)} className={`${reveal(0, 1).className} text-4xl font-extrabold text-white drop-shadow`}>
-              {t('我们的 {y}', { y: year })}
-            </p>
+            {thisYear > firstYear ? (
+              <div {...reveal(0, 1)} className={`${reveal(0, 1).className} flex items-center gap-3`}>
+                <button
+                  type="button"
+                  onClick={() => setYear((y) => Math.max(firstYear, y - 1))}
+                  disabled={year <= firstYear}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-2xl text-white backdrop-blur-sm disabled:opacity-25"
+                  aria-label={t('上一年')}
+                >
+                  ‹
+                </button>
+                <p className="text-4xl font-extrabold text-white drop-shadow">
+                  {t('我们的 {y}', { y: year })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setYear((y) => Math.min(thisYear, y + 1))}
+                  disabled={year >= thisYear}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-2xl text-white backdrop-blur-sm disabled:opacity-25"
+                  aria-label={t('下一年')}
+                >
+                  ›
+                </button>
+              </div>
+            ) : (
+              <p {...reveal(0, 1)} className={`${reveal(0, 1).className} text-4xl font-extrabold text-white drop-shadow`}>
+                {t('我们的 {y}', { y: year })}
+              </p>
+            )}
             <p {...reveal(0, 2)} className={`${reveal(0, 2).className} ${label}`}>
               {t('这是我们在一起的第 {n} 天', { n: stats.days })}
             </p>

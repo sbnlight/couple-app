@@ -60,6 +60,15 @@ export const THEME_MODES: { id: ThemeMode; label: string }[] = [
   { id: 'dark', label: '深色' },
 ]
 
+// 「自动更新我的位置」开关(本机偏好,各自的手机独立决定要不要自动分享位置)
+const AUTO_LOC_KEY = 'pref-auto-location'
+export function getAutoLocation(): boolean {
+  return localStorage.getItem(AUTO_LOC_KEY) === '1'
+}
+export function setAutoLocation(on: boolean) {
+  localStorage.setItem(AUTO_LOC_KEY, on ? '1' : '0')
+}
+
 const MODE_KEY = 'pref-theme-mode'
 
 export function getThemeMode(): ThemeMode {
