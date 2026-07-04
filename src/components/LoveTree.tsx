@@ -5,6 +5,8 @@ import Portal from './Portal'
 import { CountUp } from './Fx'
 import TreeGraphic, { seasonOfMonth } from './TreeGraphic'
 import type { Season } from './TreeGraphic'
+import { timeInZone } from '../lib/time'
+import { weatherForTz } from '../lib/weather'
 import { t } from '../lib/i18n'
 
 /**
@@ -59,10 +61,15 @@ function skyByHour(h: number): { bg: string; night: boolean; label: string } {
 export default function LoveTree({
   coupleId,
   daysTogether,
+  partnerTz = null,
+  partnerName = null,
 }: {
   coupleId: string
   /** 在一起天数(没设在一起日期则传小屋建立天数) */
   daysTogether: number
+  /** 对方时区/昵称(双子天空「TA 那边此刻」用) */
+  partnerTz?: string | null
+  partnerName?: string | null
 }) {
   const [checkins, setCheckins] = useState(0)
   const [misses, setMisses] = useState(0)
@@ -96,6 +103,30 @@ export default function LoveTree({
       dur: 3.5 + Math.random() * 3,
     })),
   )
+
+  // 双子天空:进园地时拉一次「对方那边」的天气,配合 timeInZone 显示 TA 此刻时辰
+  const [partnerW, setPartnerW] = useState<{ emoji: string; temp: number } | null>(null)
+  useEffect(() => {
+    if (!open || !partnerTz) return
+    let cancelled = false
+    void weatherForTz(partnerTz).then((w) => {
+      if (!cancelled) setPartnerW(w)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, partnerTz])
+  const partnerTime = partnerTz ? timeInZone(partnerTz) : null
+
+  // 稀有变体:按「日期 + coupleId」种子低概率掷出金树/极光树(两人当天看到同一棵,离线可算)
+  const variantClass = (() => {
+    const key = new Date().toISOString().slice(0, 10) + coupleId
+    let h = 0
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
+    if (h % 19 === 0) return 'tree-var-gold'
+    if (h % 19 === 1) return 'tree-var-aurora'
+    return ''
+  })()
 
   const loadCounts = async () => {
     const [c, m] = await Promise.all([
@@ -140,6 +171,21 @@ export default function LoveTree({
     : 100
   const treeStage = loading ? 0 : stageIdx
 
+  // 恋爱里程碑徽章:全部只读现有计数派生,不新增表
+  const badges = [
+    { icon: '💞', label: '在一起 100 天', ok: daysTogether >= 100 },
+    { icon: '💝', label: '在一起 365 天', ok: daysTogether >= 365 },
+    { icon: '💗', label: '在一起 520 天', ok: daysTogether >= 520 },
+    { icon: '👑', label: '在一起 1314 天', ok: daysTogether >= 1314 },
+    { icon: '📍', label: '打卡满 10 次', ok: checkins >= 10 },
+    { icon: '🗺️', label: '打卡满 50 次', ok: checkins >= 50 },
+    { icon: '💭', label: '想你满 50 次', ok: misses >= 50 },
+    { icon: '🌌', label: '想你满 200 次', ok: misses >= 200 },
+    { icon: '🌳', label: '养成大树', ok: stageIdx >= 3 },
+    { icon: '🌸', label: '养成满树花', ok: stageIdx >= 5 },
+    { icon: '🌈', label: '养成彩虹树', ok: stageIdx >= 6 },
+  ]
+
   // 升级撒花:本机记录上次阶段,长大到新阶段时庆祝一次(必须是可靠数据,否则弱网清零会误判)
   useEffect(() => {
     if (loading || !loadOk) return
@@ -150,11 +196,22 @@ export default function LoveTree({
     }
   }, [loading, stageIdx])
 
-  // 进入园地:飘一场落叶欢迎(每次打开一次)
+  // 进入园地:飘一场落叶欢迎(每次打开一次)+ 离开-回来揭示(隔 ≥1 天温柔提示)
   useEffect(() => {
     if (open && !enteredRef.current) {
       enteredRef.current = true
       setTimeout(() => fireEffect(['🍃', '🌿', '✨'], 16), 350)
+      const KEY = 'love-tree-last-open'
+      const last = Number(localStorage.getItem(KEY) ?? '0')
+      const days = last > 0 ? Math.floor((Date.now() - last) / 86_400_000) : 0
+      if (days >= 1) {
+        setTimeout(() => {
+          setTalk(t('你不在的这 {n} 天,小树一直乖乖等你们回来 🌿', { n: days }))
+          window.clearTimeout(talkTimer.current)
+          talkTimer.current = window.setTimeout(() => setTalk(''), 4200)
+        }, 1100)
+      }
+      localStorage.setItem(KEY, String(Date.now()))
     }
     if (!open) enteredRef.current = false
   }, [open])
@@ -199,7 +256,7 @@ export default function LoveTree({
           <span className="text-xs text-gray-300">{t('进入园地 ›')}</span>
         </div>
         <div className="mt-2 flex items-center gap-3">
-          <span className="shrink-0">
+          <span className={`shrink-0 ${variantClass}`}>
             <TreeGraphic stageIdx={treeStage} season={season} width={52} />
           </span>
           <div className="min-w-0 flex-1">
@@ -287,6 +344,19 @@ export default function LoveTree({
                 </span>
               </div>
 
+              {/* 双子天空:TA 那边此刻(时辰 + 天气),延续异地共情 */}
+              {partnerTz && partnerTime && (
+                <div
+                  className={`relative mx-auto mt-1.5 w-fit rounded-full px-3 py-1 text-[11px] ${
+                    sky.night ? 'bg-white/15 text-white/90' : 'bg-white/50 text-gray-600'
+                  }`}
+                >
+                  {t('{name} 那边此刻', { name: partnerName ?? t('TA') })} · {partnerTime.hm}{' '}
+                  {partnerTime.night ? '🌙' : '☀️'}
+                  {partnerW && ` · ${partnerW.emoji} ${partnerW.temp}°`}
+                </div>
+              )}
+
               {/* 白天点缀云(夜晚由萤火虫接管) */}
               {!sky.night && (
                 <div className="pointer-events-none absolute inset-x-0 top-10 flex justify-around text-sm opacity-80">
@@ -313,8 +383,10 @@ export default function LoveTree({
                   className="block w-full select-none text-center"
                   aria-label="戳戳爱情树"
                 >
-                  <span className={`inline-block drop-shadow-lg ${bouncing ? 'tree-bounce' : 'tree-sway'}`}>
-                    <TreeGraphic stageIdx={treeStage} season={season} animate width={176} />
+                  <span className={variantClass}>
+                    <span className={`inline-block drop-shadow-lg ${bouncing ? 'tree-bounce' : 'tree-sway'}`}>
+                      <TreeGraphic stageIdx={treeStage} season={season} animate width={176} />
+                    </span>
                   </span>
                 </button>
                 {watering && (
@@ -398,6 +470,28 @@ export default function LoveTree({
                   </p>
                   <p className="text-xs text-gray-400">{t('想你次数 ×1')}</p>
                 </div>
+              </div>
+
+              {/* 恋爱里程碑徽章墙 */}
+              <p className="mb-2 mt-5 px-1 text-sm font-medium text-gray-500">{t('🏅 恋爱里程碑')}</p>
+              <div className="grid grid-cols-4 gap-2">
+                {badges.map((b) => (
+                  <div
+                    key={b.label}
+                    className={`flex flex-col items-center gap-1 rounded-2xl bg-white p-2 ${
+                      b.ok ? '' : 'opacity-60'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-11 w-11 items-center justify-center rounded-full text-xl ${
+                        b.ok ? 'bg-gradient-to-br from-amber-200 to-rose-200' : 'bg-gray-100 grayscale'
+                      }`}
+                    >
+                      {b.ok ? b.icon : '🔒'}
+                    </span>
+                    <span className="text-center text-[10px] leading-tight text-gray-500">{t(b.label)}</span>
+                  </div>
+                ))}
               </div>
 
               {/* 成就阶梯 */}

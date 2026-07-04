@@ -525,7 +525,12 @@ export default function Us() {
         )}
 
         {/* ---- 共同养成:爱情树 ---- */}
-        <LoveTree coupleId={couple!.id} daysTogether={days} />
+        <LoveTree
+          coupleId={couple!.id}
+          daysTogether={days}
+          partnerTz={partner?.timezone ?? null}
+          partnerName={partner?.display_name ?? null}
+        />
 
         {/* ---- 功能入口 ---- */}
         <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">

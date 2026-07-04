@@ -1565,6 +1565,34 @@ html.dark .recv-paper {
   background-repeat: no-repeat;
   animation: tree-progress-sweep 2.4s ease-in-out infinite;
 }
+/* 稀有变体:金树 / 极光树(低概率彩蛋,两人同日看到同一棵) */
+@keyframes tree-gold-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.75));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.95));
+  }
+}
+.tree-var-gold {
+  display: inline-block;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.85));
+  animation: tree-gold-glow 2.4s ease-in-out infinite;
+}
+@keyframes tree-aurora-hue {
+  from {
+    filter: hue-rotate(0deg) saturate(1.35) drop-shadow(0 0 8px rgba(167, 139, 250, 0.6));
+  }
+  to {
+    filter: hue-rotate(360deg) saturate(1.35) drop-shadow(0 0 8px rgba(167, 139, 250, 0.6));
+  }
+}
+.tree-var-aurora {
+  display: inline-block;
+  filter: saturate(1.35) drop-shadow(0 0 8px rgba(167, 139, 250, 0.6));
+  animation: tree-aurora-hue 6s linear infinite;
+}
 
 /* 居中弹窗:轻微放大淡入 */
 @keyframes modal-pop {
@@ -1801,6 +1829,8 @@ html.dark .recv-paper {
   .water-drop,
   .water-ripple,
   .tree-progress,
+  .tree-var-gold,
+  .tree-var-aurora,
   .modal-pop,
   .msg-in-me,
   .msg-in-you {
