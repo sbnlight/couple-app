@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Note } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -45,6 +46,7 @@ export default function NotesPage({
   const [writing, setWriting] = useState(false)
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState('')
 
   const load = useCallback(async () => {
     const [notesRes, lockedRes] = await Promise.all([
@@ -58,9 +60,12 @@ export default function NotesPage({
       supabase.rpc('locked_notes_info', { cid: coupleId }),
     ])
     if (notesRes.data) setNotes(notesRes.data as Note[])
-    const info = (lockedRes.data as { cnt: number; next_unlock: string | null }[] | null)?.[0]
-    setLockedCnt(Number(info?.cnt ?? 0))
-    setNextUnlock(info?.next_unlock ?? null)
+    // 弱网超时:保留上次的待开启信息,不静默清零
+    if (!lockedRes.error) {
+      const info = (lockedRes.data as { cnt: number; next_unlock: string | null }[] | null)?.[0]
+      setLockedCnt(Number(info?.cnt ?? 0))
+      setNextUnlock(info?.next_unlock ?? null)
+    }
     setLoading(false)
   }, [coupleId])
 
@@ -85,7 +90,9 @@ export default function NotesPage({
     const unlockAt = computeUnlockAt()
     if (!content || !unlockAt || busy) return
     setBusy(true)
+    setErr('')
     try {
+      // 纸条无幂等键,插入只尝试一次以免写重复;失败给出提示而非静默丢弃(草稿保留)
       const { error } = await supabase.from('notes').insert({
         couple_id: coupleId,
         author_id: userId,
@@ -96,6 +103,8 @@ export default function NotesPage({
       setDraft('')
       setWriting(false)
       await load()
+    } catch (e) {
+      setErr(friendlyWriteError(e))
     } finally {
       setBusy(false)
     }
@@ -103,8 +112,17 @@ export default function NotesPage({
 
   const remove = async (n: Note) => {
     if (!window.confirm(t('撕掉这张纸条?'))) return
-    const { error } = await supabase.from('notes').delete().eq('id', n.id)
-    if (!error) await load()
+    setErr('')
+    try {
+      // 按 id 删除是幂等操作,弱网可安全重试
+      await withRetry(async () => {
+        const { error } = await supabase.from('notes').delete().eq('id', n.id)
+        if (error) throw error
+      })
+      await load()
+    } catch (e) {
+      setErr(friendlyWriteError(e))
+    }
   }
 
   const received = notes.filter((n) => n.author_id !== userId)
@@ -125,6 +143,12 @@ export default function NotesPage({
           {t('✍ 写纸条')}
         </button>
       </header>
+
+      {err && !writing && (
+        <p className="border-b border-line bg-red-50 px-4 py-2 text-center text-xs text-red-500">
+          {err}
+        </p>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
@@ -257,6 +281,7 @@ export default function NotesPage({
             >
               {busy ? t('封存中…') : t('封存纸条 💌')}
             </button>
+            {err && <p className="mt-2 text-center text-xs text-red-500">{err}</p>}
           </form>
         </div>
       )}

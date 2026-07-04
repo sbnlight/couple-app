@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { daysUntil } from '../lib/time'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Anniversary, Couple } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -35,19 +36,23 @@ export default function AnniversaryManager({
     if (busy) return
     setBusy(true)
     try {
-      const { error } = await supabase
-        .from('couples')
-        .update({ next_meet_date: value })
-        .eq('id', couple.id)
-      if (error) throw error
-      await onCoupleChanged()
-      setMeetDate(value ?? '')
-      onToast(value ? t('见面日期已设置 ✈️') : t('已清除见面日期'))
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('couples')
+          .update({ next_meet_date: value })
+          .eq('id', couple.id)
+        if (error) throw error
+      })
     } catch (e) {
-      onToast(t('保存失败:{m}', { m: (e as { message?: string })?.message ?? '请重试' }))
+      onToast(friendlyWriteError(e))
+      return
     } finally {
       setBusy(false)
     }
+    // 写入已成功;刷新 best-effort,放在 try 外,失败不报「保存失败」
+    setMeetDate(value ?? '')
+    onToast(value ? t('见面日期已设置 ✈️') : t('已清除见面日期'))
+    void onCoupleChanged()
   }
 
   /** 保存/清除在一起的日子(恋爱计数大卡锚点) */
@@ -55,19 +60,22 @@ export default function AnniversaryManager({
     if (busy) return
     setBusy(true)
     try {
-      const { error } = await supabase
-        .from('couples')
-        .update({ together_date: value })
-        .eq('id', couple.id)
-      if (error) throw error
-      await onCoupleChanged()
-      setTogetherDate(value ?? '')
-      onToast(value ? t('在一起的日子已设置 ❤️') : t('已清除'))
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('couples')
+          .update({ together_date: value })
+          .eq('id', couple.id)
+        if (error) throw error
+      })
     } catch (e) {
-      onToast(t('保存失败:{m}', { m: (e as { message?: string })?.message ?? '请重试' }))
+      onToast(friendlyWriteError(e))
+      return
     } finally {
       setBusy(false)
     }
+    setTogetherDate(value ?? '')
+    onToast(value ? t('在一起的日子已设置 ❤️') : t('已清除'))
+    void onCoupleChanged()
   }
 
   const handleAdd = async (e: FormEvent) => {
@@ -79,8 +87,8 @@ export default function AnniversaryManager({
       setTitle('')
       setDate('')
       setRecurring(false)
-    } catch {
-      onToast(t('添加失败,请重试'))
+    } catch (e2) {
+      onToast(friendlyWriteError(e2))
     } finally {
       setBusy(false)
     }
@@ -90,8 +98,8 @@ export default function AnniversaryManager({
     if (!window.confirm(t('删除这个纪念日?'))) return
     try {
       await onRemove(id)
-    } catch {
-      onToast(t('删除失败,请重试'))
+    } catch (e) {
+      onToast(friendlyWriteError(e))
     }
   }
 

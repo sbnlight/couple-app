@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { categoryIcon, currencySymbol, CURRENCIES, useExpenses } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import ExpenseForm from '../components/ExpenseForm'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Expense } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -153,32 +154,37 @@ export default function Ledger() {
   const saveBudget = async (amt: number | null, cur: string) => {
     if (!couple) return
     try {
-      // 读最新 flags 再合并,避免覆盖对方同时改的其他设置(同 FeatureToggles 的做法)
-      const { data } = await supabase
-        .from('couples')
-        .select('feature_flags')
-        .eq('id', couple.id)
-        .single()
-      const fresh = (data?.feature_flags as Record<string, unknown> | null) ?? {}
-      const next = { ...fresh }
-      if (amt && amt > 0) {
-        next.budget_amt = String(amt)
-        next.budget_cur = cur
-      } else {
-        delete next.budget_amt
-        delete next.budget_cur
-      }
-      const { error } = await supabase
-        .from('couples')
-        .update({ feature_flags: next })
-        .eq('id', couple.id)
-      if (error) throw error
-      await refresh()
-      setBudgetOpen(false)
-      showToast(amt && amt > 0 ? t('预算已设置') : t('已取消预算'))
-    } catch {
-      showToast(t('保存失败,请重试'))
+      await withRetry(async () => {
+        // 读最新 flags 再合并,避免覆盖对方同时改的其他设置(同 FeatureToggles 的做法)
+        const { data, error: selErr } = await supabase
+          .from('couples')
+          .select('feature_flags')
+          .eq('id', couple.id)
+          .single()
+        // 读失败必须中止:否则 fresh={} 会把对方设的其它开关一起覆盖掉(潜在数据丢失)
+        if (selErr) throw selErr
+        const fresh = (data?.feature_flags as Record<string, unknown> | null) ?? {}
+        const next = { ...fresh }
+        if (amt && amt > 0) {
+          next.budget_amt = String(amt)
+          next.budget_cur = cur
+        } else {
+          delete next.budget_amt
+          delete next.budget_cur
+        }
+        const { error } = await supabase
+          .from('couples')
+          .update({ feature_flags: next })
+          .eq('id', couple.id)
+        if (error) throw error
+      })
+    } catch (e) {
+      showToast(friendlyWriteError(e))
+      return
     }
+    setBudgetOpen(false)
+    showToast(amt && amt > 0 ? t('预算已设置') : t('已取消预算'))
+    void refresh()
   }
 
   // 近 6 个月支出趋势(记账有增删改时跟着 expenses 一起刷新)

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Wish } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -55,6 +56,7 @@ export default function WishList({
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [err, setErr] = useState('')
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -71,18 +73,26 @@ export default function WishList({
     void load()
   }, [load])
 
+  // 愿望表无幂等键,自动重试插入可能写重复,故插入只尝试一次,失败给出提示(不再静默丢弃)
+  const insertWish = async (content: string) => {
+    const { error } = await supabase
+      .from('wishes')
+      .insert({ couple_id: coupleId, creator_id: userId, content })
+    if (error) throw error
+  }
+
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
     const content = draft.trim()
     if (!content || busy) return
     setBusy(true)
+    setErr('')
     try {
-      const { error } = await supabase
-        .from('wishes')
-        .insert({ couple_id: coupleId, creator_id: userId, content })
-      if (error) throw error
+      await insertWish(content)
       setDraft('')
       await load()
+    } catch (e2) {
+      setErr(friendlyWriteError(e2))
     } finally {
       setBusy(false)
     }
@@ -92,29 +102,46 @@ export default function WishList({
   const addPreset = async (content: string) => {
     if (busy) return
     setBusy(true)
+    setErr('')
     try {
-      const { error } = await supabase
-        .from('wishes')
-        .insert({ couple_id: coupleId, creator_id: userId, content })
-      if (error) throw error
+      await insertWish(content)
       await load()
+    } catch (e2) {
+      setErr(friendlyWriteError(e2))
     } finally {
       setBusy(false)
     }
   }
 
+  // 打勾 / 删除是按 id 的幂等操作,弱网可安全重试;失败要反映到 UI(不再静默 no-op)
   const toggle = async (w: Wish) => {
-    const { error } = await supabase
-      .from('wishes')
-      .update({ done: !w.done, done_at: w.done ? null : new Date().toISOString() })
-      .eq('id', w.id)
-    if (!error) await load()
+    setErr('')
+    try {
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('wishes')
+          .update({ done: !w.done, done_at: w.done ? null : new Date().toISOString() })
+          .eq('id', w.id)
+        if (error) throw error
+      })
+      await load()
+    } catch (e2) {
+      setErr(friendlyWriteError(e2))
+    }
   }
 
   const remove = async (w: Wish) => {
     if (!window.confirm(t('删除这个愿望?'))) return
-    const { error } = await supabase.from('wishes').delete().eq('id', w.id)
-    if (!error) await load()
+    setErr('')
+    try {
+      await withRetry(async () => {
+        const { error } = await supabase.from('wishes').delete().eq('id', w.id)
+        if (error) throw error
+      })
+      await load()
+    } catch (e2) {
+      setErr(friendlyWriteError(e2))
+    }
   }
 
   const pending = wishes.filter((w) => !w.done)
@@ -178,6 +205,11 @@ export default function WishList({
           {t('许愿')}
         </button>
       </form>
+      {err && (
+        <p className="border-b border-line bg-red-50 px-4 py-2 text-center text-xs text-red-500">
+          {err}
+        </p>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {loading ? (

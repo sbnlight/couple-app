@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { todayInTz } from '../lib/time'
 import { quizForDate, QUIZZES } from '../lib/quizzes'
 import { fireEffect } from '../lib/effects'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import { t } from '../lib/i18n'
 
 interface QRow {
@@ -50,6 +51,12 @@ export default function MindQuiz({
         .select('quiz_date, quiz_id, user_id, choice')
         .eq('couple_id', coupleId),
     ])
+    // 弱网超时:保留已加载的答案,别清空成「未作答」(否则刚提交的答案会瞬间消失)
+    if (todayRes.error || allRes.error) {
+      console.warn('[MindQuiz load]', todayRes.error ?? allRes.error)
+      setLoading(false)
+      return
+    }
     setRows((todayRes.data as QRow[] | null) ?? [])
     setHistory((allRes.data as QRow[] | null) ?? [])
     setLoading(false)
@@ -88,14 +95,17 @@ export default function MindQuiz({
     setBusy(true)
     try {
       setErr('')
-      const { error } = await supabase.from('quiz_answers').upsert(
-        { couple_id: coupleId, quiz_date: today, quiz_id: quizId, user_id: userId, choice },
-        { onConflict: 'couple_id,quiz_date,user_id' },
-      )
-      if (error) throw error
+      // 幂等 upsert(onConflict),弱网可安全重试;真报错(如迁移漏跑)会如实抛出
+      await withRetry(async () => {
+        const { error } = await supabase.from('quiz_answers').upsert(
+          { couple_id: coupleId, quiz_date: today, quiz_id: quizId, user_id: userId, choice },
+          { onConflict: 'couple_id,quiz_date,user_id' },
+        )
+        if (error) throw error
+      })
       await load()
     } catch (e) {
-      setErr((e as { message?: string })?.message ?? '提交失败,请重试')
+      setErr(friendlyWriteError(e))
     } finally {
       setBusy(false)
     }
@@ -176,7 +186,7 @@ export default function MindQuiz({
           )}
           {err && (
             <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-500">
-              {t('提交失败:{m}', { m: err })}
+              {err}
             </p>
           )}
         </div>

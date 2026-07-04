@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { withRetry, isUniqueViolation } from '../lib/net'
 import type { Expense } from '../types/db'
 
 /** 支出分类(与 CLAUDE.md 一致) */
@@ -58,6 +59,8 @@ export interface ExpenseInput {
   currency: string
   kind: 'expense' | 'income'
   scope: 'shared' | 'personal'
+  /** 幂等键:仅新增时用(每次「记一笔」打开生成一个,重发/重试复用同一个);编辑忽略 */
+  client_id?: string
 }
 
 /** 'YYYY-MM' → 该月起止(查询用半开区间) */
@@ -110,18 +113,23 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
   /** 记一笔(RLS 要求付款人必须是登录者本人) */
   const add = useCallback(
     async (input: ExpenseInput) => {
-      const { error: err } = await supabase.from('expenses').insert({
-        couple_id: coupleId,
-        payer_id: userId,
-        amount: input.amount,
-        category: input.category,
-        note: input.note || null,
-        spent_at: input.spent_at,
-        currency: input.currency,
-        kind: input.kind,
-        scope: input.scope,
+      // 弱网重试:一笔插入可能「已提交但响应超 10s 被中止」,重试/重发命中同一 client_id
+      // 会被唯一约束拦下,这里把唯一冲突当作「已记成功」,杜绝重复账目。
+      await withRetry(async () => {
+        const { error: err } = await supabase.from('expenses').insert({
+          couple_id: coupleId,
+          payer_id: userId,
+          amount: input.amount,
+          category: input.category,
+          note: input.note || null,
+          spent_at: input.spent_at,
+          currency: input.currency,
+          kind: input.kind,
+          scope: input.scope,
+          client_id: input.client_id ?? null,
+        })
+        if (err && !isUniqueViolation(err)) throw err
       })
-      if (err) throw err
       await load()
     },
     [coupleId, userId, load],

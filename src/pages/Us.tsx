@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { compressImage, extFromType } from '../lib/image'
 import { daysUntil } from '../lib/time'
 import { useAnniversaries } from '../hooks/useAnniversaries'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import Avatar from '../components/Avatar'
 import PartnerClock from '../components/PartnerClock'
 import MomentsCard from '../components/MomentsCard'
@@ -241,20 +242,24 @@ export default function Us() {
     setTimeout(() => setToast(''), 2500)
   }
 
-  // ---- 改昵称 / 改小屋名 ----
+  // ---- 改昵称 / 改小屋名 ---- (幂等 PATCH,弱网可安全重试;刷新 best-effort 不阻塞)
   const saveMyName = async (v: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ display_name: v })
-      .eq('id', profile!.id)
-    if (error) throw error
-    await refresh()
+    await withRetry(async () => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ display_name: v })
+        .eq('id', profile!.id)
+      if (error) throw error
+    })
+    void refresh()
   }
 
   const saveHouseName = async (v: string) => {
-    const { error } = await supabase.from('couples').update({ name: v }).eq('id', couple!.id)
-    if (error) throw error
-    await refresh()
+    await withRetry(async () => {
+      const { error } = await supabase.from('couples').update({ name: v }).eq('id', couple!.id)
+      if (error) throw error
+    })
+    void refresh()
   }
 
   // ---- 换头像:相册选图 → 压缩 → 上传私有桶 → 更新 profiles.avatar_url ----
@@ -273,18 +278,21 @@ export default function Us() {
       if (upErr) throw upErr
 
       const oldPath = profile.avatar_url
-      const { error: dbErr } = await supabase
-        .from('profiles')
-        .update({ avatar_url: path })
-        .eq('id', profile.id)
-      if (dbErr) throw dbErr
+      // 图片已上传;只对这条 PATCH 做弱网重试(幂等),不会重复上传
+      await withRetry(async () => {
+        const { error: dbErr } = await supabase
+          .from('profiles')
+          .update({ avatar_url: path })
+          .eq('id', profile.id)
+        if (dbErr) throw dbErr
+      })
 
       // 删旧文件省空间;失败也无妨,不阻塞流程
       if (oldPath) void supabase.storage.from('avatars').remove([oldPath])
-      await refresh()
       showToast(t('头像已更新'))
-    } catch {
-      showToast(t('头像上传失败,请重试'))
+      void refresh()
+    } catch (err) {
+      showToast(friendlyWriteError(err))
     } finally {
       setUploading(false)
     }

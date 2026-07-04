@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { dayStartUtcISO, prevUtcDay, todayInTz } from '../lib/time'
 import { sendLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
+import { withRetry, friendlyWriteError, isUniqueViolation } from '../lib/net'
 import type { Checkin } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -55,6 +56,8 @@ export default function MomentsCard({
   const [missNote, setMissNote] = useState('')
   const [streakTheirs, setStreakTheirs] = useState(0)
   const [busy, setBusy] = useState(false)
+  // 最近一次成功算出的自己连胜(弱网 load 失败时用它兜底,避免误判里程碑/清零)
+  const streakMineRef = useRef(0)
 
   const load = useCallback(async (): Promise<number> => {
     const today = todayInTz(dayTz)
@@ -72,6 +75,11 @@ export default function MomentsCard({
         .order('day', { ascending: false })
         .limit(240),
     ])
+    // 弱网超时:任一子查询失败就保留上次的计数/连胜,不静默清零成 0/0
+    if (missRes.error || checkRes.error) {
+      console.warn('[MomentsCard load]', missRes.error ?? checkRes.error)
+      return streakMineRef.current
+    }
     if (missRes.data) {
       const rows = missRes.data as { user_id: string }[]
       setMissMine(rows.filter((r) => r.user_id === userId).length)
@@ -88,6 +96,7 @@ export default function MomentsCard({
       setStreakMine(mineStreak)
       setStreakTheirs(streakOf(theirs, today))
     }
+    streakMineRef.current = mineStreak
     return mineStreak
   }, [coupleId, userId, dayTz])
 
@@ -113,19 +122,23 @@ export default function MomentsCard({
     try {
       const trimmed = note?.trim() || null
       const em = emoji || '💭'
-      const { error } = await supabase
-        .from('misses')
-        .insert({ couple_id: coupleId, user_id: userId, emoji: em, note: trimmed })
-      if (error) throw error
+      // 弱网重试(只重传输错误);列缺失/RLS 等真报错会立即抛出,不再被当成「网不好」
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('misses')
+          .insert({ couple_id: coupleId, user_id: userId, emoji: em, note: trimmed })
+        if (error) throw error
+      })
       setMissMine((n) => n + 1)
-      // 对方如果正开着 App,立刻收到想念卡片(带表情 + 悄悄话)
+      // 对方如果正开着 App,立刻收到想念卡片(带表情 + 悄悄话)。fire-and-forget,不影响成功
       sendLive('miss', { emoji: em, note: trimmed ?? '' })
       fireEffect([em, '💗'], 12)
       onToast(trimmed ? t('悄悄话已送到 TA 那儿 💌') : t('已经告诉 TA 你在想 TA 了 💭'))
       setMissOpen(false)
       setMissNote('')
-    } catch {
-      onToast(t('网络不太好,请重试'))
+    } catch (err) {
+      // 真实错误如实呈现(不再一律甩锅网络),便于异地远程诊断
+      onToast(friendlyWriteError(err))
     } finally {
       setBusy(false)
     }
@@ -136,11 +149,16 @@ export default function MomentsCard({
     if (busy || checkedToday) return
     setBusy(true)
     try {
-      const { error } = await supabase
-        .from('checkins')
-        .insert({ couple_id: coupleId, user_id: userId, day: todayInTz(dayTz) })
-      if (error) throw error
-      // 用 reload 后的真实连胜值判断里程碑,而不是本地 streakMine+1(可能因竞态而错)
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('checkins')
+          .insert({ couple_id: coupleId, user_id: userId, day: todayInTz(dayTz) })
+        // 重复主键(couple_id,user_id,day)= 今天已打过卡,视作成功(弱网重发常见)
+        if (error && !isUniqueViolation(error)) throw error
+      })
+      // 打卡已落库:先乐观置位,之后的刷新即使失败也不影响这次成功
+      setCheckedToday(true)
+      // 用 reload 后的真实连胜值判断里程碑(load 弱网失败会兜底返回上次值,不会误报)
       const newStreak = await load()
       if ([7, 30, 100, 365, 520, 1000].includes(newStreak)) {
         fireEffect(['🔥', '🎉', '🏅'], 36)
@@ -148,8 +166,8 @@ export default function MomentsCard({
       } else {
         onToast(t('打卡成功 ✅'))
       }
-    } catch {
-      onToast(t('网络不太好,请重试'))
+    } catch (err) {
+      onToast(friendlyWriteError(err))
     } finally {
       setBusy(false)
     }

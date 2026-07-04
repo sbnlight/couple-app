@@ -135,5 +135,7 @@ export interface Expense {
   kind: 'expense' | 'income'
   /** 共同 / 个人(双方均可见) */
   scope: 'shared' | 'personal'
+  /** 客户端生成的幂等键,弱网重发/重试时去重,避免写入重复账目 */
+  client_id: string | null
   created_at: string
 }

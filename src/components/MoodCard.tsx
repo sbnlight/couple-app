@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Profile } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -38,19 +39,24 @@ export default function MoodCard({
     if (busy) return
     setBusy(true)
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ mood: value, mood_at: value ? new Date().toISOString() : null })
-        .eq('id', profile.id)
-      if (error) throw error
-      await onSaved()
-      setEditing(false)
-      onToast(value ? t('心情已更新,TA 能看到啦') : t('已清除心情'))
-    } catch {
-      onToast(t('保存失败,请重试'))
+      // 幂等 PATCH,弱网可安全重试
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ mood: value, mood_at: value ? new Date().toISOString() : null })
+          .eq('id', profile.id)
+        if (error) throw error
+      })
+    } catch (err) {
+      onToast(friendlyWriteError(err))
+      return
     } finally {
       setBusy(false)
     }
+    // 到这里说明已写入成功。刷新只是 best-effort,放在 try 外——它失败也绝不能报「保存失败」
+    setEditing(false)
+    onToast(value ? t('心情已更新,TA 能看到啦') : t('已清除心情'))
+    void onSaved()
   }
 
   return (

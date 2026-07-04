@@ -9,6 +9,7 @@ import {
 } from '../hooks/useExpenses'
 import type { ExpenseInput } from '../hooks/useExpenses'
 import type { Expense } from '../types/db'
+import { friendlyWriteError } from '../lib/net'
 import { t } from '../lib/i18n'
 
 function todayStr() {
@@ -43,6 +44,9 @@ export default function ExpenseForm({
   const [spentAt, setSpentAt] = useState(initial?.spent_at ?? todayStr())
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  // 本次「记一笔」的幂等键:整个表单生命周期固定不变,失败后手动重发也复用它,
+  // 让「已提交但超时」的那笔在重发时被唯一约束去重,而不是写成两条。
+  const [clientId] = useState(() => crypto.randomUUID())
 
   const cats = kind === 'expense' ? CATEGORIES : INCOME_CATEGORIES
 
@@ -82,11 +86,13 @@ export default function ExpenseForm({
         currency,
         kind,
         scope,
+        // 新增才带幂等键;编辑是按 id 更新,不需要
+        client_id: initial ? undefined : clientId,
       })
       saveDefaultCurrency(currency) // 记住这次的货币作为下次默认
       onClose()
-    } catch {
-      setErr(t('保存失败,请检查网络后重试'))
+    } catch (err) {
+      setErr(friendlyWriteError(err))
       setBusy(false)
     }
   }
@@ -98,8 +104,8 @@ export default function ExpenseForm({
     try {
       await onDelete()
       onClose()
-    } catch {
-      setErr(t('删除失败,请重试'))
+    } catch (err) {
+      setErr(friendlyWriteError(err))
       setBusy(false)
     }
   }

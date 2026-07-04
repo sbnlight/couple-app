@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { withRetry } from '../lib/net'
 import type { Anniversary } from '../types/db'
 
 /** 纪念日列表:两人共同管理(都能添加/删除) */
@@ -32,8 +33,11 @@ export function useAnniversaries(coupleId: string) {
 
   const remove = useCallback(
     async (id: number) => {
-      const { error } = await supabase.from('anniversaries').delete().eq('id', id)
-      if (error) throw error
+      // 按 id 删除是幂等操作,弱网可安全重试
+      await withRetry(async () => {
+        const { error } = await supabase.from('anniversaries').delete().eq('id', id)
+        if (error) throw error
+      })
       await load()
     },
     [load],

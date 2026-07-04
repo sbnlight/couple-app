@@ -6,6 +6,7 @@ import {
   subscribePush,
   unsubscribePush,
 } from '../lib/push'
+import { friendlyWriteError } from '../lib/net'
 import { t } from '../lib/i18n'
 
 type PushState = 'loading' | 'unsupported' | 'unconfigured' | 'denied' | 'off' | 'on'
@@ -65,7 +66,7 @@ export default function PushSettings({
       const msg = e instanceof Error ? e.message : ''
       if (msg.includes('PERMISSION_DENIED')) setState('denied')
       else {
-        onToast(t('操作失败,请重试'))
+        onToast(friendlyWriteError(e))
         await check()
       }
     } finally {

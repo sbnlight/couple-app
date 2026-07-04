@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useStickers } from '../hooks/useStickers'
 import { getSignedUrl } from '../lib/storage'
+import { friendlyWriteError } from '../lib/net'
 import type { Sticker } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -93,8 +94,8 @@ export default function ChatPanel({
     try {
       await add(file)
       onToast(t('已添加到表情包'))
-    } catch {
-      onToast(t('添加失败,请重试'))
+    } catch (e) {
+      onToast(friendlyWriteError(e))
     } finally {
       setBusy(false)
     }
@@ -103,8 +104,8 @@ export default function ChatPanel({
   const handleRemove = async (s: Sticker) => {
     try {
       await remove(s)
-    } catch {
-      onToast(t('删除失败,请重试'))
+    } catch (e) {
+      onToast(friendlyWriteError(e))
     }
   }
 

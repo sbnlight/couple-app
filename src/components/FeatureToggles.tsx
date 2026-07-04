@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Couple } from '../types/db'
 import { DAY_TIMEZONES } from '../lib/time'
 import { t } from '../lib/i18n'
@@ -49,27 +50,30 @@ export default function FeatureToggles({
     if (busy) return false
     setBusy(true)
     try {
-      const { data, error: readErr } = await supabase
-        .from('couples')
-        .select('feature_flags')
-        .eq('id', couple.id)
-        .single()
-      if (readErr) throw readErr
-      const fresh = (data?.feature_flags as Record<string, boolean | string> | null) ?? {}
-      const next = { ...fresh, ...compute(fresh) }
-      const { error } = await supabase
-        .from('couples')
-        .update({ feature_flags: next })
-        .eq('id', couple.id)
-      if (error) throw error
-      await onChanged()
-      return true
-    } catch {
-      onToast(t('保存失败,请重试'))
+      // 读-改-写是幂等的,弱网可安全重试;读失败必须中止以免覆盖对方的设置
+      await withRetry(async () => {
+        const { data, error: readErr } = await supabase
+          .from('couples')
+          .select('feature_flags')
+          .eq('id', couple.id)
+          .single()
+        if (readErr) throw readErr
+        const fresh = (data?.feature_flags as Record<string, boolean | string> | null) ?? {}
+        const next = { ...fresh, ...compute(fresh) }
+        const { error } = await supabase
+          .from('couples')
+          .update({ feature_flags: next })
+          .eq('id', couple.id)
+        if (error) throw error
+      })
+    } catch (e) {
+      onToast(friendlyWriteError(e))
       return false
     } finally {
       setBusy(false)
     }
+    void onChanged() // 刷新 best-effort,不影响本次成功
+    return true
   }
 
   const toggle = async (key: string) => {

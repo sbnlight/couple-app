@@ -6,6 +6,7 @@ import { getSignedUrl } from '../lib/storage'
 import { questionForDate } from '../lib/questions'
 import { todayInTz } from '../lib/time'
 import { fireEffect } from '../lib/effects'
+import { withRetry, friendlyWriteError, isUniqueViolation } from '../lib/net'
 import type { DailyAnswer } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -65,6 +66,7 @@ export default function DailyQA({
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [err, setErr] = useState('')
   const [viewer, setViewer] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -128,6 +130,7 @@ export default function DailyQA({
     const content = draft.trim()
     if ((!content && imgs.length === 0) || busy) return
     setBusy(true)
+    setErr('')
     try {
       // 配图 = 编辑时保留的原图(未被删掉的)+ 本次新上传的
       const uploaded: string[] = []
@@ -148,29 +151,36 @@ export default function DailyQA({
         if (removed.length > 0) void supabase.storage.from('chat-images').remove(removed)
       }
 
+      // 只对「写库」这一步做弱网重试(图片已在上面传好,不会重复上传)
       if (mine && editing) {
-        const { error } = await supabase
-          .from('daily_answers')
-          .update({ content, image_paths: imagePaths })
-          .eq('id', mine.id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('daily_answers').insert({
-          couple_id: coupleId,
-          user_id: userId,
-          question_date: today,
-          content,
-          image_paths: imagePaths,
+        await withRetry(async () => {
+          const { error } = await supabase
+            .from('daily_answers')
+            .update({ content, image_paths: imagePaths })
+            .eq('id', mine.id)
+          if (error) throw error
         })
-        if (error) throw error
+      } else {
+        await withRetry(async () => {
+          const { error } = await supabase.from('daily_answers').insert({
+            couple_id: coupleId,
+            user_id: userId,
+            question_date: today,
+            content,
+            image_paths: imagePaths,
+          })
+          // 唯一约束(couple_id,user_id,question_date):重发命中即视为已提交成功
+          if (error && !isUniqueViolation(error)) throw error
+        })
       }
       setDraft('')
       setImgs([])
       setKeptPaths([])
       setEditing(false)
       await load() // 答完即可看到对方的答案
-    } catch {
-      // 失败保留草稿
+    } catch (e) {
+      // 不再静默丢弃:给出可诊断的提示,草稿保留可重试
+      setErr(friendlyWriteError(e))
     } finally {
       setBusy(false)
     }
@@ -310,6 +320,7 @@ export default function DailyQA({
               >
                 {busy ? t('提交中…') : editing ? t('保存修改') : t('提交回答')}
               </button>
+              {err && <p className="mt-2 text-center text-xs text-red-500">{err}</p>}
             </form>
           )}
         </div>
