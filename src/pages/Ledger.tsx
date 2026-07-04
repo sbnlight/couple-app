@@ -50,10 +50,13 @@ function TrendChart({ yms, series }: TrendData) {
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            pathLength={1}
+            className="chart-draw"
+            style={{ animationDelay: `${0.15 + si * 0.25}s` }}
             points={s.values.map((v, i) => `${x(i)},${y(v)}`).join(' ')}
           />
           {s.values.map((v, i) => (
-            <circle key={i} cx={x(i)} cy={y(v)} r="3" fill={TREND_COLORS[si]} />
+            <circle key={i} cx={x(i)} cy={y(v)} r="3" fill={TREND_COLORS[si]} className="chart-dot" />
           ))}
         </g>
       ))}
@@ -70,6 +73,15 @@ const DONUT_COLORS = ['var(--c-primary)', '#f59e0b', '#60a5fa', '#34d399', '#a78
 
 /** 分类占比环形图(纯 SVG) */
 function Donut({ cats, total }: { cats: [string, number][]; total: number }) {
+  // 挂载后把每段从 0 长到目标弧长(尊重"减弱动态":直接长好)
+  const [grown, setGrown] = useState(
+    () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  )
+  useEffect(() => {
+    if (grown) return
+    const id = requestAnimationFrame(() => setGrown(true))
+    return () => cancelAnimationFrame(id)
+  }, [grown])
   const R = 40
   const C = 2 * Math.PI * R
   let acc = 0
@@ -87,8 +99,9 @@ function Donut({ cats, total }: { cats: [string, number][]; total: number }) {
               fill="none"
               stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
               strokeWidth="14"
-              strokeDasharray={`${frac * C} ${C}`}
+              strokeDasharray={grown ? `${frac * C} ${C}` : `0 ${C}`}
               strokeDashoffset={-acc * C}
+              style={{ transition: 'stroke-dasharray 0.8s cubic-bezier(0.22, 1, 0.36, 1)' }}
             />
           )
           acc += frac

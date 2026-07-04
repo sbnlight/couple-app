@@ -7,7 +7,6 @@ import { daysUntil } from '../lib/time'
 import { useAnniversaries } from '../hooks/useAnniversaries'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import Avatar from '../components/Avatar'
-import PartnerClock from '../components/PartnerClock'
 import MomentsCard from '../components/MomentsCard'
 import PushSettings from '../components/PushSettings'
 import AnniversaryManager from '../components/AnniversaryManager'
@@ -386,9 +385,6 @@ export default function Us() {
             <div className="flex flex-col items-center gap-2">
               <Avatar profile={partner} />
               <span className="text-sm">{partner?.display_name ?? t('等待加入')}</span>
-              <span className="text-xs text-gray-400">
-                <PartnerClock tz={partner?.timezone} prefix={t('那边')} />
-              </span>
             </div>
           </div>
 

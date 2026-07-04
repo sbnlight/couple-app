@@ -1172,6 +1172,51 @@ html.dark .recv-paper {
   animation: deco-float 4s ease-in-out infinite;
 }
 
+/* 图表折线"画出来":stroke-dashoffset 从 1→0(配合 pathLength=1) */
+@keyframes chart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.chart-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 1.1s ease-out 0.15s forwards;
+}
+/* 折线端点:等线画到再淡入 */
+@keyframes chart-dot-in {
+  to {
+    opacity: 1;
+  }
+}
+.chart-dot {
+  opacity: 0;
+  animation: chart-dot-in 0.3s ease 1.1s forwards;
+}
+/* 骨架屏微光块(复用 shimmer 的观感,单独定义好控制圆角/底色) */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--c-line) 55%, #ffffff);
+  border-radius: 0.75rem;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.3s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* 感谢罐:点"摇一摇"时罐子晃两下 */
 @keyframes jar-shake {
   0%,
@@ -1614,6 +1659,7 @@ html.dark .recv-paper {
   .toast-in,
   .tab-active-icon,
   .jar-shake,
+  .skeleton::after,
   .typing-dot,
   .today-glow,
   .city-dash,
@@ -1626,6 +1672,15 @@ html.dark .recv-paper {
   .msg-in-me,
   .msg-in-you {
     animation: none !important;
+  }
+  /* 描边生长/端点淡入:关掉动画但要还原到"完全画好/可见",否则会一直隐藏 */
+  .chart-draw {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .chart-dot {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }
 
