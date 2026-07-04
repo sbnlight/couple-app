@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
-import { cityLabelForTz, distanceKm, weatherForTz } from '../lib/weather'
+import { cityLabelForTz, distanceKm, haversineKm, weatherForCoords, weatherForTz } from '../lib/weather'
 import { t } from '../lib/i18n'
 
 type W = { emoji: string; temp: number } | null
+
+/** 一个人的位置:时区(决定时间)+ 可选精确城市与经纬度(决定城市名/天气/距离) */
+export interface Loc {
+  tz: string | null
+  city: string | null
+  lat: number | null
+  lng: number | null
+}
 
 /** 取某时区当前 HH:mm */
 function timeInTz(tz: string): string {
@@ -32,7 +40,19 @@ function hourInTz(tz: string): number {
   }
 }
 
-function CityCol({ tz, name, mine }: { tz: string; name: string; mine: boolean }) {
+function CityCol({
+  tz,
+  name,
+  lat,
+  lng,
+  mine,
+}: {
+  tz: string
+  name: string
+  lat: number | null
+  lng: number | null
+  mine: boolean
+}) {
   const [time, setTime] = useState(() => timeInTz(tz))
   const [weather, setWeather] = useState<W>(null)
 
@@ -44,13 +64,15 @@ function CityCol({ tz, name, mine }: { tz: string; name: string; mine: boolean }
 
   useEffect(() => {
     let cancelled = false
-    void weatherForTz(tz).then((w) => {
+    // 有精确坐标就按坐标查天气,否则回退按时区代表城市
+    const p = lat != null && lng != null ? weatherForCoords(lat, lng) : weatherForTz(tz)
+    void p.then((w) => {
       if (!cancelled) setWeather(w)
     })
     return () => {
       cancelled = true
     }
-  }, [tz])
+  }, [tz, lat, lng])
 
   const hr = hourInTz(tz)
   const phase = hr >= 6 && hr < 17 ? 'day' : hr >= 17 && hr < 20 ? 'dusk' : 'night'
@@ -89,20 +111,19 @@ function CityCol({ tz, name, mine }: { tz: string; name: string; mine: boolean }
 
 /**
  * 双城卡片(异地专属):并排显示两人所在城市的当地时间、天气,中间是相距公里数。
- * 依赖两人 profile.timezone(App 打开时自动写入);任一方时区缺失/未知则不显示。
+ * 城市名/天气/距离优先用各自设置的精确位置(profiles.city/lat/lng),未设置则回退按时区。
+ * 时间始终按时区显示。两人在同一时区且同城则不显示。
  */
-export default function TwoCityCard({
-  myTz,
-  partnerTz,
-}: {
-  myTz: string | null
-  partnerTz: string | null
-}) {
-  if (!myTz || !partnerTz || myTz === partnerTz) return null
-  const myCity = cityLabelForTz(myTz)
-  const partnerCity = cityLabelForTz(partnerTz)
-  const km = distanceKm(myTz, partnerTz)
-  if (!myCity || !partnerCity) return null
+export default function TwoCityCard({ me, partner }: { me: Loc; partner: Loc }) {
+  const myCity = me.city ?? cityLabelForTz(me.tz)
+  const partnerCity = partner.city ?? cityLabelForTz(partner.tz)
+  // 完全同一地点(同时区且同城/都没设城市)才隐藏;同时区不同城仍显示
+  const sameSpot = me.tz === partner.tz && (me.city ?? '') === (partner.city ?? '')
+  if (!me.tz || !partner.tz || sameSpot || !myCity || !partnerCity) return null
+  const km =
+    me.lat != null && me.lng != null && partner.lat != null && partner.lng != null
+      ? haversineKm(me.lat, me.lng, partner.lat, partner.lng)
+      : distanceKm(me.tz, partner.tz)
 
   return (
     <div className="relative mt-4 overflow-hidden rounded-2xl bg-white p-5">
@@ -124,7 +145,7 @@ export default function TwoCityCard({
       </div>
 
       <div className="relative flex items-center gap-2">
-        <CityCol tz={myTz} name={myCity} mine />
+        <CityCol tz={me.tz} name={myCity} lat={me.lat} lng={me.lng} mine />
         <div className="flex flex-col items-center px-1 text-center">
           <span className="bubble-beat inline-block text-lg">❤️</span>
           {km !== null && (
@@ -133,7 +154,7 @@ export default function TwoCityCard({
             </span>
           )}
         </div>
-        <CityCol tz={partnerTz} name={partnerCity} mine={false} />
+        <CityCol tz={partner.tz} name={partnerCity} lat={partner.lat} lng={partner.lng} mine={false} />
       </div>
     </div>
   )

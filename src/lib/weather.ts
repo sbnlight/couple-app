@@ -78,20 +78,24 @@ export function cityLabelForTz(tz: string | null): string | null {
   return TZ_CITY[tz] ?? tz.split('/').pop()?.replace(/_/g, ' ') ?? tz
 }
 
-/** 两个时区代表城市之间的直线距离(公里);任一查不到坐标返回 null */
+/** 两点经纬度之间的直线距离(公里,四舍五入) */
+export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(bLat - aLat)
+  const dLon = toRad(bLng - aLng)
+  const s =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2
+  return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(s))))
+}
+
+/** 两个时区代表城市之间的直线距离(公里,精确坐标缺失时的回退);查不到返回 null */
 export function distanceKm(tzA: string | null, tzB: string | null): number | null {
   if (!tzA || !tzB) return null
   const a = TZ_COORDS[tzA]
   const b = TZ_COORDS[tzB]
   if (!a || !b) return null
-  const R = 6371
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(b[0] - a[0])
-  const dLon = toRad(b[1] - a[1])
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLon / 2) ** 2
-  return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(s))))
+  return haversineKm(a[0], a[1], b[0], b[1])
 }
 
 /** WMO 天气代码 → emoji */
@@ -110,17 +114,17 @@ function codeEmoji(code: number): string {
 
 const cache = new Map<string, { at: number; value: { emoji: string; temp: number } | null }>()
 
-export async function weatherForTz(
-  tz: string | null,
+/** 按精确经纬度取当前天气(open-meteo,免费无密钥);缓存 30 分钟 */
+export async function weatherForCoords(
+  lat: number,
+  lng: number,
 ): Promise<{ emoji: string; temp: number } | null> {
-  if (!tz) return null
-  const coords = TZ_COORDS[tz]
-  if (!coords) return null
-  const hit = cache.get(tz)
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`
+  const hit = cache.get(key)
   if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit.value
   try {
     const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${coords[0]}&longitude=${coords[1]}&current=temperature_2m,weather_code`,
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`,
       { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined },
     )
     const json = (await res.json()) as {
@@ -131,10 +135,76 @@ export async function weatherForTz(
       cur && typeof cur.temperature_2m === 'number'
         ? { emoji: codeEmoji(cur.weather_code ?? 3), temp: Math.round(cur.temperature_2m) }
         : null
-    cache.set(tz, { at: Date.now(), value })
+    cache.set(key, { at: Date.now(), value })
     return value
   } catch {
-    cache.set(tz, { at: Date.now(), value: null })
+    cache.set(key, { at: Date.now(), value: null })
     return null
+  }
+}
+
+/** 按时区代表城市取天气(精确坐标缺失时的回退) */
+export async function weatherForTz(
+  tz: string | null,
+): Promise<{ emoji: string; temp: number } | null> {
+  if (!tz) return null
+  const coords = TZ_COORDS[tz]
+  if (!coords) return null
+  return weatherForCoords(coords[0], coords[1])
+}
+
+/** 浏览器定位坐标 → 具体城市名(BigDataCloud 免费逆地理编码,无需密钥、支持中文) */
+export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`,
+      { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined },
+    )
+    const j = (await res.json()) as {
+      city?: string
+      locality?: string
+      principalSubdivision?: string
+    }
+    return j.city || j.locality || j.principalSubdivision || null
+  } catch {
+    return null
+  }
+}
+
+export interface CityHit {
+  name: string
+  lat: number
+  lng: number
+  region?: string
+  country?: string
+}
+
+/** 城市名搜索 → 候选城市(open-meteo geocoding,免费无密钥) */
+export async function searchCity(name: string): Promise<CityHit[]> {
+  const q = name.trim()
+  if (!q) return []
+  try {
+    const res = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=zh&format=json`,
+      { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined },
+    )
+    const j = (await res.json()) as {
+      results?: {
+        name: string
+        latitude: number
+        longitude: number
+        admin1?: string
+        country?: string
+      }[]
+    }
+    return (j.results ?? []).map((r) => ({
+      name: r.name,
+      lat: r.latitude,
+      lng: r.longitude,
+      region: r.admin1,
+      country: r.country,
+    }))
+  } catch {
+    return []
   }
 }

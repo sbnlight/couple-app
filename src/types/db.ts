@@ -6,6 +6,10 @@ export interface Profile {
   avatar_url: string | null
   /** IANA 时区(如 Asia/Shanghai),App 打开时自动同步设备时区 */
   timezone: string | null
+  /** 精确位置(可选,共享给对方):具体城市名 + 经纬度;未设置则按时区回退 */
+  city: string | null
+  lat: number | null
+  lng: number | null
   /** 今日心情(如 "😴 好困"),24 小时内有效 */
   mood: string | null
   mood_at: string | null

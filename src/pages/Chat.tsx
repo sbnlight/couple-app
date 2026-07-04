@@ -657,8 +657,8 @@ export default function Chat() {
                   } ${highlightId !== null && item.id === highlightId ? 'msg-highlight' : ''}`}
                 >
                   {showDivider && (
-                    <p className="my-3 text-center text-xs text-gray-300">
-                      {formatDivider(item.createdAt)}
+                    <p className="my-3 text-center">
+                      <span className="chat-center-chip">{formatDivider(item.createdAt)}</span>
                     </p>
                   )}
                   <MessageBubble

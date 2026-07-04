@@ -18,6 +18,7 @@ import YearReport from '../components/YearReport'
 import FeatureToggles, { dayTzOf, featureOn } from '../components/FeatureToggles'
 import MoodCard from '../components/MoodCard'
 import TwoCityCard from '../components/TwoCityCard'
+import LocationSetting from '../components/LocationSetting'
 import { openThumbkiss } from '../lib/thumbkissStore'
 import LoveTree from '../components/LoveTree'
 import MindQuiz from '../components/MindQuiz'
@@ -220,7 +221,7 @@ export default function Us() {
   const [editing, setEditing] = useState<'myName' | 'houseName' | null>(null)
   /** 当前打开的功能页 */
   const [feature, setFeature] = useState<
-    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | 'touch' | 'quiz' | null
+    'qa' | 'wish' | 'notes' | 'anniv' | 'report' | 'toggles' | 'touch' | 'quiz' | 'location' | null
   >(null)
   const [showPwModal, setShowPwModal] = useState(false)
   const anniversaries = useAnniversaries(couple!.id)
@@ -462,7 +463,20 @@ export default function Us() {
         </div>
 
         {/* ---- 双城卡片(异地:两地时间/天气/距离) ---- */}
-        <TwoCityCard myTz={profile?.timezone ?? null} partnerTz={partner?.timezone ?? null} />
+        <TwoCityCard
+          me={{
+            tz: profile?.timezone ?? null,
+            city: profile?.city ?? null,
+            lat: profile?.lat ?? null,
+            lng: profile?.lng ?? null,
+          }}
+          partner={{
+            tz: partner?.timezone ?? null,
+            city: partner?.city ?? null,
+            lat: partner?.lat ?? null,
+            lng: partner?.lng ?? null,
+          }}
+        />
 
         {/* ---- 今日心情(对方可见) ---- */}
         {profile && <MoodCard profile={profile} onSaved={refresh} onToast={showToast} />}
@@ -492,6 +506,17 @@ export default function Us() {
           >
             <span>{t('💗 实时触碰')}</span>
             <span className="text-gray-300">›</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeature('location')}
+            className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
+          >
+            <span>{t('📍 我的位置')}</span>
+            <span className="flex items-center gap-2 text-sm text-gray-400">
+              {profile?.city ?? ''}
+              <span className="text-gray-300">›</span>
+            </span>
           </button>
           <button
             type="button"
@@ -778,6 +803,16 @@ export default function Us() {
       )}
 
       {/* 功能页(全屏覆盖) */}
+      {feature === 'location' && profile && (
+        <LocationSetting
+          userId={profile.id}
+          city={profile.city}
+          tz={profile.timezone}
+          onSaved={refresh}
+          onClose={() => setFeature(null)}
+        />
+      )}
+
       {feature === 'quiz' && (
         <MindQuiz
           coupleId={couple!.id}

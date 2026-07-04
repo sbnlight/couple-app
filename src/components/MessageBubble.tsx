@@ -552,11 +552,13 @@ export default function MessageBubble({
     ? {}
     : { borderRadius: bubbleRadius(mine, groupPos) }
 
-  // 已撤回:居中灰字提示,不再显示内容
+  // 已撤回:居中提示,不再显示内容
   if (item.recalled) {
     return (
-      <p className="my-1 text-center text-xs text-gray-300">
-        {mine ? t('你撤回了一条消息') : t('对方撤回了一条消息')}
+      <p className="my-1 text-center">
+        <span className="chat-center-chip">
+          {mine ? t('你撤回了一条消息') : t('对方撤回了一条消息')}
+        </span>
       </p>
     )
   }
@@ -564,8 +566,8 @@ export default function MessageBubble({
   // 拍一拍:居中系统提示行
   if (item.type === 'nudge') {
     return (
-      <p className="my-1 text-center text-xs text-gray-300">
-        {mine ? t('你拍了拍 TA') : t('TA 拍了拍你')} 👋
+      <p className="my-1 text-center">
+        <span className="chat-center-chip">{mine ? t('你拍了拍 TA') : t('TA 拍了拍你')} 👋</span>
       </p>
     )
   }

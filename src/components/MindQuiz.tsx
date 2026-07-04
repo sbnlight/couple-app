@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { todayInTz } from '../lib/time'
 import { quizForDate, QUIZZES } from '../lib/quizzes'
@@ -11,6 +11,8 @@ interface QRow {
   quiz_id: number
   user_id: string
   choice: number
+  /** 选它的原因/悄悄话(双方都答完才互相可见);今日行才查这列 */
+  note?: string | null
 }
 
 /**
@@ -38,12 +40,16 @@ export default function MindQuiz({
   const [err, setErr] = useState('')
   // 全部历史(算默契值)
   const [history, setHistory] = useState<QRow[]>([])
+  // 我的留言草稿(只在首次载入我的行时用服务端值初始化,之后由我控制,避免打字被 load 覆盖)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteSaved, setNoteSaved] = useState(false)
+  const noteInitRef = useRef(false)
 
   const load = useCallback(async () => {
     const [todayRes, allRes] = await Promise.all([
       supabase
         .from('quiz_answers')
-        .select('quiz_date, quiz_id, user_id, choice')
+        .select('quiz_date, quiz_id, user_id, choice, note')
         .eq('couple_id', coupleId)
         .eq('quiz_date', today),
       supabase
@@ -103,6 +109,43 @@ export default function MindQuiz({
         )
         if (error) throw error
       })
+      await load()
+    } catch (e) {
+      setErr(friendlyWriteError(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // 首次拿到我的行时,用服务端已存的留言初始化草稿(仅一次)
+  useEffect(() => {
+    if (!noteInitRef.current && mine) {
+      noteInitRef.current = true
+      setNoteDraft(mine.note ?? '')
+    }
+  }, [mine])
+
+  /** 保存我的留言(连同当前选项一起 upsert,幂等) */
+  const saveNote = async () => {
+    if (busy || !mine) return
+    setBusy(true)
+    setErr('')
+    try {
+      await withRetry(async () => {
+        const { error } = await supabase.from('quiz_answers').upsert(
+          {
+            couple_id: coupleId,
+            quiz_date: today,
+            quiz_id: quizId,
+            user_id: userId,
+            choice: mine.choice,
+            note: noteDraft.trim() || null,
+          },
+          { onConflict: 'couple_id,quiz_date,user_id' },
+        )
+        if (error) throw error
+      })
+      setNoteSaved(true)
       await load()
     } catch (e) {
       setErr(friendlyWriteError(e))
@@ -184,6 +227,44 @@ export default function MindQuiz({
                     : t('这次没选到一起,聊聊为什么呀~')}
             </p>
           )}
+          {/* 我的留言(答完选项后出现):写选它的原因,答完双方后 TA 才能看到 */}
+          {mine && (
+            <div className="mt-4 border-t border-line pt-3">
+              <p className="text-xs text-gray-400">
+                {t('说说你选它的原因(可选)· 双方都答完后 {name} 才能看到', { name: partnerName })}
+              </p>
+              <textarea
+                className="input mt-2 w-full resize-none"
+                rows={2}
+                maxLength={200}
+                placeholder={t('写点悄悄话…')}
+                value={noteDraft}
+                onChange={(e) => {
+                  setNoteDraft(e.target.value)
+                  setNoteSaved(false)
+                }}
+              />
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void saveNote()}
+                className="btn-primary mt-2 w-full rounded-full py-2 text-sm disabled:opacity-60"
+              >
+                {noteSaved ? t('已保存 ✓') : t('保存留言')}
+              </button>
+            </div>
+          )}
+
+          {/* 揭晓:双方都答完 → 显示对方的留言 */}
+          {bothAnswered && theirs && (
+            <div className="mt-3 rounded-xl bg-soft p-3">
+              <p className="text-xs text-gray-400">{t('{name}的留言', { name: partnerName })}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm">
+                {theirs.note ? theirs.note : t('(TA 没有留言)')}
+              </p>
+            </div>
+          )}
+
           {err && (
             <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-500">
               {err}

@@ -1172,6 +1172,20 @@ html.dark .recv-paper {
   animation: deco-float 4s ease-in-out infinite;
 }
 
+/* 聊天里居中的系统小字(日期分隔 / 拍一拍 / 撤回):半透明药丸底 + 轻微磨砂,
+   让它在任何聊天背景(浅色/深色/花哨图片)上都清晰可读 */
+.chat-center-chip {
+  display: inline-block;
+  border-radius: 9999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
 /* ---------- M3:功能绚丽化(计数/输入/倒计时/双城/触碰) ---------- */
 
 /* 恋爱里程碑日:大卡柔和呼吸光晕 */
