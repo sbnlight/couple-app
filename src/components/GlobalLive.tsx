@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useAnniversaries } from '../hooks/useAnniversaries'
 import { onLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
+import { isThumbkissOpen, openThumbkiss } from '../lib/thumbkissStore'
 import { daysUntil } from '../lib/time'
 import { t } from '../lib/i18n'
 
@@ -15,11 +16,25 @@ export default function GlobalLive() {
   const { couple, partner } = useAuth()
   const { list: anniversaries } = useAnniversaries(couple!.id)
   const [toast, setToast] = useState('')
+  const [touchInvite, setTouchInvite] = useState(false)
+  const lastInviteRef = useRef(0)
 
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 3000)
   }
+
+  // 对方开始实时触碰(且我不在触碰页)→ 弹一个可点提醒,一点就打开触碰页一起碰。
+  // 触碰是每 0.8s 心跳重播的,这里按 12s 节流,避免同一次触碰反复弹提醒。
+  useEffect(() => {
+    return onLive('touch', (p) => {
+      if (!p.on || isThumbkissOpen()) return
+      if (Date.now() - lastInviteRef.current < 12_000) return
+      lastInviteRef.current = Date.now()
+      setTouchInvite(true)
+      setTimeout(() => setTouchInvite(false), 8000)
+    })
+  }, [])
 
   // 对方想你 → 爱心雨(带上 TA 的表情与悄悄话)
   useEffect(() => {
@@ -57,10 +72,24 @@ export default function GlobalLive() {
     }
   }, [anniversaries, couple?.next_meet_date])
 
-  if (!toast) return null
+  if (!toast && !touchInvite) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-16 z-[95] flex justify-center">
-      <span className="rounded-full bg-gray-800/85 px-4 py-2 text-sm text-white">{toast}</span>
+    <div className="pointer-events-none fixed inset-x-0 top-16 z-[95] flex flex-col items-center gap-2 px-4">
+      {toast && (
+        <span className="rounded-full bg-gray-800/85 px-4 py-2 text-sm text-white">{toast}</span>
+      )}
+      {touchInvite && (
+        <button
+          type="button"
+          onClick={() => {
+            setTouchInvite(false)
+            openThumbkiss()
+          }}
+          className="pointer-events-auto animate-bounce rounded-full bg-rose-500/95 px-4 py-2 text-sm font-medium text-white shadow-lg active:scale-95"
+        >
+          💞 {t('{name}想和你实时触碰 · 点这里一起碰', { name: partner?.display_name ?? t('TA') })}
+        </button>
+      )}
     </div>
   )
 }

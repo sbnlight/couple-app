@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fireEffect } from '../lib/effects'
+import Portal from './Portal'
 import { t } from '../lib/i18n'
 
 /**
@@ -175,8 +176,9 @@ export default function LoveTree({
         </div>
       </button>
 
-      {/* 爱情树园地(全屏页) */}
+      {/* 爱情树园地(全屏子页)。Portal 到 body,避免被 .page-in 入场动画的 transform 困住而跑到顶部 */}
       {open && (
+        <Portal>
         <div className="fixed inset-0 z-40 mx-auto flex max-w-md flex-col overflow-hidden bg-warmbg">
           {/* 天空场景 */}
           <div
@@ -330,6 +332,7 @@ export default function LoveTree({
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </>
   )

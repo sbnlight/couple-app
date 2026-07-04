@@ -4,6 +4,7 @@ import { dayStartUtcISO, prevUtcDay, todayInTz } from '../lib/time'
 import { sendLive } from '../lib/live'
 import { fireEffect } from '../lib/effects'
 import { withRetry, friendlyWriteError, isUniqueViolation } from '../lib/net'
+import Portal from './Portal'
 import type { Checkin } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -229,12 +230,14 @@ export default function MomentsCard({
         )}
       </p>
 
-      {/* 想你 composer:居中卡片 + 深色遮罩,聚焦中间的想念卡片 */}
+      {/* 想你 composer:居中卡片 + 深色遮罩。用 Portal 挂到 body,避免被 .page-in 的
+          入场动画 transform 困住而跑到页面顶部——始终屏幕正中央显示。 */}
       {missOpen && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-6"
-          onClick={() => setMissOpen(false)}
-        >
+        <Portal>
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-6"
+            onClick={() => setMissOpen(false)}
+          >
           <div
             className="modal-pop w-full max-w-sm rounded-3xl bg-white px-5 pb-5 pt-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -293,7 +296,8 @@ export default function MomentsCard({
               {t('取消')}
             </button>
           </div>
-        </div>
+          </div>
+        </Portal>
       )}
     </div>
   )

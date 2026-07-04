@@ -18,7 +18,7 @@ import YearReport from '../components/YearReport'
 import FeatureToggles, { dayTzOf, featureOn } from '../components/FeatureToggles'
 import MoodCard, { moodValid } from '../components/MoodCard'
 import TwoCityCard from '../components/TwoCityCard'
-import Thumbkiss from '../components/Thumbkiss'
+import { openThumbkiss } from '../lib/thumbkissStore'
 import LoveTree from '../components/LoveTree'
 import MindQuiz from '../components/MindQuiz'
 import { CountUp, FloatLayer } from '../components/Fx'
@@ -492,7 +492,7 @@ export default function Us() {
         <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-white">
           <button
             type="button"
-            onClick={() => setFeature('touch')}
+            onClick={() => openThumbkiss()}
             className="flex w-full items-center justify-between px-5 py-4 text-left active:bg-soft"
           >
             <span>{t('💗 实时触碰')}</span>
@@ -783,7 +783,6 @@ export default function Us() {
       )}
 
       {/* 功能页(全屏覆盖) */}
-      {feature === 'touch' && <Thumbkiss onClose={() => setFeature(null)} />}
       {feature === 'quiz' && (
         <MindQuiz
           coupleId={couple!.id}

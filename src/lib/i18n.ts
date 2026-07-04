@@ -130,6 +130,10 @@ const dict: Record<string, T2> = {
   '昨天': ['Yesterday', '昨日'],
   '对方正在输入…': ['Typing…', '入力中…'],
   '对方正在输入': ['Typing', '入力中'],
+  '{name}想和你实时触碰 · 点这里一起碰': [
+    '{name} wants to touch · tap to join',
+    '{name}が触れたがっています · タップで参加',
+  ],
   '查看更早的消息': ['Earlier messages', '以前のメッセージ'],
   '查看更新的消息': ['Newer messages', '新しいメッセージ'],
   '↓ 回到最新': ['↓ Back to latest', '↓ 最新へ'],

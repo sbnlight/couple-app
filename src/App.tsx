@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { RequireAuth, RequireCouple } from './components/Guard'
@@ -8,6 +8,8 @@ import { t } from './lib/i18n'
 import TabBar from './components/TabBar'
 import EffectHost from './components/EffectHost'
 import GlobalLive from './components/GlobalLive'
+import Thumbkiss from './components/Thumbkiss'
+import { closeThumbkiss, subscribeThumbkiss } from './lib/thumbkissStore'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Pair from './pages/Pair'
@@ -19,6 +21,14 @@ import Us from './pages/Us'
  * 主界面布局:内容区 + 底部 Tab。
  * 内容区限宽 max-w-md 并水平居中,手机上铺满、电脑上不至于太宽。
  */
+/** 全局挂载实时触碰:由 thumbkissStore 控制开关,可从任意页面(含对方触碰提醒)打开 */
+function ThumbkissHost() {
+  const [open, setOpen] = useState(false)
+  useEffect(() => subscribeThumbkiss(setOpen), [])
+  if (!open) return null
+  return <Thumbkiss onClose={closeThumbkiss} />
+}
+
 function MainLayout() {
   return (
     <div className="mx-auto flex h-full max-w-md flex-col">
@@ -27,9 +37,10 @@ function MainLayout() {
         <Outlet />
       </main>
       <TabBar />
-      {/* 全屏表情雨渲染器 + 全局互动监听(想你爱心雨/纪念日彩蛋) */}
+      {/* 全屏表情雨渲染器 + 全局互动监听(想你爱心雨/纪念日彩蛋)+ 实时触碰 */}
       <EffectHost />
       <GlobalLive />
+      <ThumbkissHost />
     </div>
   )
 }

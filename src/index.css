@@ -1272,6 +1272,28 @@ html.dark .recv-paper {
   animation: kiss-ripple 1.8s ease-out infinite;
 }
 
+/* 触碰连接时:玫瑰极光呼吸底 */
+@keyframes kiss-aurora {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+.kiss-aurora {
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(251, 113, 133, 0.5),
+    rgba(244, 114, 182, 0.25) 45%,
+    transparent 70%
+  );
+  animation: kiss-aurora 2.4s ease-in-out infinite;
+}
+
 /* ---------- 爱情树页面:树的呼吸摇曳 + 居中弹窗入场 ---------- */
 @keyframes tree-sway {
   0%,
@@ -1529,6 +1551,7 @@ html.dark .recv-paper {
   .city-dash,
   .city-plane,
   .kiss-ripple,
+  .kiss-aurora,
   .tree-sway,
   .tree-bounce,
   .modal-pop,
