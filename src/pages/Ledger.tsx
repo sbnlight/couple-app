@@ -383,7 +383,23 @@ export default function Ledger() {
 
       <div className="page-in flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
-          <p className="py-10 text-center text-sm text-gray-300">{t('加载中…')}</p>
+          // 骨架屏:比"加载中…"更有质感,近似真实布局(汇总卡 + 图表 + 几条流水)
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-white p-5">
+              <div className="skeleton h-3 w-20" />
+              <div className="skeleton mt-2.5 h-7 w-32" />
+              <div className="skeleton mt-3 h-2.5 w-full" />
+            </div>
+            <div className="rounded-2xl bg-white p-5">
+              <div className="skeleton h-24 w-full" />
+            </div>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="rounded-2xl bg-white p-4">
+                <div className="skeleton h-3 w-24" />
+                <div className="skeleton mt-2 h-3 w-40" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div className="flex flex-col items-center gap-3 py-10">
             <p className="text-sm text-gray-400">{t('账单加载失败')}</p>

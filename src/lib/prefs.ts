@@ -633,7 +633,38 @@ const STARS_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
 const LOVE_DOODLE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='100'%3E%3Cpath d='M20 28c-4-5-12-3-12 4 0 6 12 12 12 12s12-6 12-12c0-7-8-9-12-4z' fill='none' stroke='%23fb7185' stroke-opacity='.45' stroke-width='1.4'/%3E%3Cpath d='M118 74c-3-4-9-2-9 3 0 5 9 9 9 9s9-4 9-9c0-5-6-7-9-3z' fill='none' stroke='%23a78bfa' stroke-opacity='.4' stroke-width='1.4'/%3E%3Ctext x='52' y='44' font-family='cursive' font-size='22' fill='%23f9a8d4' fill-opacity='.5'%3Elove%3C/text%3E%3Ctext x='30' y='90' font-family='cursive' font-size='17' fill='%23fda4af' fill-opacity='.42'%3Eyou%3C/text%3E%3C/svg%3E")`
 const GULLS_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='70'%3E%3Cg fill='none' stroke='%23475569' stroke-opacity='.45' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M14 18q6-6 12 0 6-6 12 0'/%3E%3Cpath d='M70 40q5-5 10 0 5-5 10 0'/%3E%3C/g%3E%3C/svg%3E")`
 
+// ---- M 新增:更多缤纷图案(URL 编码的内联 SVG,CSP 安全、可离线) ----
+const POLKA_DOTS = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='10' cy='10' r='2.5' fill='%23fb7185' fill-opacity='.13'/%3E%3Ccircle cx='30' cy='30' r='2.5' fill='%23f472b6' fill-opacity='.11'/%3E%3C/svg%3E")`
+const TINY_STARS = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M14 6l1.4 4 4 1.4-4 1.4L14 17l-1.4-4-4-1.4 4-1.4z' fill='%23fbbf24' fill-opacity='.18'/%3E%3Cpath d='M44 36l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z' fill='%23a78bfa' fill-opacity='.15'/%3E%3C/svg%3E")`
+const SOFT_CLOUDS = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='60'%3E%3Cg fill='%2360a5fa' fill-opacity='.09'%3E%3Cellipse cx='24' cy='24' rx='15' ry='7'/%3E%3Cellipse cx='15' cy='26' rx='8' ry='5'/%3E%3Cellipse cx='35' cy='26' rx='9' ry='5'/%3E%3C/g%3E%3C/svg%3E")`
+const BUBBLES_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='none' stroke='%2322d3ee' stroke-opacity='.18'%3E%3Ccircle cx='16' cy='18' r='6'/%3E%3Ccircle cx='46' cy='42' r='9'/%3E%3Ccircle cx='40' cy='14' r='3'/%3E%3C/g%3E%3C/svg%3E")`
+const WAVE_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='24'%3E%3Cpath d='M0 12q10-8 20 0t20 0 20 0 20 0' fill='none' stroke='%2338bdf8' stroke-opacity='.16' stroke-width='2'/%3E%3C/svg%3E")`
+const PAW_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cg fill='%23f59e0b' fill-opacity='.13'%3E%3Cellipse cx='16' cy='22' rx='3.4' ry='4.2'/%3E%3Ccircle cx='10.5' cy='15' r='1.7'/%3E%3Ccircle cx='16' cy='13' r='1.7'/%3E%3Ccircle cx='21.5' cy='15' r='1.7'/%3E%3C/g%3E%3C/svg%3E")`
+const MUSIC_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cg fill='%23a855f7' fill-opacity='.13'%3E%3Ccircle cx='12' cy='40' r='3.5'/%3E%3Crect x='14.6' y='18' width='1.8' height='22'/%3E%3Ccircle cx='40' cy='30' r='3'/%3E%3Crect x='42.2' y='12' width='1.6' height='18'/%3E%3C/g%3E%3C/svg%3E")`
+const LEAF_BG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='%2334d399' fill-opacity='.13'%3E%3Cpath d='M14 24q-8-8 0-16 8 8 0 16z'/%3E%3Cpath d='M44 52q-6-6 0-12 6 6 0 12z'/%3E%3C/g%3E%3C/svg%3E")`
+
 export const CHAT_BGS: ChatBgPreset[] = [
+  // ---- 缤纷渐变(清新活泼) ----
+  { group: '缤纷', id: 'mint-sky', label: '薄荷晴空', css: 'linear-gradient(180deg, #d1fae5, #e0f2fe)' },
+  { group: '缤纷', id: 'peach-lilac', label: '蜜桃丁香', css: 'linear-gradient(180deg, #ffe4e6, #ede9fe)' },
+  { group: '缤纷', id: 'honey-dusk', label: '日暮蜜糖', css: 'linear-gradient(180deg, #fed7aa, #fecdd3)' },
+  { group: '缤纷', id: 'grape-soda', label: '葡萄冰沙', css: 'linear-gradient(180deg, #e9d5ff, #c7d2fe)' },
+  { group: '缤纷', id: 'green-soda', label: '青提苏打', css: 'linear-gradient(180deg, #ecfccb, #a7f3d0)' },
+  { group: '缤纷', id: 'cloud-sea', label: '云海', css: 'linear-gradient(180deg, #e0f2fe, #f5f3ff 55%, #fff1f2)' },
+  { group: '缤纷', id: 'aurora-soft', label: '柔光极光', css: 'linear-gradient(135deg, #a7f3d0, #bfdbfe 50%, #ddd6fe)' },
+  // ---- 图案(新增) ----
+  { group: '图案', id: 'polka', label: '波点', css: `${POLKA_DOTS} 0 0 / 40px repeat, #fff5f8` },
+  { group: '图案', id: 'tiny-stars', label: '星星点点', css: `${TINY_STARS} 0 0 / 60px repeat, #fffdf6` },
+  { group: '图案', id: 'clouds', label: '云朵', css: `${SOFT_CLOUDS} 0 0 / 90px repeat, #f0f9ff` },
+  { group: '图案', id: 'bubbles', label: '气泡', css: `${BUBBLES_BG} 0 0 / 64px repeat, #ecfeff` },
+  { group: '图案', id: 'waves', label: '碧波', css: `${WAVE_BG} 0 0 / 80px repeat, #f0f9ff` },
+  { group: '图案', id: 'paws', label: '小爪印', css: `${PAW_BG} 0 0 / 56px repeat, #fffbeb` },
+  { group: '图案', id: 'music', label: '音符', css: `${MUSIC_BG} 0 0 / 60px repeat, #faf5ff` },
+  { group: '图案', id: 'leaves', label: '绿叶', css: `${LEAF_BG} 0 0 / 64px repeat, #f0fdf4` },
+  // ---- 深色(新增) ----
+  { group: '深色', id: 'starry-night', label: '星河夜', css: `${STARS_BG} 0 0 / 90px repeat, linear-gradient(180deg, #1e1b4b, #0f172a)` },
+  { group: '深色', id: 'neon-night', label: '霓虹夜', css: 'linear-gradient(180deg, #18181b, #312e81)' },
+  { group: '深色', id: 'midnight-blue', label: '午夜蓝', css: 'linear-gradient(180deg, #0f172a, #1e293b)' },
   // ---- 臻景:高清场景(多层渐变 + 精绘 SVG) ----
   { group: '臻景', id: 'lux-sunset', label: '落日海滩', css: 'radial-gradient(circle at 50% 56%, #fff7d6 0 3.5%, transparent 5%), radial-gradient(circle at 50% 56%, rgba(255,228,160,.9), transparent 26%), linear-gradient(180deg, transparent 64%, rgba(255,255,255,.16) 65%, transparent 67%, rgba(255,255,255,.1) 73%, transparent 75%), linear-gradient(180deg, #ffb27a, #ff7e8a 34%, #d8537e 56%, #6d3b8e 100%)' },
   { group: '臻景', id: 'lux-sakura', label: '樱花飞舞', css: `${SAKURA_BG} 0 0 / 64px repeat, linear-gradient(180deg, #ffe3ef, #f3e1f7 50%, #dde7fb)` },
