@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fireEffect } from '../lib/effects'
 import Portal from './Portal'
+import { CountUp } from './Fx'
+import TreeGraphic, { seasonOfMonth } from './TreeGraphic'
+import type { Season } from './TreeGraphic'
 import { t } from '../lib/i18n'
 
 /**
  * 爱情树(共同养成):不新增表,由你们已有的互动"浇灌"成长——
  * 成长值 = 在一起天数 ×1 + 打卡次数 ×2 + 想你次数 ×1。
  * 「我们」页放一张概览卡,点开进入全屏「爱情树园地」:
- * 天空随时辰变化、树会摇曳、点树说树语、浇水特效、成就阶梯。
+ * 内联 SVG 真树随成长阶段长大、季节换叶、天空随时辰变化、点树说树语、浇水特效、成就阶梯。
  */
 
 const STAGES = [
@@ -22,6 +25,9 @@ const STAGES = [
 ]
 
 const STAGE_KEY = 'love-tree-stage'
+
+/** 季节飘落物:春樱花、秋落叶、冬雪;夏天不飘(留云) */
+const PARTICLE: Record<Season, string> = { spring: '🌸', summer: '', autumn: '🍂', winter: '❄️' }
 
 /** 树语:点树/浇水时随机蹦一句 */
 const TREE_TALK = [
@@ -66,8 +72,30 @@ export default function LoveTree({
   const [open, setOpen] = useState(false)
   const [talk, setTalk] = useState('')
   const [bouncing, setBouncing] = useState(false)
+  const [watering, setWatering] = useState(false)
+  const [waterKey, setWaterKey] = useState(0)
   const talkTimer = useRef<number | undefined>(undefined)
   const enteredRef = useRef(false)
+
+  const season = seasonOfMonth(new Date().getMonth())
+  // 一次生成的飘落物 / 萤火虫布局(不随每次渲染乱跳)
+  const [particles] = useState(() =>
+    Array.from({ length: 9 }, () => ({
+      left: 4 + Math.random() * 92,
+      delay: Math.random() * 7,
+      dur: 6 + Math.random() * 5,
+      size: 11 + Math.random() * 9,
+    })),
+  )
+  const [fireflies] = useState(() =>
+    Array.from({ length: 7 }, () => ({
+      left: 12 + Math.random() * 76,
+      top: 18 + Math.random() * 56,
+      size: 4 + Math.random() * 4,
+      delay: Math.random() * 4,
+      dur: 3.5 + Math.random() * 3,
+    })),
+  )
 
   const loadCounts = async () => {
     const [c, m] = await Promise.all([
@@ -110,6 +138,7 @@ export default function LoveTree({
   const progress = next
     ? Math.min(100, Math.round(((points - stage.min) / (next.min - stage.min)) * 100))
     : 100
+  const treeStage = loading ? 0 : stageIdx
 
   // 升级撒花:本机记录上次阶段,长大到新阶段时庆祝一次(必须是可靠数据,否则弱网清零会误判)
   useEffect(() => {
@@ -144,15 +173,18 @@ export default function LoveTree({
   }
 
   const water = () => {
-    fireEffect(['💧', '🌿', '✨', '🍃'], 24)
     navigator.vibrate?.([20, 60, 20])
     setBouncing(true)
     setTimeout(() => setBouncing(false), 650)
+    setWaterKey((k) => k + 1) // 重挂水珠/涟漪节点,重放动画
+    setWatering(true)
+    setTimeout(() => setWatering(false), 1000)
     say(t('咕嘟咕嘟…谢谢浇水!多打卡、多想 TA,我长得更快哦 🌱'))
     void loadCounts() // 顺便刷新(对方可能刚打卡/想你)
   }
 
   const sky = skyByHour(new Date().getHours())
+  const particleChar = PARTICLE[season]
 
   return (
     <>
@@ -166,13 +198,15 @@ export default function LoveTree({
           <p className="text-sm font-medium text-gray-500">{t('🌳 我们的爱情树')}</p>
           <span className="text-xs text-gray-300">{t('进入园地 ›')}</span>
         </div>
-        <div className="mt-2 flex items-center gap-4">
-          <span className="text-5xl">{loading ? '🌱' : stage.emoji}</span>
+        <div className="mt-2 flex items-center gap-3">
+          <span className="shrink-0">
+            <TreeGraphic stageIdx={treeStage} season={season} width={52} />
+          </span>
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-emerald-700">{t(stage.name)}</p>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-emerald-100">
               <div
-                className="h-full rounded-full bg-emerald-400 transition-all"
+                className="tree-progress h-full rounded-full bg-emerald-400 transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -188,159 +222,212 @@ export default function LoveTree({
       {/* 爱情树园地(全屏子页)。Portal 到 body,避免被 .page-in 入场动画的 transform 困住而跑到顶部 */}
       {open && (
         <Portal>
-        <div className="fixed inset-0 z-40 mx-auto flex max-w-md flex-col overflow-hidden bg-warmbg">
-          {/* 天空场景 */}
-          <div
-            className="relative shrink-0 pb-6 pt-[max(0.75rem,env(safe-area-inset-top))]"
-            style={{ background: sky.bg }}
-          >
-            <div className="flex items-center px-3">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className={`px-1 text-2xl ${sky.night ? 'text-white/80' : 'text-gray-600/70'}`}
-              >
-                ‹
-              </button>
-              <h1
-                className={`flex-1 text-center text-base font-semibold ${
-                  sky.night ? 'text-white' : 'text-gray-700'
-                }`}
-              >
-                {t('爱情树园地')}
-              </h1>
-              <span className={`w-7 text-xs ${sky.night ? 'text-white/70' : 'text-gray-500/80'}`}>
-                {sky.night ? '🌙' : '☀️'}
-              </span>
-            </div>
+          <div className="fixed inset-0 z-40 mx-auto flex max-w-md flex-col overflow-hidden bg-warmbg">
+            {/* 天空场景 */}
+            <div
+              className="relative shrink-0 pb-6 pt-[max(0.75rem,env(safe-area-inset-top))]"
+              style={{ background: sky.bg }}
+            >
+              {/* 季节飘落物(春樱/秋叶/冬雪) */}
+              {particleChar && (
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  {particles.map((p, i) => (
+                    <span
+                      key={i}
+                      className="tree-fall"
+                      style={{
+                        left: `${p.left}%`,
+                        fontSize: p.size,
+                        animationDelay: `${p.delay}s`,
+                        animationDuration: `${p.dur}s`,
+                      }}
+                    >
+                      {particleChar}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* 夜晚萤火虫 */}
+              {sky.night && (
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  {fireflies.map((f, i) => (
+                    <span
+                      key={i}
+                      className="firefly"
+                      style={{
+                        left: `${f.left}%`,
+                        top: `${f.top}%`,
+                        width: f.size,
+                        height: f.size,
+                        animationDelay: `${f.delay}s`,
+                        animationDuration: `${f.dur}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
 
-            {/* 夜晚点缀星星 / 白天点缀云 */}
-            <div className="pointer-events-none absolute inset-x-0 top-10 flex justify-around text-sm opacity-80">
-              {sky.night ? (
-                <>
-                  <span className="deco-twinkle inline-block">✨</span>
-                  <span className="deco-twinkle inline-block" style={{ animationDelay: '0.7s' }}>⭐</span>
-                  <span className="deco-twinkle inline-block" style={{ animationDelay: '1.3s' }}>✨</span>
-                </>
-              ) : (
-                <>
+              <div className="relative flex items-center px-3">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className={`px-1 text-2xl ${sky.night ? 'text-white/80' : 'text-gray-600/70'}`}
+                >
+                  ‹
+                </button>
+                <h1
+                  className={`flex-1 text-center text-base font-semibold ${
+                    sky.night ? 'text-white' : 'text-gray-700'
+                  }`}
+                >
+                  {t('爱情树园地')}
+                </h1>
+                <span className={`w-7 text-xs ${sky.night ? 'text-white/70' : 'text-gray-500/80'}`}>
+                  {sky.night ? '🌙' : '☀️'}
+                </span>
+              </div>
+
+              {/* 白天点缀云(夜晚由萤火虫接管) */}
+              {!sky.night && (
+                <div className="pointer-events-none absolute inset-x-0 top-10 flex justify-around text-sm opacity-80">
                   <span className="deco-float inline-block">☁️</span>
                   <span className="deco-float inline-block" style={{ animationDelay: '1s' }}>🕊️</span>
                   <span className="deco-float inline-block" style={{ animationDelay: '2s' }}>☁️</span>
-                </>
-              )}
-            </div>
-
-            {/* 树语气泡 */}
-            <div className="flex h-10 items-end justify-center px-8">
-              {talk && (
-                <span className="modal-pop max-w-full rounded-2xl rounded-bl-sm bg-white/90 px-3 py-1.5 text-xs text-emerald-800 shadow">
-                  {talk}
-                </span>
-              )}
-            </div>
-
-            {/* 树本体:点一点会说话 */}
-            <button
-              type="button"
-              onClick={pokeTree}
-              className="mx-auto block select-none text-center"
-              aria-label="戳戳爱情树"
-            >
-              <span className={`text-8xl drop-shadow-lg ${bouncing ? 'tree-bounce' : 'tree-sway'}`}>
-                {loading ? '🌱' : stage.emoji}
-              </span>
-            </button>
-            {/* 草地 */}
-            <div className="pointer-events-none mx-auto -mb-2 mt-1 h-4 w-56 rounded-[100%] bg-emerald-300/70 blur-[2px]" />
-            <p
-              className={`mt-2 text-center text-sm font-semibold ${
-                sky.night ? 'text-white' : 'text-emerald-800'
-              }`}
-            >
-              {t(stage.name)}
-              <span className={`ml-2 text-xs font-normal ${sky.night ? 'text-white/70' : 'text-emerald-700/70'}`}>
-                {t('浇灌值 {p}', { p: points })}
-              </span>
-            </p>
-            {next && (
-              <div className="mx-auto mt-2 w-2/3">
-                <div className="h-2 overflow-hidden rounded-full bg-white/40">
-                  <div
-                    className="h-full rounded-full bg-emerald-400 transition-all"
-                    style={{ width: `${progress}%` }}
-                  />
                 </div>
-                <p
-                  className={`mt-1 text-center text-xs ${
-                    sky.night ? 'text-white/70' : 'text-emerald-800/70'
-                  }`}
+              )}
+
+              {/* 树语气泡 */}
+              <div className="relative flex h-10 items-end justify-center px-8">
+                {talk && (
+                  <span className="modal-pop max-w-full rounded-2xl rounded-bl-sm bg-white/90 px-3 py-1.5 text-xs text-emerald-800 shadow">
+                    {talk}
+                  </span>
+                )}
+              </div>
+
+              {/* 树本体:点一点会说话;浇水时头顶落水珠、根部荡涟漪 */}
+              <div className="relative mx-auto" style={{ width: 176 }}>
+                <button
+                  type="button"
+                  onClick={pokeTree}
+                  className="block w-full select-none text-center"
+                  aria-label="戳戳爱情树"
                 >
-                  {t('再攒 {n} 点长成「{s}」{e}', { n: next.min - points, s: t(next.name), e: next.emoji })}
-                </p>
+                  <span className={`inline-block drop-shadow-lg ${bouncing ? 'tree-bounce' : 'tree-sway'}`}>
+                    <TreeGraphic stageIdx={treeStage} season={season} animate width={176} />
+                  </span>
+                </button>
+                {watering && (
+                  <div key={waterKey} className="pointer-events-none absolute inset-x-0 top-3 z-10">
+                    {[24, 40, 50, 60, 76, 44, 66].map((l, i) => (
+                      <span
+                        key={i}
+                        className="water-drop"
+                        style={{ left: `${l}%`, animationDelay: `${i * 0.07}s` }}
+                      />
+                    ))}
+                    <span
+                      className="water-ripple"
+                      style={{ left: '50%', bottom: 10, width: 64, height: 18, marginLeft: -32 }}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* 下半部:养分 + 成就 */}
-          <div className="flex-1 overflow-y-auto px-4 py-4">
-            {/* 浇水 */}
-            <button
-              type="button"
-              onClick={water}
-              className="w-full rounded-full bg-emerald-400 py-3 text-base font-medium text-white shadow-lg shadow-emerald-200 active:scale-95"
-            >
-              {t('💧 给小树浇浇水')}
-            </button>
-
-            {/* 养分来源 */}
-            <p className="mb-2 mt-5 px-1 text-sm font-medium text-gray-500">{t('🌿 它靠什么长大')}</p>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-2xl bg-white p-3 text-center">
-                <p className="text-xl">❤️</p>
-                <p className="mt-1 text-lg font-bold text-emerald-700">{daysTogether}</p>
-                <p className="text-xs text-gray-400">{t('在一起天数 ×1')}</p>
-              </div>
-              <div className="rounded-2xl bg-white p-3 text-center">
-                <p className="text-xl">📍</p>
-                <p className="mt-1 text-lg font-bold text-emerald-700">{checkins}</p>
-                <p className="text-xs text-gray-400">{t('打卡次数 ×2')}</p>
-              </div>
-              <div className="rounded-2xl bg-white p-3 text-center">
-                <p className="text-xl">💭</p>
-                <p className="mt-1 text-lg font-bold text-emerald-700">{misses}</p>
-                <p className="text-xs text-gray-400">{t('想你次数 ×1')}</p>
-              </div>
-            </div>
-
-            {/* 成就阶梯 */}
-            <p className="mb-2 mt-5 px-1 text-sm font-medium text-gray-500">{t('🪜 成长阶梯')}</p>
-            <div className="space-y-1.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {STAGES.map((s, i) => {
-                const reached = points >= s.min
-                const current = i === stageIdx
-                return (
-                  <div
-                    key={s.name}
-                    className={`flex items-center gap-3 rounded-xl bg-white px-3 py-2 ${
-                      current ? 'ring-2 ring-emerald-300' : ''
+              <p
+                className={`mt-2 text-center text-sm font-semibold ${
+                  sky.night ? 'text-white' : 'text-emerald-800'
+                }`}
+              >
+                {t(stage.name)}
+                <span className={`ml-2 text-xs font-normal ${sky.night ? 'text-white/70' : 'text-emerald-700/70'}`}>
+                  {t('浇灌值')} <CountUp value={points} run={open} />
+                </span>
+              </p>
+              {next && (
+                <div className="mx-auto mt-2 w-2/3">
+                  <div className="h-2 overflow-hidden rounded-full bg-white/40">
+                    <div
+                      className="tree-progress h-full rounded-full bg-emerald-400 transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p
+                    className={`mt-1 text-center text-xs ${
+                      sky.night ? 'text-white/70' : 'text-emerald-800/70'
                     }`}
                   >
-                    <span className={`text-2xl ${reached ? '' : 'opacity-30 grayscale'}`}>
-                      {s.emoji}
-                    </span>
-                    <span className={`flex-1 text-sm ${reached ? 'text-gray-700' : 'text-gray-300'}`}>
-                      {t(s.name)}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {current ? t('🌟 当前') : reached ? '✓' : t('{n} 点', { n: s.min })}
-                    </span>
-                  </div>
-                )
-              })}
+                    {t('再攒 {n} 点长成「{s}」{e}', { n: next.min - points, s: t(next.name), e: next.emoji })}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 下半部:养分 + 成就 */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {/* 浇水 */}
+              <button
+                type="button"
+                onClick={water}
+                className="w-full rounded-full bg-emerald-400 py-3 text-base font-medium text-white shadow-lg shadow-emerald-200 active:scale-95"
+              >
+                {t('💧 给小树浇浇水')}
+              </button>
+
+              {/* 养分来源 */}
+              <p className="mb-2 mt-5 px-1 text-sm font-medium text-gray-500">{t('🌿 它靠什么长大')}</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-white p-3 text-center">
+                  <p className="text-xl">❤️</p>
+                  <p className="mt-1 text-lg font-bold text-emerald-700">
+                    <CountUp value={daysTogether} run={open} />
+                  </p>
+                  <p className="text-xs text-gray-400">{t('在一起天数 ×1')}</p>
+                </div>
+                <div className="rounded-2xl bg-white p-3 text-center">
+                  <p className="text-xl">📍</p>
+                  <p className="mt-1 text-lg font-bold text-emerald-700">
+                    <CountUp value={checkins} run={open} />
+                  </p>
+                  <p className="text-xs text-gray-400">{t('打卡次数 ×2')}</p>
+                </div>
+                <div className="rounded-2xl bg-white p-3 text-center">
+                  <p className="text-xl">💭</p>
+                  <p className="mt-1 text-lg font-bold text-emerald-700">
+                    <CountUp value={misses} run={open} />
+                  </p>
+                  <p className="text-xs text-gray-400">{t('想你次数 ×1')}</p>
+                </div>
+              </div>
+
+              {/* 成就阶梯 */}
+              <p className="mb-2 mt-5 px-1 text-sm font-medium text-gray-500">{t('🪜 成长阶梯')}</p>
+              <div className="space-y-1.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {STAGES.map((s, i) => {
+                  const reached = points >= s.min
+                  const current = i === stageIdx
+                  return (
+                    <div
+                      key={s.name}
+                      className={`flex items-center gap-3 rounded-xl bg-white px-3 py-2 ${
+                        current ? 'ring-2 ring-emerald-300' : ''
+                      }`}
+                    >
+                      <span className={`text-2xl ${reached ? '' : 'opacity-30 grayscale'}`}>
+                        {s.emoji}
+                      </span>
+                      <span className={`flex-1 text-sm ${reached ? 'text-gray-700' : 'text-gray-300'}`}>
+                        {t(s.name)}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {current ? t('🌟 当前') : reached ? '✓' : t('{n} 点', { n: s.min })}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
-        </div>
         </Portal>
       )}
     </>

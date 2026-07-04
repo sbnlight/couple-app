@@ -1438,6 +1438,134 @@ html.dark .recv-paper {
   display: inline-block;
   transform-origin: bottom center;
 }
+
+/* ---------- 爱情树「园地」升级:枝干生长 / 叶簇弹出 / 季节飘落 / 萤火虫 / 浇水 / 进度流光 ---------- */
+@keyframes tree-branch-grow {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.tree-branch {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tree-branch-grow 0.5s ease forwards;
+}
+@keyframes tree-pop-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.tree-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+  opacity: 0;
+  animation: tree-pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes tree-fall {
+  0% {
+    transform: translateY(-12px) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(230px) rotate(300deg);
+    opacity: 0;
+  }
+}
+.tree-fall {
+  position: absolute;
+  top: 0;
+  animation: tree-fall linear infinite;
+  will-change: transform;
+}
+@keyframes firefly-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.15;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(14px, -18px);
+    opacity: 0.85;
+  }
+  75% {
+    opacity: 1;
+  }
+}
+.firefly {
+  position: absolute;
+  border-radius: 9999px;
+  background: #fde68a;
+  box-shadow: 0 0 6px 2px rgba(253, 224, 71, 0.85);
+  animation: firefly-drift ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes water-drop {
+  0% {
+    transform: translateY(0) rotate(45deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(96px) rotate(45deg);
+    opacity: 0;
+  }
+}
+.water-drop {
+  position: absolute;
+  width: 6px;
+  height: 9px;
+  border-radius: 0 60% 60% 60%;
+  background: #38bdf8;
+  animation: water-drop 0.85s ease-in forwards;
+}
+@keyframes water-ripple {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.water-ripple {
+  position: absolute;
+  border: 2px solid rgba(56, 189, 248, 0.6);
+  border-radius: 9999px;
+  animation: water-ripple 0.8s ease-out forwards;
+}
+@keyframes tree-progress-sweep {
+  0% {
+    background-position: -140% 0;
+  }
+  100% {
+    background-position: 240% 0;
+  }
+}
+.tree-progress {
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  background-size: 55% 100%;
+  background-repeat: no-repeat;
+  animation: tree-progress-sweep 2.4s ease-in-out infinite;
+}
+
 /* 居中弹窗:轻微放大淡入 */
 @keyframes modal-pop {
   from {
@@ -1668,18 +1796,29 @@ html.dark .recv-paper {
   .kiss-aurora,
   .tree-sway,
   .tree-bounce,
+  .tree-fall,
+  .firefly,
+  .water-drop,
+  .water-ripple,
+  .tree-progress,
   .modal-pop,
   .msg-in-me,
   .msg-in-you {
     animation: none !important;
   }
   /* 描边生长/端点淡入:关掉动画但要还原到"完全画好/可见",否则会一直隐藏 */
-  .chart-draw {
+  .chart-draw,
+  .tree-branch {
     animation: none !important;
     stroke-dashoffset: 0 !important;
   }
   .chart-dot {
     animation: none !important;
+    opacity: 1 !important;
+  }
+  .tree-pop {
+    animation: none !important;
+    transform: none !important;
     opacity: 1 !important;
   }
 }
