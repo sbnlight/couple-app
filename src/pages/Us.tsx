@@ -734,7 +734,9 @@ export default function Us() {
       {/* 轻提示 */}
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center">
-          <span className="rounded-full bg-gray-800/80 px-4 py-2 text-sm text-white">{toast}</span>
+          <span className="toast-in rounded-full bg-gray-800/80 px-4 py-2 text-sm text-white">
+            {toast}
+          </span>
         </div>
       )}
 

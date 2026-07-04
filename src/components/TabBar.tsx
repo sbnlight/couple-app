@@ -36,8 +36,14 @@ export default function TabBar() {
               }`
             }
           >
-            <span className="text-xl leading-none">{tab.icon}</span>
-            <span>{t(tab.label)}</span>
+            {({ isActive }) => (
+              <>
+                <span className={`text-xl leading-none ${isActive ? 'tab-active-icon' : ''}`}>
+                  {tab.icon}
+                </span>
+                <span>{t(tab.label)}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>

@@ -1172,6 +1172,37 @@ html.dark .recv-paper {
   animation: deco-float 4s ease-in-out infinite;
 }
 
+/* 轻提示 toast:从顶部轻轻滑入淡入(全局最频繁的反馈,别再生硬地闪现) */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.toast-in {
+  animation: toast-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 底部 Tab 选中项:图标上浮放大一点点 + 一次性回弹,常驻可见的小生动 */
+@keyframes tab-pop {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  55% {
+    transform: translateY(-3px) scale(1.18);
+  }
+  100% {
+    transform: translateY(-2px) scale(1.1);
+  }
+}
+.tab-active-icon {
+  animation: tab-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* 聊天里居中的系统小字(日期分隔 / 拍一拍 / 撤回):半透明药丸底 + 轻微磨砂,
    让它在任何聊天背景(浅色/深色/花哨图片)上都清晰可读 */
 .chat-center-chip {
@@ -1560,6 +1591,8 @@ html.dark .recv-paper {
   .bubble-confetti::after,
   .bubble-bokeh::after,
   .love-milestone-glow,
+  .toast-in,
+  .tab-active-icon,
   .typing-dot,
   .today-glow,
   .city-dash,
