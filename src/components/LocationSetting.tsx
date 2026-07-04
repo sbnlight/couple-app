@@ -145,6 +145,18 @@ export default function LocationSetting({
             ))}
           </div>
         )}
+        {/* 兜底:哪怕搜不到/连不上(国内网络),直接用手打的名字,城市名一定对。
+            没坐标时天气/距离按时区回退,误差不大。 */}
+        {query.trim() && !searching && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void save({ city: query.trim(), lat: null, lng: null })}
+            className="mt-2 w-full rounded-lg border border-dashed border-line py-2 text-xs text-gray-500 active:bg-soft"
+          >
+            {t('搜不到?直接用「{q}」作为城市名', { q: query.trim() })}
+          </button>
+        )}
 
         {err && <p className="mt-2 text-center text-xs text-red-500">{err}</p>}
 
