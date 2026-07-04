@@ -25,6 +25,7 @@ import MessageBubble from '../components/MessageBubble'
 import ChatPanel from '../components/ChatPanel'
 import ChatSearch from '../components/ChatSearch'
 import ChatAppearance from '../components/ChatAppearance'
+import { FloatLayer } from '../components/Fx'
 import PartnerClock from '../components/PartnerClock'
 import { moodValid } from '../components/MoodCard'
 import { t } from '../lib/i18n'
@@ -606,9 +607,13 @@ export default function Chat() {
               </button>
             )}
             {items.length === 0 && (
-              <div className="flex flex-col items-center gap-2 py-16 text-gray-300">
-                <span className="text-4xl">💬</span>
-                <p className="text-sm">{t('说点什么,开启你们的小屋吧')}</p>
+              <div className="relative flex flex-col items-center gap-2 overflow-hidden py-16 text-gray-300">
+                <FloatLayer items={['💬', '❤️', '✨']} count={6} />
+                <span className="deco-bob relative z-10 text-4xl">💬</span>
+                <p className="relative z-10 text-sm">{t('说点什么,开启你们的小屋吧')}</p>
+                <p className="relative z-10 text-xs text-gray-300">
+                  {t('第一条消息,就从「在吗」开始吧 💗')}
+                </p>
               </div>
             )}
             {items.map((item, i) => {

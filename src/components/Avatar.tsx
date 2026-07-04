@@ -25,21 +25,31 @@ export default function Avatar({ profile, size = 64 }: { profile: Profile | null
   }, [path])
 
   const name = profile?.display_name ?? '?'
+  const ring = 'ring-2 ring-white/80 shadow-sm'
 
+  // 有头像但签名 URL 还没拿到:显示微光圆,避免"首字占位→图片"的闪跳
+  if (path && !url) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={`bubble-shimmer rounded-full bg-gray-100 ${ring}`}
+      />
+    )
+  }
   if (url) {
     return (
       <img
         src={url}
         alt={name}
         style={{ width: size, height: size }}
-        className="rounded-full object-cover"
+        className={`rounded-full object-cover ${ring}`}
       />
     )
   }
   return (
     <div
       style={{ width: size, height: size, fontSize: size * 0.4 }}
-      className="flex items-center justify-center rounded-full bg-primary-light text-primary-dark"
+      className={`flex items-center justify-center rounded-full bg-primary-light text-primary-dark ${ring}`}
     >
       {name.slice(0, 1)}
     </div>

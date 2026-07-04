@@ -104,7 +104,9 @@ export default function Login() {
   return (
     <div className="mx-auto flex h-full max-w-md flex-col justify-center px-8">
       <div className="mb-10 text-center">
-        <div className="text-5xl">❤</div>
+        <div className="text-5xl">
+          <span className="bubble-beat inline-block text-primary">❤</span>
+        </div>
         <h1 className="mt-3 text-2xl font-bold text-primary-dark">{t('双人小屋')}</h1>
         <p className="mt-1 text-sm text-gray-400">
           {mode === 'forgot' ? t('输入邮箱,找回你的密码') : t('只属于我们两个人的地方')}
