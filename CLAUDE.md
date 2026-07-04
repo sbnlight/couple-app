@@ -157,12 +157,12 @@ src/
 - 不要擅自重构已确认的代码结构;不要引入本文件未列出的重量级依赖(轻量工具库可先问)。
 - 每个功能完成后,告诉我如何在手机上验证。
 
-### 发布流程(重要:一律先预览,再上线)
-- **不要把功能改动直接提交/推送到 `master`**。`master` 一更新,Cloudflare 立即部署成两人每天在用的线上 App。
-- 标准做法:在 **dev 分支**(我用 `dev-a`,女朋友用 `dev-b`)上改 → `npm run build` 通过 → push 该分支 → Cloudflare 自动生成**独立预览链接**(`dev-a.<项目>.pages.dev`)→ **把预览链接交给我,我确认满意后,才合并到 `master` 上线**。
-- Cloudflare 的 **Preview 环境变量已配置完成**,预览链接能正常连数据库、可真机体验。
-- 仅在我**明确说「直接上线 / 推 master」**,或紧急修复线上故障时,才跳过预览直接推 master。
-- 合并上线:`git checkout master && git merge dev-x && git push`(build 通过的前提下),随后切回 dev 分支继续。
+### 发布流程(已放宽:允许直接推 master)
+- 用户已同意 **可以直接 push 到 `master` 上线**(`master` 一更新,Cloudflare 立即部署成两人每天在用的线上 App)。**默认做法**:在 `dev-a` 上改 → `npm run build` 通过 → 合并到 `master` 并 push 上线,再把 `dev-a` 同步回 `master`,两分支保持一致。
+- **仍建议先预览**的情况:较大/较险的改动,或用户明确想先真机预览时,先只 push `dev-a`,把预览链接交给用户确认后再合 `master`。预览链接见下(私有 memory 里存了精确网址)。
+- Cloudflare 的 **Preview 环境变量已配置完成**,`dev-a` 预览链接能正常连数据库、可真机体验。
+- 上线命令:`git checkout master && git merge dev-a && git push`(build 通过的前提下);随后 `git checkout dev-a && git merge master && git push` 让 `dev-a` 跟上,继续开发。
+- 涉及数据库 schema 变更时,同时给出可在 Supabase SQL Editor 执行的**幂等**迁移 SQL,并提醒用户执行(多段可一次性粘贴 Run)。
 
 ### 弱网容错(必须实现,针对大陆网络环境)
 - 消息以服务端数据库为唯一事实来源;Realtime 推送只是通知,不可依赖其必达。
