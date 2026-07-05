@@ -114,12 +114,21 @@ export default function DailyQA({
         .order('question_date', { ascending: false })
         .limit(40),
     ])
+    // 弱网/超时:supabase 返回 {data:null,error} 而不抛异常。若无条件消费 data,
+    // 已作答视图会被清空、翻回空白作答表单(违反「服务端为唯一事实源、失败不清空已见内容」)。
+    // 与 MindQuiz 一致:任一驱动主视图的查询出错就保留现有内容、直接返回。
+    if (todayRes.error || histRes.error) {
+      console.warn('[DailyQA load]', todayRes.error ?? histRes.error)
+      setLoading(false)
+      return
+    }
     const rows = (todayRes.data as DailyAnswer[] | null) ?? []
     const mineRow = rows.find((r) => r.user_id === userId) ?? null
     const theirsRow = rows.find((r) => r.user_id !== userId) ?? null
     setMine(mineRow)
     setTheirs(theirsRow)
-    setTheyAnswered(Boolean(partnerRes.data))
+    // partner_answered RPC 单独瞬时失败时,保留上次的「TA 已作答」状态,不闪回未答
+    if (!partnerRes.error) setTheyAnswered(Boolean(partnerRes.data))
     const hist = (histRes.data as DailyAnswer[] | null) ?? []
     setHistory(hist)
     setLoading(false)
@@ -134,10 +143,10 @@ export default function DailyQA({
       localStorage.setItem(SEEN_KEY, maxUp)
     } else {
       const changed = new Set(partnerHist.filter((a) => upAt(a) > seen).map((a) => a.question_date))
-      if (changed.size > 0) {
-        setChangedDates(changed)
-        localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
-      }
+      // 无条件覆盖:回前台重拉后基线已追平、changed 为空时,横幅/高亮应随之清除,
+      // 否则「TA 有更新」提示会一直滞留(只增不减)。
+      setChangedDates(changed)
+      if (changed.size > 0) localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
     }
     // 默契时刻:双方都答完今天的问题,撒一次花(每天每设备一次)
     if (mineRow && theirsRow) {

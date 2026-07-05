@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withRetry, isUniqueViolation, isMissingColumn } from '../lib/net'
 import type { Expense } from '../types/db'
@@ -80,9 +80,13 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  // 请求序号:防止「快速切月」时旧月份的慢响应覆盖新月份结果(中美异地高延迟下 ◀/▶
+  // 连点会并发多个 load,响应到达顺序不等于发起顺序)。只让最后一次发起的结果落地。
+  const reqRef = useRef(0)
 
   const load = useCallback(async () => {
     setError(false)
+    const seq = ++reqRef.current
     const { start, next } = monthRange(month)
     const { data, error: err } = await supabase
       .from('expenses')
@@ -92,6 +96,7 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
       .lt('spent_at', next)
       .order('spent_at', { ascending: false })
       .order('id', { ascending: false })
+    if (seq !== reqRef.current) return // 已被更晚的请求取代,丢弃这份过期响应
     if (err) setError(true)
     else setExpenses(data as Expense[])
     setLoading(false)

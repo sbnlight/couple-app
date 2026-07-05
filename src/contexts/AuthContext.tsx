@@ -57,14 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 拉取本人档案 + 所在小屋 + 对方档案
   const loadData = useCallback(async (uid: string) => {
-    const [profileRes, coupleRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
-      supabase
-        .from('couples')
-        .select('*')
-        .or(`member_a.eq.${uid},member_b.eq.${uid}`)
-        .maybeSingle(),
-    ])
+    // 用退避重试包住核心查询:中美异地/大陆弱网下单次超时很常见。
+    // 关键:supabase-js 在超时/断网时不抛异常,而是返回 {data:null,error}。以前直接
+    // 取 .data 会把 profile/couple 置 null,已配对用户会被 RequireCouple 误踢回 /pair
+    // 且不自愈。这里失败重试几次,全部失败也【保留现有状态】直接返回,不覆盖。
+    let res
+    try {
+      res = await withRetry(async () => {
+        const r = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+          supabase
+            .from('couples')
+            .select('*')
+            .or(`member_a.eq.${uid},member_b.eq.${uid}`)
+            .maybeSingle(),
+        ])
+        if (r[0].error) throw r[0].error
+        if (r[1].error) throw r[1].error
+        return r
+      })
+    } catch (e) {
+      // 传输类错误重试仍失败,或确定性错误:都不清空现有 profile/couple,等下次刷新
+      console.warn('[AuthContext loadData] 拉取失败,保留现有状态', e)
+      return
+    }
+    const [profileRes, coupleRes] = res
     const p = (profileRes.data as Profile | null) ?? null
     const c = (coupleRes.data as Couple | null) ?? null
 
@@ -85,12 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (c && c.member_b) {
       const partnerId = c.member_a === uid ? c.member_b : c.member_a
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', partnerId)
         .maybeSingle()
-      setPartner((data as Profile | null) ?? null)
+      // 弱网出错时保留现有对方档案,不要清成 null(顶栏/双城卡片会闪成空)
+      if (!error) setPartner((data as Profile | null) ?? null)
     } else {
       setPartner(null)
     }

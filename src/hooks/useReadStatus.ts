@@ -14,6 +14,10 @@ export function useReadStatus(coupleId: string, userId: string, latestId: number
   const reportedRef = useRef(0)
   // 上报在途标记,避免并发重复 upsert
   const sendingRef = useRef(false)
+  // 最新的 latestId(用 ref 读取,避免闭包捕获旧值):上报在途期间若对方又连发几条,
+  // upsert 完成后据此判断是否需要再追平一次,防止已读位置卡在倒数第二条。
+  const latestIdRef = useRef(0)
+  latestIdRef.current = latestId
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -32,14 +36,16 @@ export function useReadStatus(coupleId: string, userId: string, latestId: number
   // 上报自己的已读位置
   useEffect(() => {
     const report = () => {
+      // 读最新值(而非闭包捕获的 latestId),这样 upsert 完成后递归调用能看到新增量
+      const latest = latestIdRef.current
       if (
         document.hidden ||
-        latestId === 0 ||
-        latestId <= reportedRef.current ||
+        latest === 0 ||
+        latest <= reportedRef.current ||
         sendingRef.current
       )
         return
-      const target = latestId
+      const target = latest
       sendingRef.current = true
       void supabase
         .from('read_status')
@@ -55,7 +61,12 @@ export function useReadStatus(coupleId: string, userId: string, latestId: number
         .then(({ error }) => {
           sendingRef.current = false
           // 仅在成功后推进已上报位置;失败则保留旧值,下次可见/新消息时重试
-          if (!error) reportedRef.current = target
+          if (!error) {
+            reportedRef.current = target
+            // 上报在途期间对方又连发了消息(latestId 已前进):再追平一次,
+            // 否则本轮之后无新消息/不切前后台时,已读位置会卡在 target 不再更新。
+            if (!document.hidden && latestIdRef.current > target) report()
+          }
         })
     }
     report()

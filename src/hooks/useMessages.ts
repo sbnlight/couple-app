@@ -127,6 +127,9 @@ export function useMessages(
   const serverRef = useRef<Message[]>([])
   const pendingRef = useRef<PendingMsg[]>(pending)
   const maxIdRef = useRef(0)
+  // 首次加载是否已完成:区分「尚无基线(别全表拉取)」与「合法的空聊天」。
+  // 空聊天时 maxId 仍为 0,若不区分,catchUp 的 since===0 早退会让弱网下丢推的「第一条」消息无法补拉。
+  const initializedRef = useRef(false)
   useEffect(() => {
     pendingRef.current = pending
   }, [pending])
@@ -226,6 +229,7 @@ export function useMessages(
     mergeServer(rows)
     setHasMore((data as Message[]).length === PAGE_SIZE)
     setLoadingInitial(false)
+    initializedRef.current = true // 已建立基线(哪怕是空聊天),之后 catchUp 可安全补拉
   }, [coupleId, mergeServer])
 
   /** 向上翻页:加载更早的消息 */
@@ -264,7 +268,9 @@ export function useMessages(
     // 不会只补前 200 条就停(要等下次可见/上线事件)
     const LIMIT = 200
     let since = maxIdRef.current
-    if (since === 0) return
+    // 尚未建立基线前不补拉(避免全表拉取);但初始化后即使空聊天(since===0)也要补,
+    // 否则弱网下丢推的「第一条」消息永远补不回来(要等整页重载)。
+    if (since === 0 && !initializedRef.current) return
     for (let i = 0; i < 50; i++) {
       if (modeRef.current !== 'live') return
       const { data, error } = await supabase

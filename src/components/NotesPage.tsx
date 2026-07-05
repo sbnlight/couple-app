@@ -77,10 +77,10 @@ export default function NotesPage({
         localStorage.setItem(SEEN_KEY, maxUp)
       } else {
         const changed = new Set(partnerNotes.filter((n) => upAt(n) > seen).map((n) => n.id))
-        if (changed.size > 0) {
-          setChangedIds(changed)
-          localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
-        }
+        // 无条件覆盖:回前台重拉后基线已追平、changed 为空时,横幅/红框高亮应随之清除,
+        // 否则「TA 改动了 N 张」提示会一直滞留(只增不减)。
+        setChangedIds(changed)
+        if (changed.size > 0) localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
       }
     }
     // 弱网超时:保留上次的待开启信息,不静默清零
