@@ -59,6 +59,16 @@ export default function MindQuiz({
   const [noteDraft, setNoteDraft] = useState('')
   const [noteSaved, setNoteSaved] = useState(false)
   const noteInitRef = useRef(false)
+  // 跨午夜换日时重置今日留言草稿:否则昨天的留言会残留在输入框(按钮还显示「已保存✓」),
+  // 用户保存时会把昨天的留言写到今天的答案上。today 变了就清空并允许用新行重新初始化。
+  const noteDayRef = useRef(today)
+  useEffect(() => {
+    if (noteDayRef.current === today) return
+    noteDayRef.current = today
+    noteInitRef.current = false
+    setNoteDraft('')
+    setNoteSaved(false)
+  }, [today])
   // 对方改动提醒:哪些日期 TA 更新过(比我上次看到的新)
   const [changedDates, setChangedDates] = useState<Set<string>>(new Set())
   const [showHistory, setShowHistory] = useState(false)
@@ -378,7 +388,9 @@ export default function MindQuiz({
             {showHistory && (
               <div className="mt-2 space-y-2">
                 {historyDays.map((d) => {
-                  const q = quizForDate(d.date).quiz
+                  // 按作答时落库的 quiz_id 取题(而非用日期现算):题库增删/重排或两台设备
+                  // 缓存到不同版本 bundle 时,现算会平移题号导致历史题文与选项对不上。
+                  const q = QUIZZES[d.m!.quiz_id] ?? quizForDate(d.date).quiz
                   const changed = changedDates.has(d.date)
                   return (
                     <div

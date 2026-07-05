@@ -69,13 +69,15 @@ export default function MomentsCard({
         .select('user_id')
         .eq('couple_id', coupleId)
         .gte('created_at', dayStartUtcISO(dayTz)),
-      // 取最近 120 天的打卡记录用于算连续天数
+      // 打卡记录用于算连续天数。窗口必须能覆盖最大里程碑(1000 天),否则连胜会被
+      // 硬性截断、且 365/520/1000 撒花永不触发。两人每天打卡时行数≈2×天数,取 3000 行
+      // 可覆盖各自约 1500 天(> 1000)。checkins 行很小,2 人一辈子也就几千行,一次拉全无压力。
       supabase
         .from('checkins')
         .select('*')
         .eq('couple_id', coupleId)
         .order('day', { ascending: false })
-        .limit(240),
+        .limit(3000),
     ])
     // 弱网超时:任一子查询失败就保留上次的计数/连胜,不静默清零成 0/0
     if (missRes.error || checkRes.error) {

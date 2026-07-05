@@ -49,6 +49,13 @@ function toItem(m: Message): ChatItem {
     senderId: m.sender_id,
     createdAt: m.created_at,
     status: 'sent',
+    // 与主聊天的映射保持一致:带上撤回态与引用/气泡字段,否则上下文查看器里
+    // 已撤回消息会渲染成空气泡 / 卡在图片骨架 / 假「待发送」语音。
+    recalled: m.recalled,
+    replyPreview: m.reply_preview,
+    replyTo: m.reply_to,
+    bubbleId: m.bubble_id,
+    bubbleFont: m.bubble_font,
   }
 }
 
@@ -256,7 +263,9 @@ export default function ChatSearch({
                             ? t('🖼 [图片]')
                             : m.type === 'voice'
                               ? t('🎤 [语音]')
-                              : t('⭐ [表情包]')}
+                              : m.type === 'nudge'
+                                ? t('👋 [拍一拍]')
+                                : t('⭐ [表情包]')}
                     </p>
                   </button>
                   <button
