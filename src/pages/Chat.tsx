@@ -656,6 +656,22 @@ export default function Chat() {
                 <p className="relative z-10 text-xs text-gray-300">
                   {t('第一条消息,就从「在吗」开始吧 💗')}
                 </p>
+                {/* 一键开场白:点一下填进输入框,降低"不知道说什么"的门槛 */}
+                <div className="relative z-10 mt-2 flex flex-wrap justify-center gap-2">
+                  {['在吗?', '想你了 💗', '在干嘛呀', '晚安 🌙'].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setDraft(t(s))
+                        inputRef.current?.focus()
+                      }}
+                      className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-primary-dark active:scale-95"
+                    >
+                      {t(s)}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {items.map((item, i) => {
@@ -704,9 +720,11 @@ export default function Chat() {
                   } ${highlightId !== null && item.id === highlightId ? 'msg-highlight' : ''}`}
                 >
                   {showDivider && (
-                    <p className="my-3 text-center">
-                      <span className="chat-center-chip">{formatDivider(item.createdAt)}</span>
-                    </p>
+                    <div className="my-3 flex items-center gap-2 px-6">
+                      <span className="h-px flex-1 bg-line" />
+                      <span className="chat-center-chip shrink-0">{formatDivider(item.createdAt)}</span>
+                      <span className="h-px flex-1 bg-line" />
+                    </div>
                   )}
                   <MessageBubble
                     item={item}
@@ -803,7 +821,7 @@ export default function Chat() {
             const el = listRef.current
             if (el) el.scrollTop = el.scrollHeight
           }}
-          className="fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50vw-13rem))] rounded-full bg-primary px-3.5 py-2 text-sm text-white shadow-lg"
+          className="toast-in fixed bottom-[calc(7.5rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(50vw-13rem))] rounded-full bg-primary px-3.5 py-2 text-sm text-white shadow-lg"
         >
           {t('↓ {n} 条新消息', { n: liveUnread })}
         </button>
@@ -1015,7 +1033,7 @@ export default function Chat() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
           onClick={() => setViewer(null)}
         >
-          <img src={viewer} alt="查看图片" className="max-h-full max-w-full object-contain" />
+          <img src={viewer} alt={t('查看图片')} className="modal-pop max-h-full max-w-full object-contain" />
         </div>
       )}
 
