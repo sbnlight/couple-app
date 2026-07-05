@@ -57,7 +57,7 @@ export default function GlobalLive() {
     const tz = dayTzOf(couple)
     const today = todayInTz(tz)
     const key = `special-day-${today}`
-    if (sessionStorage.getItem(key)) return
+    if (localStorage.getItem(key)) return
 
     let title: string | null = null
     if (couple?.next_meet_date && daysUntil(couple.next_meet_date, tz) === 0) {
@@ -69,7 +69,7 @@ export default function GlobalLive() {
       if (hit) title = t('今天是「{t}」🎉', { t: hit.title })
     }
     if (title) {
-      sessionStorage.setItem(key, '1')
+      localStorage.setItem(key, '1')
       setTimeout(() => {
         fireEffect(['🎉', '🎊', '💕', '✨'], 40)
         showToast(title!)

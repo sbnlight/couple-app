@@ -38,6 +38,7 @@ export default function GratitudeJar({
   const [err, setErr] = useState('')
   const [drawn, setDrawn] = useState<Gratitude | null>(null)
   const [shaking, setShaking] = useState(false)
+  const [drawCount, setDrawCount] = useState(0) // 每次摇一摇自增:抽到同一张也强制卡片重新弹入
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -85,6 +86,7 @@ export default function GratitudeJar({
     setTimeout(() => {
       const pick = notes[Math.floor(Math.random() * notes.length)]
       setDrawn(pick)
+      setDrawCount((c) => c + 1)
       fireEffect(['💛', '💗', '✨'], 12)
       navigator.vibrate?.(30)
     }, 350)
@@ -146,7 +148,7 @@ export default function GratitudeJar({
           )}
           {drawn && (
             <div
-              key={drawn.id}
+              key={`${drawn.id}-${drawCount}`}
               className="modal-pop mt-4 rounded-2xl bg-white px-4 py-4 text-left shadow-sm"
             >
               <p className="whitespace-pre-wrap text-sm leading-relaxed">{drawn.content}</p>

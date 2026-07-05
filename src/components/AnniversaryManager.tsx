@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
-import { daysUntil, recurringUntil } from '../lib/time'
+import { daysUntil, recurringUntil, todayInTz } from '../lib/time'
 import { dayTzOf } from './FeatureToggles'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import type { Anniversary, Couple } from '../types/db'
@@ -135,7 +135,7 @@ export default function AnniversaryManager({
           <input
             className="input min-w-0 flex-1 py-2"
             type="date"
-            max={new Date().toISOString().slice(0, 10)}
+            max={todayInTz(dayTzOf(couple))}
             value={togetherDate}
             onChange={(e) => setTogetherDate(e.target.value)}
           />
@@ -191,24 +191,37 @@ export default function AnniversaryManager({
         {/* 纪念日列表 */}
         <p className="mt-5 text-sm font-medium text-gray-500">{t('🎀 纪念日')}</p>
         <div className="mt-2 divide-y divide-line">
-          {anniversaries.map((a) => (
-            <div key={a.id} className="flex items-center gap-2 py-2.5">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm">{a.title}</span>
-                <span className="block text-xs text-gray-400">
-                  {a.anniv_date}
-                  {a.recurring ? t(' · 每年') : ''} · {fmtDays(a)}
+          {anniversaries.map((a) => {
+            // 当天(数值判定,不靠文案字符串)→ 高亮药丸,和「我们」页视觉统一
+            const isToday = a.recurring
+              ? nextRecurring(a.anniv_date).days === 0
+              : daysUntil(a.anniv_date, dayTzOf(couple)) === 0
+            return (
+              <div key={a.id} className="flex items-center gap-2 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm">{a.title}</span>
+                  <span className="block text-xs text-gray-400">
+                    {a.anniv_date}
+                    {a.recurring ? t(' · 每年') : ''} ·{' '}
+                    {isToday ? (
+                      <span className="today-glow rounded-full bg-soft px-2 py-0.5 text-primary-dark">
+                        {fmtDays(a)}
+                      </span>
+                    ) : (
+                      fmtDays(a)
+                    )}
+                  </span>
                 </span>
-              </span>
-              <button
-                type="button"
-                onClick={() => void handleRemove(a.id)}
-                className="px-2 text-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => void handleRemove(a.id)}
+                  className="px-2 text-gray-300"
+                >
+                  ✕
+                </button>
+              </div>
+            )
+          })}
           {anniversaries.length === 0 && (
             <p className="py-3 text-sm text-gray-300">
               {t('还没有纪念日,比如「在一起的日子」「TA 的生日」')}

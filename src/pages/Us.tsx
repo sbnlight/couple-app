@@ -38,12 +38,13 @@ import {
 } from '../lib/prefs'
 import type { FontSize, ThemeId, ThemeMode } from '../lib/prefs'
 
-/** 从某个日期('YYYY-MM-DD')到今天的天数(当天记为第 1 天),按日历日期做差 */
-function daysSince(dateStr: string): number {
+/** 从某个日期('YYYY-MM-DD')到今天的天数(当天记为第 1 天),按共用换日时区做差 */
+function daysSince(dateStr: string, tz?: string | null): number {
   const [y, m, d] = dateStr.split('-').map(Number)
   const start = Date.UTC(y, m - 1, d)
-  const now = new Date()
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  // 用共用换日时区取「今天」,和 daysUntil/recurringUntil 同口径,异地两端「在一起 N 天」一致
+  const [cy, cm, cd] = todayInTz(tz ?? null).split('-').map(Number)
+  const today = Date.UTC(cy, cm - 1, cd)
   return Math.floor((today - start) / 86_400_000) + 1
 }
 
@@ -267,7 +268,7 @@ export default function Us() {
   // 在一起的天数(第 1 天=当天):优先用 together_date,未设置则退回小屋建立日。
   // 按日历日期做差,避开毫秒/DST 误差。
   const anchorDate = couple?.together_date ?? couple?.created_at?.slice(0, 10) ?? null
-  const days = anchorDate ? daysSince(anchorDate) : 0
+  const days = anchorDate ? daysSince(anchorDate, dayTzOf(couple)) : 0
   const hasTogether = Boolean(couple?.together_date)
   // 下一个里程碑(用于"再过 N 天就 XXX 天啦")
   const MILESTONES = [100, 200, 365, 520, 700, 1000, 1314, 2000, 3000, 3650, 5000]
@@ -279,8 +280,8 @@ export default function Us() {
   useEffect(() => {
     if (!isMilestoneDay) return
     const key = `love-milestone-${days}`
-    if (sessionStorage.getItem(key)) return
-    sessionStorage.setItem(key, '1')
+    if (localStorage.getItem(key)) return
+    localStorage.setItem(key, '1')
     fireEffect(['🎉', '💕', '✨', '🥳'], 44)
   }, [isMilestoneDay, days])
 
@@ -296,8 +297,8 @@ export default function Us() {
   useEffect(() => {
     if (!meetToday && !annivToday) return
     const key = `special-day-${todayInTz(specialDayTz)}`
-    if (sessionStorage.getItem(key)) return
-    sessionStorage.setItem(key, '1')
+    if (localStorage.getItem(key)) return
+    localStorage.setItem(key, '1')
     fireEffect(['🎀', '🎉', '✨'], 40)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetToday, annivToday])
@@ -424,7 +425,7 @@ export default function Us() {
               <span className="text-sm">{profile?.display_name ?? t('我')}</span>
             </div>
 
-            <span className="text-2xl text-primary">❤</span>
+            <span className="deco-bob inline-block text-2xl text-primary">❤</span>
 
             <div className="flex flex-col items-center gap-2">
               <Avatar profile={partner} />
@@ -489,8 +490,10 @@ export default function Us() {
               )}
               {anniversaries.list.map((a) => {
                 let label: string
+                let isToday: boolean
                 if (a.recurring) {
                   const { days: dd2, years: yrs } = recurringUntil(a.anniv_date, dayTzOf(couple))
+                  isToday = dd2 === 0
                   label =
                     dd2 === 0
                       ? t('就是今天 🎉')
@@ -499,10 +502,10 @@ export default function Us() {
                         : t('还有 {n} 天', { n: dd2 })
                 } else {
                   const n = daysUntil(a.anniv_date, dayTzOf(couple))
+                  isToday = n === 0
                   label =
                     n > 0 ? t('还有 {n} 天', { n }) : n === 0 ? t('就是今天 🎉') : t('第 {n} 天', { n: -n + 1 })
                 }
-                const isToday = label === t('就是今天 🎉')
                 return (
                   <span
                     key={a.id}
