@@ -952,6 +952,8 @@ export default function Us() {
           myName={profile?.display_name ?? '我'}
           partnerName={partner?.display_name ?? 'TA'}
           coupleCreatedAt={couple.created_at}
+          anchorDate={anchorDate ?? couple.created_at.slice(0, 10)}
+          dayTz={dayTzOf(couple)}
           onClose={() => setFeature(null)}
         />
       )}

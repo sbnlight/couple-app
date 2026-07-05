@@ -53,18 +53,32 @@ function PickerPage({
  */
 export default function ChatAppearance({
   userId,
+  initialBubbleId,
+  initialFontId,
   onChanged,
   onClose,
   onToast,
 }: {
   userId: string
+  /** profile 上已保存的共享气泡/字体 id(0016 起为事实源):本机无缓存的新设备用它显示「当前选择」,
+   *  否则会错显成默认第一款、与聊天里实际渲染不一致 */
+  initialBubbleId?: string | null
+  initialFontId?: string | null
   onChanged: () => void
   onClose: () => void
   onToast: (msg: string) => void
 }) {
   const [page, setPage] = useState<Page>('menu')
-  const [bubbleId, setBubbleId] = useState(() => getBubbleStyle().id)
-  const [fontId, setFontId] = useState(() => getBubbleFont().id)
+  const [bubbleId, setBubbleId] = useState(() =>
+    initialBubbleId && BUBBLE_STYLES.some((b) => b.id === initialBubbleId)
+      ? initialBubbleId
+      : getBubbleStyle().id,
+  )
+  const [fontId, setFontId] = useState(() =>
+    initialFontId && BUBBLE_FONTS.some((f) => f.id === initialFontId)
+      ? initialFontId
+      : getBubbleFont().id,
+  )
   const [bubbleQuery, setBubbleQuery] = useState('')
   const [bgToken, setBgToken] = useState(getChatBgToken)
   const [gap, setGap] = useState(getMsgGap)

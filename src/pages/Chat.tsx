@@ -952,6 +952,8 @@ export default function Chat() {
       {appearanceOpen && (
         <ChatAppearance
           userId={userId}
+          initialBubbleId={profile?.bubble_id}
+          initialFontId={profile?.bubble_font}
           onChanged={() => {
             setBubble(getBubbleStyle())
             setBubbleFont(getBubbleFont())

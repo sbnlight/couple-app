@@ -105,10 +105,10 @@ export default function MindQuiz({
       const changed = new Set(
         partnerRows.filter((r) => (r.updated_at ?? '') > seen).map((r) => r.quiz_date),
       )
-      if (changed.size > 0) {
-        setChangedDates(changed)
-        localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
-      }
+      // 无条件覆盖(与 DailyQA/NotesPage 一致):回前台重拉后基线已追平、changed 为空时,
+      // 横幅/高亮应随之清除,否则「TA 更新了 N 天留言」会一直滞留(只增不减)。
+      setChangedDates(changed)
+      if (changed.size > 0) localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
     }
   }, [coupleId, userId, SEEN_KEY])
 

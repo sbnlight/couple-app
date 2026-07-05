@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { currencySymbol } from '../hooks/useExpenses'
-import { prevUtcDay } from '../lib/time'
+import { prevUtcDay, todayInTz } from '../lib/time'
 import { fireEffect } from '../lib/effects'
 import { CountUp, FloatLayer } from './Fx'
 import { t } from '../lib/i18n'
@@ -55,13 +55,20 @@ export default function YearReport({
   myName,
   partnerName,
   coupleCreatedAt,
+  anchorDate,
+  dayTz,
   onClose,
 }: {
   coupleId: string
   userId: string
   myName: string
   partnerName: string
+  /** 小屋创建日:仅用作年份选择器下界(之前无数据) */
   coupleCreatedAt: string
+  /** 在一起锚点(together_date 优先,回退小屋创建日):用于「在一起第 N 天」计数,与「我们」页口径一致 */
+  anchorDate: string
+  /** 两人共用换日时区 */
+  dayTz: string
   onClose: () => void
 }) {
   const thisYear = new Date().getFullYear()
@@ -125,7 +132,12 @@ export default function YearReport({
           .eq('couple_id', coupleId)
           .gte('spent_at', startDate)
           .lt('spent_at', endDate),
-        supabase.from('wishes').select('done').eq('couple_id', coupleId),
+        supabase
+          .from('wishes')
+          .select('done')
+          .eq('couple_id', coupleId)
+          .gte('created_at', startISO)
+          .lt('created_at', endISO),
         supabase
           .from('notes')
           .select('id', { count: 'exact', head: true })
@@ -151,14 +163,18 @@ export default function YearReport({
 
       const wishes = (wishesRes.data as { done: boolean }[] | null) ?? []
 
+      // 封面「在一起第 N 天」:从在一起锚点(together_date 优先)算到「所看年份年末」与
+      // 「今天」中较早者。用共用换日时区的日历日整日差(与「我们」页恋爱计数同口径),
+      // 避免旧代码用小屋创建日 + 毫秒差导致的天数偏小/时区边界差 1 天。
+      const dUTC = (s: string) => Date.parse(`${s}T00:00:00Z`)
+      const yearEnd = `${year}-12-31`
+      const todayStr = todayInTz(dayTz)
+      const cutoff = todayStr < yearEnd ? todayStr : yearEnd
+      const daysCount = Math.floor((dUTC(cutoff) - dUTC(anchorDate)) / 86_400_000) + 1
+
       if (ignore) return
       setStats({
-        days:
-          // 封面「第 N 天」按所看年份的年末(或今天,取早者)截止,回看往年不再显示今天的总天数
-          Math.floor(
-            (Math.min(Date.now(), Date.parse(endISO)) - new Date(coupleCreatedAt).getTime()) /
-              86_400_000,
-          ) + 1,
+        days: Math.max(1, daysCount),
         msgsTotal: msgsTotalRes.count ?? 0,
         msgsMine: msgsMineRes.count ?? 0,
         imgs: imgsRes.count ?? 0,
@@ -179,7 +195,7 @@ export default function YearReport({
     return () => {
       ignore = true
     }
-  }, [coupleId, userId, year, coupleCreatedAt])
+  }, [coupleId, userId, year, anchorDate, dayTz])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
