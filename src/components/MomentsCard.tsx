@@ -233,8 +233,9 @@ export default function MomentsCard({
       {checkinEnabled && (
         <div className="mt-2 flex items-center justify-center gap-1.5" title={t('你最近 7 天的打卡')}>
           {(() => {
+            const today = todayInTz(dayTz)
             const days: string[] = []
-            let d = todayInTz(dayTz)
+            let d = today
             for (let i = 0; i < 7; i++) {
               days.unshift(d)
               d = prevUtcDay(d)
@@ -244,7 +245,7 @@ export default function MomentsCard({
                 key={day}
                 className={`h-2.5 w-2.5 rounded-full ${
                   myDays.has(day) ? 'bg-primary' : 'border border-line'
-                }`}
+                } ${day === today ? 'today-glow' : ''}`}
               />
             ))
           })()}

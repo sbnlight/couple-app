@@ -256,9 +256,21 @@ export default function MindQuiz({
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-400">{t('今日一题 · {d}', { d: today })}</p>
             {rate !== null && (
-              <span className="rounded-full bg-soft px-2 py-0.5 text-xs font-medium text-primary-dark">
-                {t('默契')} <CountUp value={rate} suffix="%" />
-              </span>
+              // 默契值环形仪表:conic 渐变环 + 中心滚动数字(静态可读,尊重减少动态)
+              <div
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                style={{ background: `conic-gradient(var(--c-primary) ${rate * 3.6}deg, var(--c-line) 0deg)` }}
+                title={t('默契值')}
+              >
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full"
+                  style={{ background: 'var(--c-surface)' }}
+                >
+                  <span className="text-[11px] font-bold leading-none text-primary-dark">
+                    <CountUp value={rate} suffix="%" />
+                  </span>
+                </div>
+              </div>
             )}
           </div>
           <p className="mt-2 text-base font-medium leading-relaxed">{quiz.q}</p>
@@ -334,7 +346,7 @@ export default function MindQuiz({
 
           {/* 揭晓:双方都答完 → 显示对方的今日留言 */}
           {bothAnswered && theirs && (
-            <div className="mt-3 rounded-xl bg-soft p-3">
+            <div className="modal-pop mt-3 rounded-xl bg-soft p-3">
               <p className="text-xs text-gray-400">{t('{name}的留言', { name: partnerName })}</p>
               <p className="mt-1 whitespace-pre-wrap text-sm">
                 {theirs.note ? theirs.note : t('(TA 没有留言)')}

@@ -208,7 +208,7 @@ export default function NotesPage({
           <>
             {/* 待开启悬念 */}
             {lockedCnt > 0 && (
-              <div className="mb-4 rounded-2xl border-2 border-dashed border-primary bg-soft p-4 text-center">
+              <div className="love-milestone-glow mb-4 rounded-2xl border-2 border-dashed border-primary bg-soft p-4 text-center">
                 <p className="text-sm text-primary-dark">
                   {t('🔒 {name}给你留了 {n} 张纸条还没到开启时间', {
                     name: partnerName,
@@ -235,7 +235,7 @@ export default function NotesPage({
                 {received.map((n) => (
                   <div
                     key={n.id}
-                    className={`mb-3 rounded-2xl bg-white p-4 ${changedIds.has(n.id) ? 'ring-2 ring-rose-300' : ''}`}
+                    className={`modal-pop mb-3 rounded-2xl bg-white p-4 ${changedIds.has(n.id) ? 'ring-2 ring-rose-300' : ''}`}
                   >
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{n.content}</p>
                     <p className="mt-2 text-xs text-gray-300">

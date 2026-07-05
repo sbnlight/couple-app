@@ -100,7 +100,6 @@ function CityCol({
 
   const hr = hourInTz(tz)
   const phase = hr >= 6 && hr < 17 ? 'day' : hr >= 17 && hr < 20 ? 'dusk' : 'night'
-  const scene = phase === 'day' ? '🌇' : phase === 'dusk' ? '🌆' : '🌃'
   // 按当地时段给场景一抹底色(白天暖蓝 / 黄昏橙粉 / 夜晚靛蓝)
   const tint =
     phase === 'day'
@@ -110,10 +109,26 @@ function CityCol({
         : 'from-indigo-100 to-slate-50'
   return (
     <div className="flex flex-1 flex-col items-center gap-0.5">
+      {/* 昼夜小天空:白天太阳轻浮 / 黄昏日落 / 夜晚月亮 + 眨眼星星 */}
       <span
-        className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-b ${tint} text-2xl`}
+        className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b ${tint}`}
       >
-        {scene}
+        {phase === 'night' && (
+          <>
+            <span className="deco-twinkle absolute left-1.5 top-1.5 h-0.5 w-0.5 rounded-full bg-white" />
+            <span
+              className="deco-twinkle absolute right-2 top-2.5 h-0.5 w-0.5 rounded-full bg-white"
+              style={{ animationDelay: '0.6s' }}
+            />
+            <span
+              className="deco-twinkle absolute bottom-2 right-1.5 h-0.5 w-0.5 rounded-full bg-white"
+              style={{ animationDelay: '1.1s' }}
+            />
+          </>
+        )}
+        <span className={`text-xl ${phase === 'day' ? 'deco-bob inline-block' : ''}`}>
+          {phase === 'day' ? '☀️' : phase === 'dusk' ? '🌇' : '🌙'}
+        </span>
       </span>
       <span className="max-w-full truncate text-sm font-medium text-gray-600">
         {name}
@@ -121,13 +136,17 @@ function CityCol({
       </span>
       <span className="text-lg font-semibold tabular-nums text-primary-dark">{time}</span>
       <span className="text-xs text-gray-400">
-        {weather
-          ? `${weather.emoji} ${weather.temp}°`
-          : phase === 'day'
-            ? t('白天')
-            : phase === 'dusk'
-              ? t('黄昏')
-              : t('夜晚')}
+        {weather ? (
+          <>
+            <span className="deco-bob inline-block">{weather.emoji}</span> {weather.temp}°
+          </>
+        ) : phase === 'day' ? (
+          t('白天')
+        ) : phase === 'dusk' ? (
+          t('黄昏')
+        ) : (
+          t('夜晚')
+        )}
       </span>
     </div>
   )

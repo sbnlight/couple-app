@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { withRetry, friendlyWriteError } from '../lib/net'
 import { fireEffect } from '../lib/effects'
+import { CountUp } from './Fx'
 import type { Wish } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -224,6 +225,21 @@ export default function WishList({
           </div>
         ) : (
           <>
+            {/* 恋爱清单进度:已实现 / 总数 + 生长进度条 */}
+            <div className="mb-3 rounded-2xl bg-white p-4">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-medium text-gray-500">{t('恋爱清单进度')}</span>
+                <span className="text-sm font-bold text-primary-dark">
+                  <CountUp value={done.length} /> / {wishes.length}
+                </span>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary-dark transition-[width] duration-700 ease-out"
+                  style={{ width: `${(done.length / wishes.length) * 100}%` }}
+                />
+              </div>
+            </div>
             {pending.length > 0 && (
               <div className="divide-y divide-line rounded-2xl bg-white px-4">
                 {pending.map(renderItem)}

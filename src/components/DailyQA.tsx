@@ -321,7 +321,7 @@ export default function DailyQA({
                   {t('修改')}
                 </button>
               </div>
-              <div className="mt-3 rounded-xl bg-gray-50 p-3">
+              <div className="modal-pop mt-3 rounded-xl bg-gray-50 p-3">
                 <p className="text-xs text-gray-400">{t('{name}的回答', { name: partnerName })}</p>
                 {theirs ? (
                   renderAnswer(theirs)
