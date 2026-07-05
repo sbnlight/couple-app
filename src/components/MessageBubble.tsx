@@ -520,6 +520,7 @@ function VoiceBubble({
     <button
       type="button"
       onClick={() => void toggle()}
+      aria-label={t('语音消息 {n} 秒', { n: dur })}
       className="chat-bubble flex items-center gap-2 px-3.5 py-2.5 text-base"
       style={{
         ...styleObj,

@@ -182,19 +182,6 @@ html.dark .recv-paper {
   outline: 2px solid var(--c-primary);
   outline-offset: 2px;
 }
-@keyframes msg-pop {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.msg-in {
-  animation: msg-pop 0.18s ease-out both;
-}
 /* 方向化入场:自己从右、对方从左,轻微位移 + 柔性缓动,更有"发出/收到"的仪式感 */
 @keyframes msg-pop-me {
   from {

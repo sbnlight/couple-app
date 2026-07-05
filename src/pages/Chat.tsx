@@ -469,6 +469,8 @@ export default function Chat() {
     window.clearTimeout(toastTimerRef.current)
     toastTimerRef.current = window.setTimeout(() => setToast(''), 2500)
   }
+  // 卸载时清掉 toast 定时器,避免对已卸载组件 setState
+  useEffect(() => () => window.clearTimeout(toastTimerRef.current), [])
 
   /** 加载更早消息并保持滚动位置不跳动 */
   const handleLoadOlder = async () => {
@@ -969,11 +971,17 @@ export default function Chat() {
             const r = actionTarget.rect
             const below = r.top < 110
             const top = below ? r.bottom + 8 : r.top - 8
-            const left = Math.min(Math.max(r.left + r.width / 2, 80), window.innerWidth - 80)
+            // 三键菜单半宽约 100px,钳位留 104px 边距 + maxWidth 兜底,避免贴边时"撤回"被裁到屏幕外
+            const left = Math.min(Math.max(r.left + r.width / 2, 104), window.innerWidth - 104)
             return (
               <div
                 className="absolute flex items-stretch overflow-hidden rounded-xl bg-gray-800/95 text-sm text-white shadow-xl backdrop-blur-sm"
-                style={{ left, top, transform: `translate(-50%, ${below ? '0' : '-100%'})` }}
+                style={{
+                  left,
+                  top,
+                  maxWidth: 'calc(100vw - 16px)',
+                  transform: `translate(-50%, ${below ? '0' : '-100%'})`,
+                }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {actionTarget.item.type === 'text' && (
