@@ -34,6 +34,7 @@ export default function Login() {
   const [notice, setNotice] = useState('')
   // 重置邮件发送后的冷却秒数:免费版邮件服务每小时限发几封,防止用户连点
   const [cooldown, setCooldown] = useState(0)
+  const [showPw, setShowPw] = useState(false)
 
   useEffect(() => {
     if (cooldown === 0) return
@@ -102,7 +103,7 @@ export default function Login() {
   }
 
   return (
-    <div className="mx-auto flex h-full max-w-md flex-col justify-center px-8">
+    <div className="mx-auto flex h-full max-w-md flex-col justify-center overflow-y-auto px-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
       <div className="mb-10 text-center">
         <div className="text-5xl">
           <span className="bubble-beat inline-block text-primary">❤</span>
@@ -134,21 +135,31 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
         />
         {mode !== 'forgot' && (
-          <input
-            className="input"
-            type="password"
-            placeholder={t('密码(至少 6 位)')}
-            required
-            minLength={6}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              className="input w-full pr-11"
+              type={showPw ? 'text' : 'password'}
+              placeholder={t('密码(至少 6 位)')}
+              required
+              minLength={6}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={t('显示或隐藏密码')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-gray-400"
+            >
+              {showPw ? '🙈' : '👁'}
+            </button>
+          </div>
         )}
         {mode === 'signup' && (
           <input
             className="input"
-            type="password"
+            type={showPw ? 'text' : 'password'}
             placeholder={t('再输入一次密码确认')}
             required
             minLength={6}

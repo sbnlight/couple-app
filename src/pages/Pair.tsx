@@ -96,7 +96,7 @@ export default function Pair() {
   }
 
   return (
-    <div className="mx-auto flex h-full max-w-md flex-col justify-center px-8">
+    <div className="mx-auto flex h-full max-w-md flex-col justify-center overflow-y-auto px-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
       {waiting && couple ? (
         /* ---- 已建小屋,等待对方加入 ---- */
         <div className="text-center">
@@ -143,10 +143,13 @@ export default function Pair() {
               className="input text-center font-mono text-xl tracking-[0.3em]"
               type="text"
               placeholder={t('输入 6 位邀请码')}
-              maxLength={6}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="off"
               value={code}
-              // 先去掉所有空白再大写:粘贴带前后空格的码不会占满 6 位上限而被截断
-              onChange={(e) => setCode(e.target.value.replace(/\s/g, '').toUpperCase())}
+              // 先去空白、大写,最后才截断到 6 位:粘贴带空格的码不会因 maxLength 先截断而丢字符
+              onChange={(e) => setCode(e.target.value.replace(/\s/g, '').toUpperCase().slice(0, 6))}
             />
             <button
               type="submit"

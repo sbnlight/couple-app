@@ -75,7 +75,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="mx-auto flex h-full max-w-md flex-col justify-center px-8">
+    <div className="mx-auto flex h-full max-w-md flex-col justify-center overflow-y-auto px-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
       <div className="mb-8 text-center">
         <div className="text-5xl">🔑</div>
         <h1 className="mt-3 text-xl font-bold text-primary-dark">{t('设置新密码')}</h1>

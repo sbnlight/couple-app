@@ -88,9 +88,13 @@ function EditModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-8"
       onClick={onClose}
     >
-      <div
+      <form
         className="w-full max-w-sm rounded-2xl bg-white p-5"
         onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => {
+          e.preventDefault()
+          void handleSave()
+        }}
       >
         <h2 className="mb-3 text-center text-base font-semibold">{title}</h2>
         <input
@@ -110,15 +114,14 @@ function EditModal({
             {t('取消')}
           </button>
           <button
-            type="button"
+            type="submit"
             className="btn-primary flex-1 py-2.5"
             disabled={saving}
-            onClick={handleSave}
           >
             {saving ? t('保存中…') : t('保存')}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   )
 }
@@ -161,9 +164,13 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-8"
       onClick={onClose}
     >
-      <div
+      <form
         className="w-full max-w-sm rounded-2xl bg-white p-5"
         onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => {
+          e.preventDefault()
+          void handleSave()
+        }}
       >
         <h2 className="mb-3 text-center text-base font-semibold">{t('修改密码')}</h2>
         <div className="flex flex-col gap-3">
@@ -195,15 +202,14 @@ function ChangePasswordModal({ onClose, onDone }: { onClose: () => void; onDone:
             {t('取消')}
           </button>
           <button
-            type="button"
+            type="submit"
             className="btn-primary flex-1 py-2.5"
             disabled={busy}
-            onClick={() => void handleSave()}
           >
             {busy ? t('保存中…') : t('确认修改')}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   )
 }
@@ -964,7 +970,7 @@ export default function Us() {
       {showPwModal && (
         <ChangePasswordModal
           onClose={() => setShowPwModal(false)}
-          onDone={() => showToast('密码已修改 ✓')}
+          onDone={() => showToast(t('密码已修改 ✓'))}
         />
       )}
 
