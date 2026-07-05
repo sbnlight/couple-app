@@ -18,11 +18,13 @@ export default function TabBar() {
 
   return (
     <nav className="relative border-t border-line bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
-      {/* 当前 Tab 指示条(随切换平滑滑动) */}
+      {/* 当前 Tab 指示条(用 transform 平滑滑动,GPU 合成、不触发布局) */}
       <span
-        className="absolute top-0 h-0.5 w-10 -translate-x-1/2 rounded-full bg-primary transition-[left] duration-300"
-        style={{ left: `${activeIdx * 33.333 + 16.667}%` }}
-      />
+        className="pointer-events-none absolute left-0 top-0 flex h-0.5 w-1/3 justify-center transition-transform duration-300 ease-out"
+        style={{ transform: `translateX(${activeIdx * 100}%)` }}
+      >
+        <span className="h-full w-10 rounded-full bg-primary" />
+      </span>
       <div className="flex">
         {tabs.map((tab) => (
           <NavLink
@@ -30,6 +32,7 @@ export default function TabBar() {
             to={tab.to}
             // 聊天页是 index 路由,需要 end 精确匹配,否则所有路径都算它激活
             end={tab.to === '/'}
+            onClick={() => navigator.vibrate?.(8)}
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
                 isActive ? 'text-primary-dark font-medium' : 'text-gray-400'

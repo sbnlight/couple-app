@@ -79,9 +79,11 @@ export default function GlobalLive() {
 
   if (!toast && !touchInvite) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-16 z-[95] flex flex-col items-center gap-2 px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+3.5rem)] z-[95] flex flex-col items-center gap-2 px-4">
       {toast && (
-        <span className="rounded-full bg-gray-800/85 px-4 py-2 text-sm text-white">{toast}</span>
+        <span className="toast-in rounded-full bg-gray-800/85 px-4 py-2 text-sm text-white shadow-lg">
+          {toast}
+        </span>
       )}
       {touchInvite && (
         <button

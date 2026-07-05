@@ -177,6 +177,11 @@ html.dark .recv-paper {
 .page-in {
   animation: fade-up 0.28s ease-out both;
 }
+/* 键盘/无障碍焦点环:仅键盘 Tab 聚焦时出现,不打扰鼠标/触摸操作 */
+:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+}
 @keyframes msg-pop {
   from {
     opacity: 0;
