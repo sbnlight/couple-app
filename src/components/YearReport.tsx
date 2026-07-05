@@ -74,6 +74,9 @@ export default function YearReport({
     let ignore = false // 快速切换年份时丢弃过期请求,避免旧年份数据覆盖新年份
     const startISO = `${year}-01-01T00:00:00Z`
     const startDate = `${year}-01-01`
+    // 年份上界 = 下一年元旦(否则回看往年会把之后年份的数据也一起算进来)
+    const endISO = `${year + 1}-01-01T00:00:00Z`
+    const endDate = `${year + 1}-01-01`
     void (async () => {
       const base = () =>
         supabase
@@ -81,6 +84,7 @@ export default function YearReport({
           .select('id', { count: 'exact', head: true })
           .eq('couple_id', coupleId)
           .gte('created_at', startISO)
+          .lt('created_at', endISO)
       const [
         msgsTotalRes,
         msgsMineRes,
@@ -100,29 +104,34 @@ export default function YearReport({
           .select('id', { count: 'exact', head: true })
           .eq('couple_id', coupleId)
           .gte('created_at', startISO)
+          .lt('created_at', endISO)
           .eq('user_id', userId),
         supabase
           .from('misses')
           .select('id', { count: 'exact', head: true })
           .eq('couple_id', coupleId)
           .gte('created_at', startISO)
+          .lt('created_at', endISO)
           .neq('user_id', userId),
         supabase
           .from('checkins')
           .select('user_id, day')
           .eq('couple_id', coupleId)
-          .gte('day', startDate),
+          .gte('day', startDate)
+          .lt('day', endDate),
         supabase
           .from('expenses')
           .select('amount, kind, currency')
           .eq('couple_id', coupleId)
-          .gte('spent_at', startDate),
+          .gte('spent_at', startDate)
+          .lt('spent_at', endDate),
         supabase.from('wishes').select('done').eq('couple_id', coupleId),
         supabase
           .from('notes')
           .select('id', { count: 'exact', head: true })
           .eq('couple_id', coupleId)
-          .gte('created_at', startISO),
+          .gte('created_at', startISO)
+          .lt('created_at', endISO),
       ])
 
       const checkins = (checkinsRes.data as { user_id: string; day: string }[] | null) ?? []
@@ -145,7 +154,11 @@ export default function YearReport({
       if (ignore) return
       setStats({
         days:
-          Math.floor((Date.now() - new Date(coupleCreatedAt).getTime()) / 86_400_000) + 1,
+          // 封面「第 N 天」按所看年份的年末(或今天,取早者)截止,回看往年不再显示今天的总天数
+          Math.floor(
+            (Math.min(Date.now(), Date.parse(endISO)) - new Date(coupleCreatedAt).getTime()) /
+              86_400_000,
+          ) + 1,
         msgsTotal: msgsTotalRes.count ?? 0,
         msgsMine: msgsMineRes.count ?? 0,
         imgs: imgsRes.count ?? 0,

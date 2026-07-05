@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { getSignedUrl } from '../lib/storage'
+import { getSignedUrl, clearSignedUrl } from '../lib/storage'
 import { BUBBLE_FONTS, BUBBLE_STYLES, bubbleCss, fontCss } from '../lib/prefs'
 import type { BubbleDeco, BubbleFont, BubbleStyle } from '../lib/prefs'
 
@@ -373,6 +373,8 @@ function ChatImage({
   onMediaLoad?: () => void
 }) {
   const [url, setUrl] = useState<string | null>(item.previewUrl ?? null)
+  const [errored, setErrored] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const isSticker = item.type === 'sticker'
 
   useEffect(() => {
@@ -382,18 +384,42 @@ function ChatImage({
       return
     }
     if (!item.content) return
+    setErrored(false)
     getSignedUrl(isSticker ? 'stickers' : 'chat-images', item.content).then((u) => {
-      if (!cancelled && u) setUrl(u)
+      if (cancelled) return
+      // 签名失败 → 标记为错误,显示可点重载,而不是永久停在骨架
+      if (u) setUrl(u)
+      else setErrored(true)
     })
     return () => {
       cancelled = true
     }
-  }, [item.content, item.previewUrl, isSticker])
+  }, [item.content, item.previewUrl, isSticker, reloadKey])
 
-  if (!url) {
+  // 点击重载:清掉可能过期的签名缓存,重新拉一次
+  const retry = () => {
+    if (item.content) clearSignedUrl(isSticker ? 'stickers' : 'chat-images', item.content)
+    setUrl(null)
+    setErrored(false)
+    setReloadKey((k) => k + 1)
+  }
+
+  if (errored) {
     return (
-      <div className={`animate-pulse rounded-xl bg-line ${isSticker ? 'h-24 w-24' : 'h-40 w-40'}`} />
+      <button
+        type="button"
+        onClick={retry}
+        className={`flex flex-col items-center justify-center gap-1 rounded-xl bg-line text-xs text-gray-400 ${
+          isSticker ? 'h-24 w-24' : 'h-40 w-40'
+        }`}
+      >
+        <span className="text-xl">🔄</span>
+        {t('点击重载')}
+      </button>
     )
+  }
+  if (!url) {
+    return <div className={`skeleton rounded-xl ${isSticker ? 'h-24 w-24' : 'h-40 w-40'}`} />
   }
   return (
     <img
@@ -406,6 +432,7 @@ function ChatImage({
       }
       onClick={() => onPreview(url)}
       onLoad={onMediaLoad}
+      onError={() => setErrored(true)}
     />
   )
 }

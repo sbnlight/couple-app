@@ -139,6 +139,19 @@ function Donut({ cats, total, sym }: { cats: [string, number][]; total: number; 
   )
 }
 
+/** 生长条:挂载后宽度从 0 缓动到目标,尊重"减少动态"(直接到位)。修首屏 transition 不触发 */
+function GrowBar({ pct, className }: { pct: number; className?: string }) {
+  const [grown, setGrown] = useState(
+    () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  )
+  useEffect(() => {
+    if (grown) return
+    const id = requestAnimationFrame(() => setGrown(true))
+    return () => cancelAnimationFrame(id)
+  }, [grown])
+  return <div className={className} style={{ width: grown ? `${Math.max(0, pct)}%` : '0%' }} />
+}
+
 /** 每种货币一组的月度汇总 */
 interface CurSummary {
   currency: string
@@ -494,9 +507,9 @@ export default function Ledger() {
                     <>
                       {/* 双方支出对比条 */}
                       <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-gray-200">
-                        <div
+                        <GrowBar
                           className="bg-primary transition-[width] duration-700 ease-out"
-                          style={{ width: `${(s.mineExpense / s.expense) * 100}%` }}
+                          pct={(s.mineExpense / s.expense) * 100}
                         />
                       </div>
                       <div className="mt-1.5 flex justify-between text-xs text-gray-400">
@@ -563,9 +576,9 @@ export default function Ledger() {
                               {categoryIcon(cat)} {cat}
                             </span>
                             <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                              <div
+                              <GrowBar
                                 className="h-full rounded-full bg-primary opacity-70 transition-[width] duration-700 ease-out"
-                                style={{ width: `${(amt / s.expense) * 100}%` }}
+                                pct={(amt / s.expense) * 100}
                               />
                             </div>
                             <span className="w-20 shrink-0 text-right text-gray-500">
@@ -580,6 +593,22 @@ export default function Ledger() {
                 </div>
               )
             })}
+
+            {/* 设了当月预算、但这种货币这月还没花过 → 单独显示一张"还没花"的预算卡,避免预算隐身 */}
+            {isCurrentMonth && budgetAmt > 0 && !summaries.some((s) => s.currency === budgetCur) && (
+              <div className="mb-3 rounded-2xl bg-white p-4">
+                <p className="text-sm text-gray-400">{t('本月预算({c})', { c: budgetCur })}</p>
+                <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-gray-200">
+                  <div className="h-full rounded-full bg-emerald-400" style={{ width: '0%' }} />
+                </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  {t('预算 {b} · 还没花,还剩 {a}', {
+                    b: `${currencySymbol(budgetCur)}${fmtMoney(budgetAmt)}`,
+                    a: `${currencySymbol(budgetCur)}${fmtMoney(budgetAmt)}`,
+                  })}
+                </p>
+              </div>
+            )}
 
             {/* 统计图表:趋势/环比/占比均相对"当前"计算,浏览往月时隐藏,避免与上方
                 往月汇总错配(与下方分类占比的 isCurrentMonth 判断保持一致) */}

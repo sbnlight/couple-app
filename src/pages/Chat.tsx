@@ -569,7 +569,7 @@ export default function Chat() {
     Date.now() - new Date(it.createdAt).getTime() < RECALL_WINDOW
 
   return (
-    <div className={`flex h-full flex-col ${shake ? 'chat-shake' : ''}`}>
+    <div className="flex h-full flex-col">
       <header className="relative border-b border-line bg-white/85 backdrop-blur-md px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-center">
         <h1 className="text-base font-semibold text-primary-dark">
           {partnerIn && <span className="presence-dot mr-1.5 align-middle" title="TA 正在聊天页" />}
@@ -620,7 +620,7 @@ export default function Chat() {
       <div
         ref={listRef}
         onScroll={onScroll}
-        className="flex-1 overflow-y-auto px-3 py-3"
+        className={`flex-1 overflow-y-auto px-3 py-3 ${shake ? 'chat-shake' : ''}`}
         style={bgStyle}
       >
         {loadingInitial ? (
