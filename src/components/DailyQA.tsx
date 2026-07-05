@@ -195,9 +195,11 @@ export default function DailyQA({
     if ((!content && imgs.length === 0 && keptPaths.length === 0) || busy) return
     setBusy(true)
     setErr('')
+    // 本次新上传的图片路径 + 是否已写库成功:写库失败时清掉这些新图,避免 Storage 孤儿
+    const uploaded: string[] = []
+    let committed = false
     try {
       // 配图 = 编辑时保留的原图(未被删掉的)+ 本次新上传的
-      const uploaded: string[] = []
       for (const im of imgs) {
         const path = `${coupleId}/qa-${crypto.randomUUID()}.${extFromType(im.blob.type)}`
         const { error: upErr } = await supabase.storage
@@ -232,6 +234,7 @@ export default function DailyQA({
           if (error && !isUniqueViolation(error)) throw error
         })
       }
+      committed = true
       // 孤儿清理放在写库成功之后:否则写库失败却已删原图,答案会残留坏图
       if (editing && mine?.image_paths) {
         const removed = mine.image_paths.filter((p) => !keep.includes(p))
@@ -244,6 +247,8 @@ export default function DailyQA({
       setEditing(false)
       await load() // 答完即可看到对方的答案
     } catch (e) {
+      // 写库未成功却已上传了新图 → 清掉这些孤儿(重试会重新上传);已提交则不动(图已被引用)
+      if (!committed && uploaded.length > 0) void supabase.storage.from('chat-images').remove(uploaded)
       // 不再静默丢弃:给出可诊断的提示,草稿保留可重试
       setErr(friendlyWriteError(e))
     } finally {

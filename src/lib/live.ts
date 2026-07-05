@@ -12,6 +12,9 @@ export type LiveEvent = 'nudge' | 'typing' | 'miss' | 'touch'
 let channel: RealtimeChannel | null = null
 let currentCoupleId = ''
 let myId = ''
+// 期望的「在聊天页」在场意图:通道未就绪时(冷启动 Chat 的 trackInChat 可能早于 initLive)
+// 先记下意图,待 subscribe 成功回调里再补做 track,避免首帧丢失的在场态整轮会话广播不出去。
+let desiredInChat = false
 const listeners = new Map<LiveEvent, Set<(payload: Record<string, unknown>) => void>>()
 const presenceListeners = new Set<(partnerInChat: boolean) => void>()
 let lastPartnerInChat = false
@@ -41,7 +44,11 @@ export function initLive(coupleId: string, userId: string) {
     presenceListeners.forEach((cb) => cb(lastPartnerInChat))
   }
   channel.on('presence', { event: 'sync' }, emitPresence)
-  channel.subscribe()
+  channel.subscribe((status) => {
+    // 通道就绪后补发在场意图:修复「冷启动直落聊天页时 Chat 的 trackInChat 早于
+    // initLive 执行、track 被静默丢弃」——presence 也必须在 SUBSCRIBED 之后 track 才生效。
+    if (status === 'SUBSCRIBED' && channel && desiredInChat) void channel.track({ page: 'chat' })
+  })
 }
 
 export function teardownLive() {
@@ -50,6 +57,7 @@ export function teardownLive() {
     channel = null
     currentCoupleId = ''
     lastPartnerInChat = false
+    desiredInChat = false // 防御性收尾:避免残留意图在下个通道 SUBSCRIBED 时误 track
   }
 }
 
@@ -78,6 +86,7 @@ export function onPartnerInChat(cb: (on: boolean) => void): () => void {
 
 /** 标记自己进入/离开聊天页(对方可见呼吸光环) */
 export function trackInChat(on: boolean) {
+  desiredInChat = on // 先记意图:通道未就绪时由 subscribe 回调补做
   if (!channel) return
   void (on ? channel.track({ page: 'chat' }) : channel.untrack())
 }

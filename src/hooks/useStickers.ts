@@ -38,7 +38,11 @@ export function useStickers(coupleId: string, userId: string) {
       const { error: dbErr } = await supabase
         .from('stickers')
         .insert({ couple_id: coupleId, owner_id: userId, path })
-      if (dbErr) throw dbErr
+      if (dbErr) {
+        // 元数据写入失败:清掉刚上传的文件,避免 Storage 孤儿
+        void supabase.storage.from('stickers').remove([path])
+        throw dbErr
+      }
       await load()
     },
     [coupleId, userId, load],

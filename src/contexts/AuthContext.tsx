@@ -143,8 +143,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const onVisible = () => {
       if (!document.hidden && userId) void loadData(userId)
     }
+    // 网络恢复时也重拉:弱网冷启动首次 loadData 全败(couple 暂为 null、已配对用户被
+    // 短暂导到 /pair)时,网络一恢复即自愈,不必等用户手动切前后台。
+    const onOnline = () => {
+      if (userId) void loadData(userId)
+    }
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onOnline)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onOnline)
+    }
   }, [userId, loadData])
 
   // 定时刷新「对方档案」(位置/城市/坐标/时区/心情):让顶栏天气、双城卡片的
