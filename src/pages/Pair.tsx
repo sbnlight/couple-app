@@ -13,6 +13,9 @@ function translatePairError(err: unknown): string {
   if (msg.includes('HOUSE_FULL')) return t('这个小屋已经满员啦')
   if (msg.includes('CANNOT_JOIN_SELF')) return t('这是你自己的小屋,把邀请码发给对方吧')
   if (msg.includes('ALREADY_PAIRED')) return t('你已经在一个小屋里了,刷新一下试试')
+  // 解散 RPC 尚未在数据库执行(迁移 0025 未跑)时给出友好提示,而不是暴露原始报错
+  if (msg.includes('dissolve_my_empty_couple') || msg.includes('PGRST202'))
+    return t('这个功能还没就绪,请稍后再试')
   if (msg.includes('超时') || msg.includes('abort') || msg.includes('Failed to fetch'))
     return t('网络不太好,请重试')
   return t('出错了:{msg}', { msg })
@@ -61,6 +64,22 @@ export default function Pair() {
       const { error } = await supabase.rpc('create_couple')
       if (error) throw error
       await refresh() // 拉到新小屋后自动切到"等待对方"视图
+    } catch (err) {
+      setError(translatePairError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // 解散自己的空屋(两人都误点「创建」时的救急出口):删除后回到创建/加入选择页
+  const handleDissolve = async () => {
+    if (busy) return
+    setError('')
+    setBusy(true)
+    try {
+      const { error } = await supabase.rpc('dissolve_my_empty_couple')
+      if (error) throw error
+      await refresh() // couple 变 null,自动切回「创建 / 加入」视图,即可改为凭码加入
     } catch (err) {
       setError(translatePairError(err))
     } finally {
@@ -118,6 +137,16 @@ export default function Pair() {
           </button>
 
           <p className="mt-6 animate-pulse text-sm text-gray-400">{t('正在等待 TA 加入…')}</p>
+
+          {/* 救急出口:两人都误点了「创建」→ 解散自己的空屋,改为输入对方的邀请码加入 */}
+          <button
+            type="button"
+            onClick={() => void handleDissolve()}
+            disabled={busy}
+            className="mt-8 text-xs text-gray-400 underline disabled:opacity-50"
+          >
+            {t('弄错了?解散小屋,改为加入 TA')}
+          </button>
         </div>
       ) : (
         /* ---- 还没有小屋:创建 或 凭码加入 ---- */

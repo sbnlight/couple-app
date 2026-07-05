@@ -554,6 +554,11 @@ const dict: Record<string, T2> = {
   '语音消息 {n} 秒': ['Voice message, {n}s', 'ボイスメッセージ {n} 秒'],
   '{m}月支出': ['Spent in month {m}', '{m}月の支出'],
   '👋 [拍一拍]': ['👋 [Nudge]', '👋 [ツンツン]'],
+  '弄错了?解散小屋,改为加入 TA': [
+    'Made a mistake? Dissolve this home and join theirs instead',
+    '間違えた?この小屋を解散して相手の小屋に参加する',
+  ],
+  '这个功能还没就绪,请稍后再试': ["This feature isn't ready yet, please try again later", 'この機能はまだ準備できていません。後でもう一度お試しください'],
 }
 
 /** 取当前语言文案;支持 {x} 占位符替换;词典缺失回退中文原文 */
