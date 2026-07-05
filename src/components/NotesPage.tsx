@@ -68,14 +68,19 @@ export default function NotesPage({
       setNotes(rows)
       // 对方改动提醒:TA 写的已解锁纸条 updated_at 比我上次看到的新 → 高亮
       const SEEN_KEY = `notes-seen-${coupleId}`
-      const lastSeen = localStorage.getItem(SEEN_KEY) ?? ''
+      const seen = localStorage.getItem(SEEN_KEY)
       const upAt = (n: Note) => (n as Note & { updated_at?: string | null }).updated_at ?? ''
       const partnerNotes = rows.filter((n) => n.author_id !== userId)
-      const changed = new Set(partnerNotes.filter((n) => upAt(n) > lastSeen).map((n) => n.id))
-      if (changed.size > 0) {
-        setChangedIds(changed)
-        const latest = partnerNotes.reduce((m, n) => (upAt(n) > m ? upAt(n) : m), lastSeen)
-        localStorage.setItem(SEEN_KEY, latest)
+      const maxUp = partnerNotes.reduce((m, n) => (upAt(n) > m ? upAt(n) : m), '')
+      if (seen === null) {
+        // 首次打开:只建立基线、不点亮(否则 0023 给历史行补的 updated_at 会把 TA 每条旧纸条都误报为"刚改")
+        localStorage.setItem(SEEN_KEY, maxUp)
+      } else {
+        const changed = new Set(partnerNotes.filter((n) => upAt(n) > seen).map((n) => n.id))
+        if (changed.size > 0) {
+          setChangedIds(changed)
+          localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
+        }
       }
     }
     // 弱网超时:保留上次的待开启信息,不静默清零
@@ -89,6 +94,15 @@ export default function NotesPage({
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  // 回前台时重拉一次:看到 TA 刚改动的纸条、以及到点新解锁的内容
+  useEffect(() => {
+    const onVis = () => {
+      if (!document.hidden) void load()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
   }, [load])
 
   const computeUnlockAt = (): string | null => {

@@ -125,14 +125,19 @@ export default function DailyQA({
     setLoading(false)
     // 对方改动提醒:TA 往日回答的 updated_at 比我上次看到的新 → 高亮那些日期
     const SEEN_KEY = `qa-seen-${coupleId}`
-    const lastSeen = localStorage.getItem(SEEN_KEY) ?? ''
+    const seen = localStorage.getItem(SEEN_KEY)
     const upAt = (a: DailyAnswer) => (a as DailyAnswer & { updated_at?: string | null }).updated_at ?? ''
     const partnerHist = hist.filter((a) => a.user_id !== userId)
-    const changed = new Set(partnerHist.filter((a) => upAt(a) > lastSeen).map((a) => a.question_date))
-    if (changed.size > 0) {
-      setChangedDates(changed)
-      const latest = partnerHist.reduce((m, a) => (upAt(a) > m ? upAt(a) : m), lastSeen)
-      localStorage.setItem(SEEN_KEY, latest)
+    const maxUp = partnerHist.reduce((m, a) => (upAt(a) > m ? upAt(a) : m), '')
+    if (seen === null) {
+      // 首次打开:只建立基线、不点亮(否则 0023 给历史行补的 updated_at 会把 TA 每条旧回答都误报为"刚改")
+      localStorage.setItem(SEEN_KEY, maxUp)
+    } else {
+      const changed = new Set(partnerHist.filter((a) => upAt(a) > seen).map((a) => a.question_date))
+      if (changed.size > 0) {
+        setChangedDates(changed)
+        localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
+      }
     }
     // 默契时刻:双方都答完今天的问题,撒一次花(每天每设备一次)
     if (mineRow && theirsRow) {
@@ -146,6 +151,15 @@ export default function DailyQA({
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  // 回前台时重拉一次:同一天里也能看到 TA 刚提交/改动的回答(异地场景关键)
+  useEffect(() => {
+    const onVis = () => {
+      if (!document.hidden) void load()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
   }, [load])
 
   const pickImage = async (e: ChangeEvent<HTMLInputElement>) => {

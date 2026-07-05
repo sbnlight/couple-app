@@ -243,7 +243,7 @@ export default function MomentsCard({
               <span
                 key={day}
                 className={`h-2.5 w-2.5 rounded-full ${
-                  myDays.has(day) ? 'bg-rose-400' : 'border border-gray-200'
+                  myDays.has(day) ? 'bg-primary' : 'border border-line'
                 }`}
               />
             ))

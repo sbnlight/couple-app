@@ -85,20 +85,34 @@ export default function MindQuiz({
     setAll(rows)
     setLoading(false)
     // 对方改动提醒:TA 的行 updated_at 比我上次看到的新 → 高亮那些日期(并把「已看到」推进到最新)
-    const lastSeen = localStorage.getItem(SEEN_KEY) ?? ''
+    const seen = localStorage.getItem(SEEN_KEY)
     const partnerRows = rows.filter((r) => r.user_id !== userId)
-    const changed = new Set(
-      partnerRows.filter((r) => (r.updated_at ?? '') > lastSeen).map((r) => r.quiz_date),
-    )
-    if (changed.size > 0) {
-      setChangedDates(changed)
-      const latest = partnerRows.reduce((m, r) => ((r.updated_at ?? '') > m ? r.updated_at! : m), lastSeen)
-      localStorage.setItem(SEEN_KEY, latest)
+    const maxUp = partnerRows.reduce((m, r) => ((r.updated_at ?? '') > m ? r.updated_at! : m), '')
+    if (seen === null) {
+      // 首次打开:只建立基线、不点亮(否则 0023 给历史行补的 updated_at 会把 TA 每条旧留言都误报为"刚改")
+      localStorage.setItem(SEEN_KEY, maxUp)
+    } else {
+      const changed = new Set(
+        partnerRows.filter((r) => (r.updated_at ?? '') > seen).map((r) => r.quiz_date),
+      )
+      if (changed.size > 0) {
+        setChangedDates(changed)
+        localStorage.setItem(SEEN_KEY, maxUp > seen ? maxUp : seen)
+      }
     }
   }, [coupleId, userId, SEEN_KEY])
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  // 回前台时重拉一次:同一天里也能看到 TA 刚作答/改动的留言(异地场景关键)
+  useEffect(() => {
+    const onVis = () => {
+      if (!document.hidden) void load()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
   }, [load])
 
   const rows = all.filter((r) => r.quiz_date === today)

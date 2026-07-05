@@ -1838,7 +1838,16 @@ html.dark .recv-paper {
   .animate-bounce,
   .modal-pop,
   .msg-in-me,
-  .msg-in-you {
+  .msg-in-you,
+  .bubble-neon-pink,
+  .bubble-neon-cyan,
+  .bubble-neon-violet,
+  .bubble-neon-gold,
+  .bubble-glitch,
+  .page-in,
+  .year-rise,
+  .year-num,
+  .year-pulse {
     animation: none !important;
   }
   /* 描边生长/端点淡入:关掉动画但要还原到"完全画好/可见",否则会一直隐藏 */

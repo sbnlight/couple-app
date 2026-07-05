@@ -76,12 +76,26 @@ export function getThemeMode(): ThemeMode {
   return THEME_MODES.some((m) => m.id === v) ? (v as ThemeMode) : 'auto'
 }
 
+/** 同步 PWA 状态栏配色(<meta name="theme-color">)到当前主题/深浅色,避免恒为初始蜜桃粉 */
+function syncThemeColor() {
+  try {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (!meta) return
+    // 用当前主题的页面背景色(深色是 #161118,浅色是各主题暖白),让状态栏与页面融为一体
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--c-bg').trim()
+    if (bg) meta.setAttribute('content', bg)
+  } catch {
+    // 状态栏配色非关键,读取失败保持原值
+  }
+}
+
 export function applyThemeMode(mode: ThemeMode) {
   localStorage.setItem(MODE_KEY, mode)
   const dark =
     mode === 'dark' ||
     (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   document.documentElement.classList.toggle('dark', dark)
+  syncThemeColor()
 }
 
 /* ---------- 聊天气泡样式(自己的气泡,本机生效) ---------- */
@@ -774,6 +788,7 @@ export function applyTheme(id: ThemeId) {
   if (id === 'rose') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.setAttribute('data-theme', id)
   localStorage.setItem(THEME_KEY, id)
+  syncThemeColor()
 }
 
 /** 应用启动时恢复上次的偏好(在 main.tsx 渲染前调用) */

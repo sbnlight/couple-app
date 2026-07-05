@@ -654,7 +654,8 @@ export function useMessages(
   const items: ChatItem[] = useMemo(
     () => [
       ...serverMsgs.map((m) => ({
-      key: `s-${m.id}`,
+      // 复用 client_id 当 key:自己发的消息「待发→服务端确认」时 key 不变,不重挂、入场动画只播一次
+      key: m.client_id ?? `s-${m.id}`,
       id: m.id,
       type: m.type,
       content: m.content,

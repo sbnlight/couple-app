@@ -21,6 +21,7 @@ export default function Thumbkiss({ onClose }: { onClose: () => void }) {
   const [partnerTouch, setPartnerTouch] = useState(false)
   const [partnerPresent, setPartnerPresent] = useState(false)
   const partnerExpiryRef = useRef(0)
+  const partnerPresentExpiryRef = useRef(0)
   const vibratingRef = useRef(false)
 
   // 收到对方触碰心跳 → 刷新过期时间;收到松手 → 立刻断开
@@ -28,6 +29,8 @@ export default function Thumbkiss({ onClose }: { onClose: () => void }) {
     const off = onLive('touch', (p) => {
       if (p.on) {
         partnerExpiryRef.current = Date.now() + 2500
+        // 在场窗口比触碰窗口更长:TA 松手后一段时间内仍视为"在这个界面",超时才判离开
+        partnerPresentExpiryRef.current = Date.now() + 12000
         setPartnerTouch(true)
         setPartnerPresent(true)
       } else {
@@ -46,9 +49,15 @@ export default function Thumbkiss({ onClose }: { onClose: () => void }) {
   // 心跳过期检测:对方松手且"off"丢了,或对方掉线 → 到点自动判为松手
   useEffect(() => {
     const timer = setInterval(() => {
-      if (partnerExpiryRef.current && Date.now() > partnerExpiryRef.current) {
+      const now = Date.now()
+      if (partnerExpiryRef.current && now > partnerExpiryRef.current) {
         partnerExpiryRef.current = 0
         setPartnerTouch(false)
+      }
+      // 久未收到心跳 → 判 TA 已离开这个界面,复位在场态(否则会永久停在"TA 也在这儿")
+      if (partnerPresentExpiryRef.current && now > partnerPresentExpiryRef.current) {
+        partnerPresentExpiryRef.current = 0
+        setPartnerPresent(false)
       }
     }, 600)
     return () => clearInterval(timer)

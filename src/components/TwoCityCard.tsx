@@ -58,9 +58,18 @@ function CityCol({
   const [weather, setWeather] = useState<W>(null)
 
   useEffect(() => {
-    setTime(timeInTz(tz))
-    const timer = setInterval(() => setTime(timeInTz(tz)), 30_000)
-    return () => clearInterval(timer)
+    const tick = () => setTime(timeInTz(tz))
+    tick()
+    const timer = setInterval(tick, 30_000)
+    // 回前台立刻对表:后台被节流/休眠时,时钟与昼夜底色可能停在旧值,回来即刷新
+    const onVisible = () => {
+      if (!document.hidden) tick()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [tz])
 
   useEffect(() => {
@@ -163,7 +172,7 @@ export default function TwoCityCard({ me, partner }: { me: Loc; partner: Loc }) 
         <CityCol tz={me.tz} name={myCity} lat={me.lat} lng={me.lng} mine />
         <div className="flex flex-col items-center px-1 text-center">
           <span className="bubble-beat inline-block text-lg">❤️</span>
-          {km !== null && (
+          {km !== null && km > 0 && (
             <span className="whitespace-nowrap text-xs text-gray-400">
               {t('相距 {n} 公里', { n: km.toLocaleString() })}
             </span>
