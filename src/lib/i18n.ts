@@ -539,6 +539,21 @@ const dict: Record<string, T2> = {
   '线上部署:在托管平台的环境变量里设置后重新部署。': ['Production: set env vars on your host and redeploy.', '本番:ホスト側で設定後に再デプロイ。'],
   'TA 正在想你 💭': ['They are missing you 💭', '相手があなたを想っています 💭'],
   '聊天功能将在 M2 上线': ['Chat arrives in M2', 'チャットはM2で'],
+  // —— 回归补漏:聊天/记账界面此前漏加的键(英/日界面会回退成中文)——
+  '↓ {n} 条新消息': ['↓ {n} new', '↓ 新着 {n} 件'],
+  '该消息已撤回': ['This message was recalled', 'このメッセージは取り消されました'],
+  'TA 打开一次 App 后,这里就会显示 TA 那边的实时时间 🕐': [
+    'Once they open the app, their local time shows here 🕐',
+    '相手がアプリを一度開くと、ここに現地時間が表示されます 🕐',
+  ],
+  '第一条消息,就从「在吗」开始吧 💗': ['Break the ice with a simple hi 💗', '「やあ」から気軽に 💗'],
+  '在吗?': ['You there?', 'いる?'],
+  '想你了 💗': ['Missing you 💗', '会いたいな 💗'],
+  '在干嘛呀': ['What are you up to?', '何してるの?'],
+  '晚安 🌙': ['Good night 🌙', 'おやすみ 🌙'],
+  '语音消息 {n} 秒': ['Voice message, {n}s', 'ボイスメッセージ {n} 秒'],
+  '{m}月支出': ['Spent in month {m}', '{m}月の支出'],
+  '👋 [拍一拍]': ['👋 [Nudge]', '👋 [ツンツン]'],
 }
 
 /** 取当前语言文案;支持 {x} 占位符替换;词典缺失回退中文原文 */
