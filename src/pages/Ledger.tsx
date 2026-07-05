@@ -15,7 +15,8 @@ const ymNow = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-const fmtMoney = (n: number) => n.toFixed(2)
+const fmtMoney = (n: number) =>
+  n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 /** '2026-06-10' → '6月10日 周三'(随语言本地化) */
 function fmtDay(dateStr: string) {
@@ -41,12 +42,42 @@ function TrendChart({ yms, series }: TrendData) {
   const x = (i: number) => PAD + (i * (W - 2 * PAD)) / Math.max(1, yms.length - 1)
   // 每条币种各用自己的 max 归一,避免 ¥ 与 $ 量级悬殊时小额币种被压平贴底、趋势失真
   const y = (v: number, m: number) => H - 24 - (v / m) * (H - 42)
+  const baseY = H - 24 // v=0 的基线
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      <defs>
+        {series.map((s, si) => (
+          <linearGradient key={s.currency} id={`trend-grad-${si}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={TREND_COLORS[si]} stopOpacity="0.32" />
+            <stop offset="100%" stopColor={TREND_COLORS[si]} stopOpacity="0" />
+          </linearGradient>
+        ))}
+      </defs>
+      {/* 极浅水平网格线,给折线一个参照 */}
+      {[0.25, 0.5, 0.75].map((f) => (
+        <line
+          key={f}
+          x1={PAD}
+          y1={baseY - f * (H - 42)}
+          x2={W - PAD}
+          y2={baseY - f * (H - 42)}
+          stroke="var(--c-line)"
+          strokeWidth="0.5"
+        />
+      ))}
       {series.map((s, si) => {
         const sMax = Math.max(1, ...s.values)
+        const pts = s.values.map((v, i) => `${x(i)},${y(v, sMax)}`).join(' ')
+        const area = `${x(0)},${baseY} ${pts} ${x(s.values.length - 1)},${baseY}`
         return (
           <g key={s.currency}>
+            {/* 折线下方渐变面积:线画完后淡入(chart-dot 已尊重"减少动态") */}
+            <polygon
+              points={area}
+              fill={`url(#trend-grad-${si})`}
+              className="chart-dot"
+              style={{ animationDelay: `${0.9 + si * 0.25}s` }}
+            />
             <polyline
               fill="none"
               stroke={TREND_COLORS[si]}
@@ -56,7 +87,7 @@ function TrendChart({ yms, series }: TrendData) {
               pathLength={1}
               className="chart-draw"
               style={{ animationDelay: `${0.15 + si * 0.25}s` }}
-              points={s.values.map((v, i) => `${x(i)},${y(v, sMax)}`).join(' ')}
+              points={pts}
             />
             {s.values.map((v, i) => (
               <circle key={i} cx={x(i)} cy={y(v, sMax)} r="3" fill={TREND_COLORS[si]} className="chart-dot" />
@@ -480,14 +511,22 @@ export default function Ledger() {
                       <div className="h-2.5 overflow-hidden rounded-full bg-gray-200">
                         <div
                           className={`relative h-full overflow-hidden rounded-full bubble-shimmer ${
-                            s.expense > budgetAmt ? 'bg-rose-400 animate-pulse' : 'bg-emerald-400'
+                            s.expense > budgetAmt
+                              ? 'bg-rose-400 animate-pulse'
+                              : s.expense >= budgetAmt * 0.8
+                                ? 'bg-amber-400'
+                                : 'bg-emerald-400'
                           }`}
                           style={{ width: `${Math.min(100, (s.expense / budgetAmt) * 100)}%` }}
                         />
                       </div>
                       <p
                         className={`mt-1 text-xs ${
-                          s.expense > budgetAmt ? 'text-rose-500' : 'text-gray-400'
+                          s.expense > budgetAmt
+                            ? 'text-rose-500'
+                            : s.expense >= budgetAmt * 0.8
+                              ? 'text-amber-600'
+                              : 'text-gray-400'
                         }`}
                       >
                         {s.expense > budgetAmt
@@ -495,10 +534,15 @@ export default function Ledger() {
                               a: `${sym}${fmtMoney(s.expense - budgetAmt)}`,
                               b: `${sym}${fmtMoney(budgetAmt)}`,
                             })
-                          : t('预算 {b} · 还剩 {a}', {
-                              b: `${sym}${fmtMoney(budgetAmt)}`,
-                              a: `${sym}${fmtMoney(budgetAmt - s.expense)}`,
-                            })}
+                          : s.expense >= budgetAmt * 0.8
+                            ? t('⏳ 快到预算了 · 还剩 {a}(预算 {b})', {
+                                a: `${sym}${fmtMoney(budgetAmt - s.expense)}`,
+                                b: `${sym}${fmtMoney(budgetAmt)}`,
+                              })
+                            : t('预算 {b} · 还剩 {a}', {
+                                b: `${sym}${fmtMoney(budgetAmt)}`,
+                                a: `${sym}${fmtMoney(budgetAmt - s.expense)}`,
+                              })}
                       </p>
                     </div>
                   )}
