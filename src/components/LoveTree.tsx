@@ -178,7 +178,9 @@ export default function LoveTree({
     let cancelled = false
     void (async () => {
       const [c, m] = await Promise.all([
-        supabase.from('checkins').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId).eq('user_id', userId),
+        // checkins 是复合主键(couple_id,user_id,day)、没有 id 列,select('id') 会 400,
+        // 导致计数恒失败、贡献/浇灌/升级全废。用存在的列(*)只取 count。
+        supabase.from('checkins').select('*', { count: 'exact', head: true }).eq('couple_id', coupleId).eq('user_id', userId),
         supabase.from('misses').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId).eq('user_id', userId),
       ])
       if (!cancelled && !c.error && !m.error) setMineContrib((c.count ?? 0) * 2 + (m.count ?? 0))
@@ -190,7 +192,8 @@ export default function LoveTree({
 
   const loadCounts = async () => {
     const [c, m] = await Promise.all([
-      supabase.from('checkins').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId),
+      // checkins 无 id 列(复合主键),必须用 * 取 count,否则 select('id') 恒 400 → 计数恒 0
+      supabase.from('checkins').select('*', { count: 'exact', head: true }).eq('couple_id', coupleId),
       supabase.from('misses').select('id', { count: 'exact', head: true }).eq('couple_id', coupleId),
     ])
     // 弱网查询失败:保留上次计数(不清零成 0,免得树忽然缩小);也不标记为可靠数据

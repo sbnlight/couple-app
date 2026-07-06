@@ -83,6 +83,9 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
   // 请求序号:防止「快速切月」时旧月份的慢响应覆盖新月份结果(中美异地高延迟下 ◀/▶
   // 连点会并发多个 load,响应到达顺序不等于发起顺序)。只让最后一次发起的结果落地。
   const reqRef = useRef(0)
+  // 当前月是否已成功加载过一次:用于区分「首屏加载失败(该显示错误页)」与「刷新/写后
+  // 重拉失败(应保留已有账单、不翻整页错误)」。换月时(下面 effect)重置为 false。
+  const loadedOnceRef = useRef(false)
 
   const load = useCallback(async () => {
     setError(false)
@@ -97,12 +100,19 @@ export function useExpenses(coupleId: string, userId: string, month: string) {
       .order('spent_at', { ascending: false })
       .order('id', { ascending: false })
     if (seq !== reqRef.current) return // 已被更晚的请求取代,丢弃这份过期响应
-    if (err) setError(true)
-    else setExpenses(data as Expense[])
+    if (err) {
+      // 仅首屏(本月还没成功加载过)时才翻整页错误;可见性刷新/记一笔后重拉失败时
+      // 保留已有 expenses,不用错误页盖掉有效账单(否则会与「已记一笔」提示自相矛盾)。
+      if (!loadedOnceRef.current) setError(true)
+    } else {
+      setExpenses(data as Expense[])
+      loadedOnceRef.current = true
+    }
     setLoading(false)
   }, [coupleId, month])
 
   useEffect(() => {
+    loadedOnceRef.current = false // 换月/换屋:视为首屏,新月加载失败应显示错误而非沿用上月数据
     setLoading(true)
     void load()
   }, [load])
