@@ -198,6 +198,7 @@ export default function DailyQA({
     // 本次新上传的图片路径 + 是否已写库成功:写库失败时清掉这些新图,避免 Storage 孤儿
     const uploaded: string[] = []
     let committed = false
+    let duplicated = false // insert 命中唯一约束(跨设备/phantom-commit 已有今日答案)
     try {
       // 配图 = 编辑时保留的原图(未被删掉的)+ 本次新上传的
       for (const im of imgs) {
@@ -232,9 +233,28 @@ export default function DailyQA({
           })
           // 唯一约束(couple_id,user_id,question_date):重发命中即视为已提交成功
           if (error && !isUniqueViolation(error)) throw error
+          duplicated = error != null // 命中唯一约束(已排除非唯一错误抛出)
         })
       }
       committed = true
+      // 命中唯一约束:已有今日答案行。本次上传的新图可能无人引用 → 只清「未被既有行引用」
+      // 的部分:phantom-commit(自己刚插入的行)引用了这批图故保留,跨设备的别人行不引用故清掉。
+      if (duplicated && uploaded.length > 0) {
+        const { data: existing, error: reErr } = await supabase
+          .from('daily_answers')
+          .select('image_paths')
+          .eq('couple_id', coupleId)
+          .eq('user_id', userId)
+          .eq('question_date', today)
+          .maybeSingle()
+        // 只有重查确实成功且拿到行时才清孤儿:若重查失败(弱网返回 {data:null,error}),
+        // 无法区分「行确实无图」与「查询失败」,宁可留孤儿也绝不误删 phantom-commit 已引用的图。
+        if (!reErr && existing) {
+          const referenced = new Set((existing.image_paths as string[] | null) ?? [])
+          const orphans = uploaded.filter((p) => !referenced.has(p))
+          if (orphans.length > 0) void supabase.storage.from('chat-images').remove(orphans)
+        }
+      }
       // 孤儿清理放在写库成功之后:否则写库失败却已删原图,答案会残留坏图
       if (editing && mine?.image_paths) {
         const removed = mine.image_paths.filter((p) => !keep.includes(p))

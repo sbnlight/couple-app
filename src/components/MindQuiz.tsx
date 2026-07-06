@@ -161,9 +161,19 @@ export default function MindQuiz({
     })
     .filter((d) => d.m) // 只列我答过的天(才能编辑我的留言)
 
-  /** upsert 某天的「选项 + 留言」(幂等);date 缺省今天 */
-  const upsertAnswer = async (date: string, choice: number, note: string | null | undefined) => {
-    const qid = quizForDate(date).id
+  /**
+   * upsert 某天的「选项 + 留言」(幂等);date 缺省今天。
+   * knownQuizId:编辑既有行(尤其历史行)时必须传入该行已存的 quiz_id 原样写回,
+   * 否则会按当前题库长度现算覆盖它——题库增删后会篡改历史题号,使那天的题目/选择错乱
+   * (抵消 round-1「历史按存储 quiz_id 渲染」的修复)。新建当天答案时不传,现算即可。
+   */
+  const upsertAnswer = async (
+    date: string,
+    choice: number,
+    note: string | null | undefined,
+    knownQuizId?: number,
+  ) => {
+    const qid = knownQuizId ?? quizForDate(date).id
     await withRetry(async () => {
       const payload: Record<string, unknown> = {
         couple_id: coupleId,
@@ -185,6 +195,8 @@ export default function MindQuiz({
     setBusy(true)
     try {
       setErr('')
+      // 今日题始终按 quizForDate(today) 现算渲染,故今日作答/改选也用现算 id(与所显示的题一致),
+      // 不复用 mine.quiz_id——否则跨 bundle 版本改选会让存下的 quiz_id 与所选题的选项错位。
       await upsertAnswer(today, choice, undefined)
       await load()
     } catch (e) {
@@ -219,12 +231,13 @@ export default function MindQuiz({
   }
 
   /** 保存历史某天我的留言 */
-  const saveHistoryNote = async (date: string, choice: number) => {
+  const saveHistoryNote = async (date: string, choice: number, quizId: number) => {
     if (busy) return
     setBusy(true)
     setErr('')
     try {
-      await upsertAnswer(date, choice, editDraft.trim() || null)
+      // 编辑历史留言:原样写回该行已存的 quiz_id,绝不按当前题库现算(否则篡改历史题号)
+      await upsertAnswer(date, choice, editDraft.trim() || null, quizId)
       setEditingDate(null)
       await load()
     } catch (e) {
@@ -422,7 +435,7 @@ export default function MindQuiz({
                             <button
                               type="button"
                               disabled={busy}
-                              onClick={() => void saveHistoryNote(d.date, d.m!.choice)}
+                              onClick={() => void saveHistoryNote(d.date, d.m!.choice, d.m!.quiz_id)}
                               className="btn-primary flex-1 rounded-full py-1.5 text-xs disabled:opacity-60"
                             >
                               {t('保存')}

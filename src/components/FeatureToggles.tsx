@@ -50,7 +50,8 @@ export default function FeatureToggles({
     if (busy) return false
     setBusy(true)
     try {
-      // 读-改-写是幂等的,弱网可安全重试;读失败必须中止以免覆盖对方的设置
+      // 弱网可安全重试的前提:compute 必须返回「绝对值」而非相对当前值取反(否则重试会二次
+      // 翻转,见 toggle);读失败必须中止以免用空值覆盖对方的设置。
       await withRetry(async () => {
         const { data, error: readErr } = await supabase
           .from('couples')
@@ -77,7 +78,12 @@ export default function FeatureToggles({
   }
 
   const toggle = async (key: string) => {
-    await patchFlags((fresh) => ({ [key]: !(fresh[key] !== false) }))
+    // 目标值基于组件当前快照一次算定(绝对写),不要在 withRetry 里对 fresh 取反:
+    // 否则弱网「UPDATE 已提交但响应丢失」时 withRetry 重跑闭包会二次翻转,开关像
+    // 「点了没反应」。patchFlags 仍会 read-merge 保留对方改的其它字段,只是本字段写定值。
+    const flags = (couple.feature_flags as Record<string, boolean | string> | null) ?? {}
+    const target = flags[key] === false // 当前为关 → 目标开;当前为开(undefined/true)→ 目标关
+    await patchFlags(() => ({ [key]: target }))
   }
 
   const setDayTz = async (tz: string) => {
