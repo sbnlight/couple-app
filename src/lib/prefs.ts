@@ -18,8 +18,10 @@ export type MsgGap = 'sm' | 'md' | 'lg'
 
 /** 每档给出:同组相邻消息的间距 + 不同组之间的间距(Tailwind mb-* 类) */
 export const MSG_GAPS: { id: MsgGap; label: string; grouped: string; group: string }[] = [
+  // 中档用「适中」而非「标准」:后者与字号档 FONT_SIZES 的「标准」是同一 i18n 源字符串键,
+  // 会被误翻成字号缩写「M/標準」。三档标签的英/日译文见 i18n.ts。
   { id: 'sm', label: '紧凑', grouped: 'mb-0.5', group: 'mb-3' },
-  { id: 'md', label: '标准', grouped: 'mb-1.5', group: 'mb-4' },
+  { id: 'md', label: '适中', grouped: 'mb-1.5', group: 'mb-4' },
   { id: 'lg', label: '宽松', grouped: 'mb-2.5', group: 'mb-6' },
 ]
 

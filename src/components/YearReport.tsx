@@ -131,7 +131,10 @@ export default function YearReport({
           .select('amount, kind, currency')
           .eq('couple_id', coupleId)
           .gte('spent_at', startDate)
-          .lt('spent_at', endDate),
+          .lt('spent_at', endDate)
+          // 前端逐行聚合金额/笔数,必须拿全:否则受 PostgREST 默认 1000 行上限截断,
+          // 高频记账年份的年度金额/笔数会被静默低估。3000 远超两人一年可能的记账量。
+          .limit(3000),
         supabase
           .from('wishes')
           .select('done')
@@ -201,6 +204,15 @@ export default function YearReport({
   const [active, setActive] = useState(0)
   const [seen, setSeen] = useState<Set<number>>(() => new Set([0]))
   const LAST = 4
+  // 封面(第0页)撒花:seen 初值含 0(为让封面文案立即渐入),导致 IO 里的 idx===0 分支
+  // 永远走不到。这里在数据就绪时单独撒一次(每次打开报告一次,切年份不重复)。
+  const coverFxRef = useRef(false)
+  useEffect(() => {
+    if (stats && !coverFxRef.current) {
+      coverFxRef.current = true
+      fireEffect(['🎉', '🎊', '💕', '✨'], 36)
+    }
+  }, [stats])
 
   // 滚到哪一页:触发数字滚动 + 逐行渐入;首末页撒花
   useEffect(() => {
@@ -216,7 +228,8 @@ export default function YearReport({
             setActive(idx)
             setSeen((prev) => {
               if (prev.has(idx)) return prev
-              if (idx === 0 || idx === LAST) fireEffect(['🎉', '🎊', '💕', '✨'], 36)
+              // 封面(idx 0)由上面的 coverFxRef 单独撒;这里只负责尾页滚到时撒
+              if (idx === LAST) fireEffect(['🎉', '🎊', '💕', '✨'], 36)
               return new Set(prev).add(idx)
             })
           }
