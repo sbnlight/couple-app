@@ -130,6 +130,8 @@ export function useMessages(
   // 首次加载是否已完成:区分「尚无基线(别全表拉取)」与「合法的空聊天」。
   // 空聊天时 maxId 仍为 0,若不区分,catchUp 的 since===0 早退会让弱网下丢推的「第一条」消息无法补拉。
   const initializedRef = useRef(false)
+  // backToLatest 正在重载(maxId 被临时归零):此窗口内 catchUp 若并发会从 id=0 全量续拉,故先挡住。
+  const reloadingRef = useRef(false)
   useEffect(() => {
     pendingRef.current = pending
   }, [pending])
@@ -263,7 +265,7 @@ export function useMessages(
 
   /** 增量补拉:取本地最大 id 之后的所有消息(Realtime 丢推的兜底) */
   const catchUp = useCallback(async () => {
-    if (modeRef.current !== 'live') return
+    if (modeRef.current !== 'live' || reloadingRef.current) return
     // 循环续拉,直到取回不足一页 —— 离线期间错过 >200 条也能一次补齐,
     // 不会只补前 200 条就停(要等下次可见/上线事件)
     const LIMIT = 200
@@ -280,6 +282,8 @@ export function useMessages(
         .gt('id', since)
         .order('id', { ascending: true })
         .limit(LIMIT)
+      // await 期间可能已切到 history(如用户点搜索结果 jumpTo):别把最新消息并进历史窗口
+      if (modeRef.current !== 'live' || reloadingRef.current) return
       if (error || !data || data.length === 0) return
       const rows = data as Message[]
       mergeServer(rows)
@@ -649,10 +653,15 @@ export function useMessages(
   const backToLatest = useCallback(async () => {
     switchMode('live')
     setHasNewer(false)
+    reloadingRef.current = true // 重载期间挡住并发 catchUp,避免它读到 maxId=0 从头全量续拉
     serverRef.current = []
     maxIdRef.current = 0
     setServerMsgs([])
-    await loadInitial()
+    try {
+      await loadInitial()
+    } finally {
+      reloadingRef.current = false
+    }
   }, [loadInitial])
 
   // 输出统一形态:服务端消息在前,本地待发(更新)在后。用 useMemo 稳定引用,
@@ -674,7 +683,9 @@ export function useMessages(
       bubbleId: m.bubble_id,
       bubbleFont: m.bubble_font,
     })),
-    ...pending.map((p) => ({
+    // 历史浏览模式下不拼接本地待发/失败消息:history 窗口不代表「最新」,把 pending 贴在
+    // 窗口底部会紧挨一段无关旧对话、时间错位;回到 live 再显示(retry 队列本身不受影响)。
+    ...(mode === 'live' ? pending : []).map((p) => ({
       key: p.localId,
       type: p.type,
       content: p.content,
@@ -689,7 +700,7 @@ export function useMessages(
       voiceDur: p.voiceDur,
     })),
     ],
-    [serverMsgs, pending, userId],
+    [serverMsgs, pending, userId, mode],
   )
 
   return {

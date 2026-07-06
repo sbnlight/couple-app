@@ -494,7 +494,12 @@ function VoiceBubble({
     if (!url) return
     const audio = new Audio(url)
     audioRef.current = audio
-    audio.ontimeupdate = () => setProg(audio.duration ? audio.currentTime / audio.duration : 0)
+    audio.ontimeupdate = () => {
+      // webm(华为/鸿蒙 Chromium 录音)常没有头部时长,audio.duration 为 Infinity(且 truthy),
+      // 直接做分母会让进度恒为 0、波形双色永不推进。用录制时测得的 dur 兜底。
+      const den = Number.isFinite(audio.duration) && audio.duration ? audio.duration : dur
+      setProg(den ? audio.currentTime / den : 0)
+    }
     audio.onended = () => {
       setPlaying(false)
       setProg(0)

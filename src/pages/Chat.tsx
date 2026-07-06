@@ -93,6 +93,8 @@ export default function Chat() {
   )
   const [replyTarget, setReplyTarget] = useState<ChatItem | null>(null)
   const [highlightId, setHighlightId] = useState<number | null>(null)
+  // 定位高亮的清除定时器:连续两次定位时,先清掉上一个,避免旧定时器提前抹掉新高亮
+  const highlightTimerRef = useRef<number | undefined>(undefined)
   const inputRef = useRef<HTMLInputElement>(null)
 
   /** 一条消息的简短预览(引用栏/引用框用) */
@@ -407,7 +409,10 @@ export default function Chat() {
   const myLastKey = useMemo(() => {
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i]
-      if (it.id !== undefined && it.senderId === userId && !it.recalled) return it.key
+      // 排除 nudge:拍一拍在 MessageBubble 里提前 return(居中提示),永远不渲染「已读」,
+      // 若 myLastKey 落在它上面会让「已读」凭空消失,直到再发一条普通消息才恢复。
+      if (it.id !== undefined && it.senderId === userId && !it.recalled && it.type !== 'nudge')
+        return it.key
     }
     return null
   }, [items, userId])
@@ -471,6 +476,7 @@ export default function Chat() {
   }
   // 卸载时清掉 toast 定时器,避免对已卸载组件 setState
   useEffect(() => () => window.clearTimeout(toastTimerRef.current), [])
+  useEffect(() => () => window.clearTimeout(highlightTimerRef.current), [])
 
   /** 加载更早消息并保持滚动位置不跳动 */
   const handleLoadOlder = async () => {
@@ -525,7 +531,8 @@ export default function Chat() {
     setTimeout(() => {
       document.getElementById(`msg-${id}`)?.scrollIntoView({ block: 'center' })
     }, 60)
-    setTimeout(() => setHighlightId(null), 2200)
+    window.clearTimeout(highlightTimerRef.current)
+    highlightTimerRef.current = window.setTimeout(() => setHighlightId(null), 2200)
   }
 
   /** 菜单:撤回 */
@@ -919,10 +926,16 @@ export default function Chat() {
             const start = input.selectionStart ?? draft.length
             const end = input.selectionEnd ?? draft.length
             setDraft(draft.slice(0, start) + e + draft.slice(end))
+            // 不程序化 focus 输入框:否则会触发 onFocus 收起表情面板,连插多个要反复重开
+            // (且 iOS/Chromium 对非手势内的程序化 focus 行为不一致)。仅维持光标位置,
+            // 面板保持打开;用户想打字时点输入框会自然收起面板。
             requestAnimationFrame(() => {
-              input.focus()
               const pos = start + e.length
-              input.setSelectionRange(pos, pos)
+              try {
+                input.setSelectionRange(pos, pos)
+              } catch {
+                // 未聚焦的 input 个别浏览器 setSelectionRange 可能抛错,忽略即可
+              }
             })
           }}
           onSticker={async (path) => {
