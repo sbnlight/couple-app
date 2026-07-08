@@ -1777,6 +1777,20 @@ html.dark .recv-paper {
   transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease !important;
 }
 
+/* 「已读」标签一次性柔入(对方读到最新消息那一刻挂载即播一次) */
+@keyframes read-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.read-in { animation: read-in 0.24s ease-out both; }
+/* 已读前的小心跳♡ 弹一下(需 inline-block 才能 transform) */
+@keyframes read-heart {
+  0%   { opacity: 0; transform: scale(0.6); }
+  55%  { opacity: 1; transform: scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.read-heart { display: inline-block; animation: read-heart 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
 /* 系统「减少动态效果」时,关掉气泡与挂件动画 */
 @media (prefers-reduced-motion: reduce) {
   .bubble-jelly,
@@ -1848,7 +1862,9 @@ html.dark .recv-paper {
   .page-in,
   .year-rise,
   .year-num,
-  .year-pulse {
+  .year-pulse,
+  .read-in,
+  .read-heart {
     animation: none !important;
   }
   /* 描边生长/端点淡入:关掉动画但要还原到"完全画好/可见",否则会一直隐藏 */

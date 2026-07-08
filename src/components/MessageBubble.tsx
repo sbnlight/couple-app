@@ -703,7 +703,10 @@ export default function MessageBubble({
           </button>
         )}
         {item.status === 'sent' && readLabel && (
-          <p className="mt-0.5 text-right text-xs text-gray-300">{t('已读')}</p>
+          <p className="read-in mt-0.5 text-right text-xs text-gray-300">
+            <span className="read-heart mr-0.5 text-rose-300" aria-hidden="true">♡</span>
+            {t('已读')}
+          </p>
         )}
       </div>
     </div>
