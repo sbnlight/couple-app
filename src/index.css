@@ -78,6 +78,10 @@ html.dark .bg-gray-200 {
 html.dark .bg-gray-300 {
   background-color: #4a4050;
 }
+html.dark .bg-gray-400 {
+  /* 记账拔河条 TA 段/圆点用色:比 gray-300 略亮,深色轨道上可辨,续暖紫灰渐变 */
+  background-color: #5a5062;
+}
 html.dark .text-gray-500 {
   color: #b4a9b2;
 }

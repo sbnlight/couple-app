@@ -549,23 +549,27 @@ export default function Ledger() {
 
                   {s.expense > 0 && (
                     <>
-                      {/* 双方支出对比条 */}
-                      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-gray-200">
+                      {/* 双方支出「拔河」双段对比条:我 primary 靠左长、TA 灰靠右长,在真实占比处相接 */}
+                      <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-gray-200">
                         <GrowBar
-                          className="bg-primary transition-[width] duration-700 ease-out"
+                          className="absolute left-0 top-0 h-full bg-primary transition-[width] duration-700 ease-out"
                           pct={(s.mineExpense / s.expense) * 100}
+                        />
+                        <GrowBar
+                          className="absolute right-0 top-0 h-full bg-gray-400 transition-[width] duration-700 ease-out"
+                          pct={((s.expense - s.mineExpense) / s.expense) * 100}
                         />
                       </div>
                       <div className="mt-1.5 flex justify-between text-xs text-gray-400">
                         <span>
                           <span className="mr-1 inline-block h-2 w-2 rounded-full bg-primary" />
                           {profile?.display_name ?? t('我')} {sym}
-                          {fmtMoney(s.mineExpense)}
+                          <CountUp value={s.mineExpense} decimals={2} duration={700} />
                         </span>
                         <span>
                           {partner?.display_name ?? t('TA')} {sym}
-                          {fmtMoney(s.expense - s.mineExpense)}
-                          <span className="ml-1 inline-block h-2 w-2 rounded-full bg-gray-300" />
+                          <CountUp value={s.expense - s.mineExpense} decimals={2} duration={700} />
+                          <span className="ml-1 inline-block h-2 w-2 rounded-full bg-gray-400" />
                         </span>
                       </div>
 
@@ -627,7 +631,7 @@ export default function Ledger() {
                             </div>
                             <span className="w-20 shrink-0 text-right text-gray-500">
                               {sym}
-                              {fmtMoney(amt)}
+                              <CountUp value={amt} decimals={2} duration={700} />
                             </span>
                           </div>
                         ))}
