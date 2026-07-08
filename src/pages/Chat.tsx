@@ -491,6 +491,7 @@ export default function Chat() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!draft.trim()) return
+    navigator.vibrate?.(8) // 发送:极轻触觉
     // 历史浏览中发消息:先回到最新再发,避免消息"落"在历史窗口里
     if (mode === 'history') await backToLatest()
     stickRef.current = true
@@ -905,7 +906,7 @@ export default function Chat() {
         <button
           type="submit"
           disabled={!draft.trim()}
-          className="rounded-full bg-primary px-4 py-2 text-base text-white disabled:opacity-40"
+          className="press-pop rounded-full bg-primary px-4 py-2 text-base text-white disabled:opacity-40"
         >
           {t('发送')}
         </button>
@@ -990,40 +991,47 @@ export default function Chat() {
             const left = Math.min(Math.max(r.left + r.width / 2, 104), window.innerWidth - 104)
             return (
               <div
-                className="absolute flex items-stretch overflow-hidden rounded-xl bg-gray-800/95 text-sm text-white shadow-xl backdrop-blur-sm"
+                className="absolute"
                 style={{
                   left,
                   top,
-                  maxWidth: 'calc(100vw - 16px)',
                   transform: `translate(-50%, ${below ? '0' : '-100%'})`,
                 }}
-                onClick={(e) => e.stopPropagation()}
               >
-                {actionTarget.item.type === 'text' && (
-                  <button
-                    type="button"
-                    onClick={() => void handleCopy()}
-                    className="px-4 py-2.5 active:bg-white/15"
-                  >
-                    {t('复制')}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleQuote}
-                  className="border-l border-white/15 px-4 py-2.5 active:bg-white/15"
+                <div
+                  className="menu-pop flex items-stretch overflow-hidden rounded-xl bg-gray-800/95 text-sm text-white shadow-xl backdrop-blur-sm"
+                  style={{
+                    transformOrigin: below ? 'top center' : 'bottom center',
+                    maxWidth: 'calc(100vw - 16px)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {t('引用')}
-                </button>
-                {canRecall(actionTarget.item) && (
+                  {actionTarget.item.type === 'text' && (
+                    <button
+                      type="button"
+                      onClick={() => void handleCopy()}
+                      className="px-4 py-2.5 active:bg-white/15"
+                    >
+                      {t('复制')}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => void handleRecall()}
-                    className="border-l border-white/15 px-4 py-2.5 text-red-300 active:bg-white/15"
+                    onClick={handleQuote}
+                    className="border-l border-white/15 px-4 py-2.5 active:bg-white/15"
                   >
-                    {t('撤回')}
+                    {t('引用')}
                   </button>
-                )}
+                  {canRecall(actionTarget.item) && (
+                    <button
+                      type="button"
+                      onClick={() => void handleRecall()}
+                      className="border-l border-white/15 px-4 py-2.5 text-red-300 active:bg-white/15"
+                    >
+                      {t('撤回')}
+                    </button>
+                  )}
+                </div>
               </div>
             )
           })()}

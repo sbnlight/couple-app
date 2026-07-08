@@ -1808,6 +1808,16 @@ html.dark .recv-paper {
 .countup-glow { display: inline-block; }
 .countup-glow.is-glow { animation: countup-glow 0.7s ease-out; }
 
+/* 长按操作菜单从锚点方向轻弹入 */
+@keyframes menu-pop {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.menu-pop { animation: menu-pop 0.16s cubic-bezier(0.22, 1, 0.36, 1); }
+/* 按钮按下回弹手感(发送键等);:disabled 时不缩 */
+.press-pop { transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1); }
+.press-pop:active:not(:disabled) { transform: scale(0.9); }
+
 /* 系统「减少动态效果」时,关掉气泡与挂件动画 */
 @media (prefers-reduced-motion: reduce) {
   .bubble-jelly,
@@ -1903,6 +1913,10 @@ html.dark .recv-paper {
   .chat-img-fade { opacity: 1 !important; transform: none !important; transition: none !important; }
   /* 减少动态效果:关掉数字高光(与 JS 侧 setGlow 早返回双保险) */
   .countup-glow.is-glow { animation: none !important; }
+  /* 减少动态效果:关掉长按菜单弹入与按钮回弹 */
+  .menu-pop { animation: none !important; }
+  .press-pop { transition: none !important; }
+  .press-pop:active:not(:disabled) { transform: none !important; }
   /* 减少动态效果时,关掉主题切换的柔和过渡(与 JS 侧双保险) */
   .theme-anim,
   .theme-anim *,

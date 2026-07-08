@@ -634,7 +634,10 @@ export default function MessageBubble({
     if (!onLongPress) return
     pressElRef.current = el
     pressTimer.current = window.setTimeout(() => {
-      if (pressElRef.current) onLongPress(pressElRef.current.getBoundingClientRect())
+      if (pressElRef.current) {
+        navigator.vibrate?.(15) // 长按命中:轻触觉确认"按到了"
+        onLongPress(pressElRef.current.getBoundingClientRect())
+      }
     }, 480)
   }
   const cancelPress = () => window.clearTimeout(pressTimer.current)

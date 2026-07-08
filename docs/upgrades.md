@@ -11,7 +11,7 @@
 | U8  | 批1 | 主题色/深浅切换柔和过渡 | index.css, prefs.ts, Us.tsx | 已上线master | 78479f8 |
 | U2  | 批1 | 「已读」柔入 + 小心跳 | MessageBubble.tsx, index.css | 已上线master | 78479f8 |
 | U10 | 批1 | 图片/表情包加载淡入 | MessageBubble.tsx, index.css | 已上线master | 78479f8 |
-| U3  | 批2 | 聊天高频动作手感(长按弹入+触觉、发送键回弹) | Chat.tsx, MessageBubble.tsx, index.css | 待做 | - |
+| U3  | 批2 | 聊天高频动作手感(长按弹入+触觉、发送键回弹) | Chat.tsx, MessageBubble.tsx, index.css | 完成(build过) | 待推 |
 | U9  | 批2 | CountUp 数字揭晓「高光一闪」 | Fx.tsx, index.css, Us.tsx, Ledger.tsx | 完成(build过) | 待推 |
 | U4  | 批2 | 记账「拔河」双段对比条 + 两端金额滚动 | Ledger.tsx, index.css | 完成(build过) | 待推 |
 | U5  | 批3 | 双城「小天空」昼夜天穹(晨昏细分+流星) | TwoCityCard.tsx, index.css | 待做 | - |
@@ -34,6 +34,7 @@
 ## 逐项日志
 (每项完成后在此追加:改了什么 / build 结果 / 真机验证要点)
 
+- **U3 聊天手感**(build过):`MessageBubble.startPress` 长按命中 `vibrate(15)`;`Chat.handleSubmit` 发送 `vibrate(8)`;发送键加 `press-pop` 按压回弹(:active scale.9);长按菜单拆内外两层——外层定位、内层 `menu-pop` 弹入(transformOrigin 随 below 取 top/bottom center,不与定位 transform 冲突),按钮原样;`index.css` 加 menu-pop/press-pop 并进 reduced-motion 关闭。真机验证:长按消息菜单从气泡方向弹出+轻震;点发送键有回弹+微震(iPhone 无震动正常)。
 - **U4 记账拔河条 + 金额滚动**(build过,reviewer 审无阻断):`Ledger.tsx` 双方支出对比条改成 `relative` 轨道 + 两个绝对定位 GrowBar(我 primary 靠左、TA gray-400 靠右,pct 和=100 在占比处相接);两端金额 + 分类占比金额换 `CountUp decimals=2 duration=700` 与条同步;TA 圆点同步 gray-400;`index.css` 补 `.bg-gray-400` dark 覆写(#5a5062)。真机验证:记账月度页看双方支出为左右两段拔河、两端金额滚动;深色模式两段可辨。
 - **U9 CountUp 数字高光**(build过):`Fx.tsx` CountUp 加可选 `glowOnDone`(默认 false 不影响现有调用,仍返回 Fragment;为真才包 inline-block span,滚到终点 setGlow 触发一次性 `countup-glow`:主题色 text-shadow + scale 1.06,0.7s);`index.css` 加 keyframe 并进 reduced-motion 关闭。已在**恋爱天数大卡(Us:454)**与**记账月度汇总总额(Ledger:498)**启用。真机验证:进「我们」页恋爱天数滚到终点闪一下微光;进记账页汇总总额滚完闪一下;切月金额重滚会重播。
 - **U10 图片/表情包加载淡入**(build过):`MessageBubble.tsx` ChatImage 加 `loaded` 状态(onLoad 置真 + ref `complete` 兜底防缓存图错过 onLoad 而永久透明),img 用 `chat-img-fade`/`is-loaded` 做 opacity+微 scale 淡入(0.25s);`onMediaLoad?.()` 保留(贴底滚动不坏);`index.css` 加 `.chat-img-fade`,reduced-motion 下强制 opacity:1 直显。真机验证:发/收图片时加载完淡入非硬切;失败仍可点重载;弱网重载后重新淡入。
