@@ -20,6 +20,7 @@ import TwoCityCard from '../components/TwoCityCard'
 import LocationSetting from '../components/LocationSetting'
 import GratitudeJar from '../components/GratitudeJar'
 import { openThumbkiss } from '../lib/thumbkissStore'
+import { sendLive } from '../lib/live'
 import LoveTree from '../components/LoveTree'
 import MindQuiz from '../components/MindQuiz'
 import { CountUp, FloatLayer } from '../components/Fx'
@@ -382,6 +383,17 @@ export default function Us() {
     setTheme(id)
   }
 
+  const lastFxRef = useRef(0)
+  // 点恋爱大卡:本地放一场爱心雨,并广播给对方,让两台屏幕一起下(2.5s 防连点刷屏)
+  const celebrateTogether = () => {
+    if (Date.now() - lastFxRef.current < 2500) return
+    lastFxRef.current = Date.now()
+    const emojis = ['🎆', '🎇', '❤️', '💕', '✨'] // 烟花+爱心,与「一起放烟花」文案一致
+    fireEffect(emojis, 28) // 自己也看到(fireEffect 自带 reduced-motion 源头拦截)
+    sendLive('fx', { emojis, count: 28 }) // TA 的屏幕也一起下
+    navigator.vibrate?.(12)
+  }
+
   const handleSignOut = () => {
     if (window.confirm(t('确定要退出登录吗?'))) void signOut()
   }
@@ -441,7 +453,10 @@ export default function Us() {
 
           {hasTogether ? (
             <div
-              className={`relative mt-4 overflow-hidden rounded-2xl px-4 py-4 text-center ${
+              role="button"
+              aria-label={t('轻点,和 TA 一起放烟花 🎆')}
+              onClick={celebrateTogether}
+              className={`relative mt-4 cursor-pointer select-none overflow-hidden rounded-2xl px-4 py-4 text-center active:opacity-90 ${
                 isMilestoneDay ? 'love-milestone-glow' : ''
               }`}
             >
@@ -470,6 +485,7 @@ export default function Us() {
                     </div>
                   </>
                 )}
+                <p className="mt-2 text-[11px] text-rose-300">{t('轻点,和 TA 一起放烟花 🎆')}</p>
               </div>
             </div>
           ) : (

@@ -50,6 +50,17 @@ export default function GlobalLive() {
     })
   }, [partner?.display_name])
 
+  // 对方触发「双人同步撒花」→ 本地也放一场同样的(校验 + 限量防异常 payload)
+  useEffect(() => {
+    return onLive('fx', (p) => {
+      const emojis = Array.isArray(p.emojis)
+        ? (p.emojis as unknown[]).filter((e): e is string => typeof e === 'string' && !!e).slice(0, 8)
+        : []
+      const count = typeof p.count === 'number' ? Math.min(40, Math.max(1, Math.round(p.count))) : 24
+      if (emojis.length) fireEffect(emojis, count)
+    })
+  }, [])
+
   // 纪念日彩蛋:用共用换日时区取「今天」;循环纪念日按 recurringUntil(闰日安全)判定;
   // 键与 Us 的 special-day 统一,避免同一天 GlobalLive + Us 各撒一次花
   useEffect(() => {

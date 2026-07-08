@@ -7,7 +7,7 @@ import { supabase } from './supabase'
  * 由 AuthContext 在配对完成后初始化,全局单例。
  */
 
-export type LiveEvent = 'nudge' | 'typing' | 'miss' | 'touch'
+export type LiveEvent = 'nudge' | 'typing' | 'miss' | 'touch' | 'fx'
 
 let channel: RealtimeChannel | null = null
 let currentCoupleId = ''
@@ -28,7 +28,7 @@ export function initLive(coupleId: string, userId: string) {
   channel = supabase.channel(`live-${coupleId}`, {
     config: { presence: { key: userId }, broadcast: { self: false } },
   })
-  for (const ev of ['nudge', 'typing', 'miss', 'touch'] as LiveEvent[]) {
+  for (const ev of ['nudge', 'typing', 'miss', 'touch', 'fx'] as LiveEvent[]) {
     channel.on('broadcast', { event: ev }, ({ payload }) => {
       const p = (payload ?? {}) as Record<string, unknown>
       if (p.from === myId) return

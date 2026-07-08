@@ -378,6 +378,7 @@ const dict: Record<string, T2> = {
   '删除这个纪念日?': ['Delete this anniversary?', 'この記念日を削除?'],
   '今天就要见面啦 ✈️': ["Meeting today! ✈️", '今日会えます ✈️'],
   '今天是「{t}」🎉': ['Today is "{t}" 🎉', '今日は「{t}」🎉'],
+  '轻点,和 TA 一起放烟花 🎆': ['Tap to set off fireworks together 🎆', 'タップして一緒に花火を打ち上げよう 🎆'],
 
   /* ---- 每日一问 ---- */
   '每日一问': ['Daily Question', '毎日のひとこと'],
