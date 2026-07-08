@@ -91,7 +91,27 @@ function syncThemeColor() {
   }
 }
 
-export function applyThemeMode(mode: ThemeMode) {
+/**
+ * 手动切换主题/深浅色时,给 <html> 临时挂一个 .theme-anim 类,
+ * 让承载主题色的元素在 ~260ms 窗口内对 background/border/color 做一次柔和过渡;
+ * 窗口结束移除,避免常驻过渡影响 hover 等日常交互。
+ * 冷启动 initPrefs 不调用它 —— 所以首屏恢复偏好不会闪。
+ */
+let themeAnimTimer: number | undefined
+function flashThemeTransition() {
+  // 尊重「减少动态效果」:直接不加过渡窗口(CSS 那边也有兜底,双保险)
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const el = document.documentElement
+  el.classList.add('theme-anim')
+  if (themeAnimTimer) window.clearTimeout(themeAnimTimer)
+  themeAnimTimer = window.setTimeout(() => {
+    el.classList.remove('theme-anim')
+    themeAnimTimer = undefined
+  }, 260)
+}
+
+export function applyThemeMode(mode: ThemeMode, animate = false) {
+  if (animate) flashThemeTransition()
   localStorage.setItem(MODE_KEY, mode)
   const dark =
     mode === 'dark' ||
@@ -785,7 +805,8 @@ export function getTheme(): ThemeId {
   return THEMES.some((t) => t.id === v) ? (v as ThemeId) : 'rose'
 }
 
-export function applyTheme(id: ThemeId) {
+export function applyTheme(id: ThemeId, animate = false) {
+  if (animate) flashThemeTransition()
   // 默认粉色直接走 :root 变量,其他主题通过 data-theme 覆盖
   if (id === 'rose') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.setAttribute('data-theme', id)

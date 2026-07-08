@@ -378,7 +378,7 @@ export default function Us() {
     setFontSize(id)
   }
   const handleTheme = (id: ThemeId) => {
-    applyTheme(id)
+    applyTheme(id, true)
     setTheme(id)
   }
 
@@ -735,7 +735,7 @@ export default function Us() {
                 key={m.id}
                 type="button"
                 onClick={() => {
-                  applyThemeMode(m.id)
+                  applyThemeMode(m.id, true)
                   setMode(m.id)
                 }}
                 className={`flex-1 rounded-xl border py-2 text-sm transition-colors ${

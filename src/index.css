@@ -1768,6 +1768,15 @@ html.dark .recv-paper {
   animation: year-pulse 1.6s ease-in-out infinite;
 }
 
+/* 主题色 / 深浅色「手动切换」时的一次性柔和过渡(仅 .theme-anim 存在的 ~260ms 窗口内生效;
+   冷启动不加此类,故首屏无过渡闪动)。只过渡颜色相关属性,纯 GPU 之外但范围与时长都很小。 */
+.theme-anim,
+.theme-anim *,
+.theme-anim *::before,
+.theme-anim *::after {
+  transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease !important;
+}
+
 /* 系统「减少动态效果」时,关掉气泡与挂件动画 */
 @media (prefers-reduced-motion: reduce) {
   .bubble-jelly,
@@ -1856,6 +1865,13 @@ html.dark .recv-paper {
     animation: none !important;
     transform: none !important;
     opacity: 1 !important;
+  }
+  /* 减少动态效果时,关掉主题切换的柔和过渡(与 JS 侧双保险) */
+  .theme-anim,
+  .theme-anim *,
+  .theme-anim *::before,
+  .theme-anim *::after {
+    transition: none !important;
   }
 }
 
