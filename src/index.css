@@ -1818,6 +1818,14 @@ html.dark .recv-paper {
 .press-pop { transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1); }
 .press-pop:active:not(:disabled) { transform: scale(0.9); }
 
+/* 双城深夜:偶尔划过一颗流星(低频 15s、单元素、纯 transform/opacity;基础 opacity:0 便于 reduce 时隐藏) */
+@keyframes city-shoot {
+  0%, 90% { opacity: 0; transform: translate(0, 0) rotate(28deg); }
+  93%     { opacity: 0.9; }
+  100%    { opacity: 0; transform: translate(-11px, 8px) rotate(28deg); }
+}
+.city-shoot { opacity: 0; animation: city-shoot 15s ease-in infinite; }
+
 /* 系统「减少动态效果」时,关掉气泡与挂件动画 */
 @media (prefers-reduced-motion: reduce) {
   .bubble-jelly,
@@ -1917,6 +1925,8 @@ html.dark .recv-paper {
   .menu-pop { animation: none !important; }
   .press-pop { transition: none !important; }
   .press-pop:active:not(:disabled) { transform: none !important; }
+  /* 减少动态效果:关掉双城深夜流星(基础 opacity:0,关掉后自然隐藏) */
+  .city-shoot { animation: none !important; }
   /* 减少动态效果时,关掉主题切换的柔和过渡(与 JS 侧双保险) */
   .theme-anim,
   .theme-anim *,

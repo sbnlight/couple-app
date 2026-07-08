@@ -99,21 +99,34 @@ function CityCol({
   }, [tz, lat, lng])
 
   const hr = hourInTz(tz)
-  const phase = hr >= 6 && hr < 17 ? 'day' : hr >= 17 && hr < 20 ? 'dusk' : 'night'
-  // 按当地时段给场景一抹底色(白天暖蓝 / 黄昏橙粉 / 夜晚靛蓝)
-  const tint =
-    phase === 'day'
-      ? 'from-sky-100 to-white'
-      : phase === 'dusk'
-        ? 'from-orange-100 to-rose-50'
-        : 'from-indigo-100 to-slate-50'
+  // 5 段晨昏:黎明(5-7)/白天(7-17)/黄昏(17-19)/暮色(19-21)/深夜(其余)
+  const phase =
+    hr >= 5 && hr < 7
+      ? 'dawn'
+      : hr >= 7 && hr < 17
+        ? 'day'
+        : hr >= 17 && hr < 19
+          ? 'dusk'
+          : hr >= 19 && hr < 21
+            ? 'twilight'
+            : 'night'
+  // 每段:小天空渐变底色 + 中心 emoji + 天气缺失时的文字(class 用字面量,Tailwind JIT 才能扫到)
+  const SKY = {
+    dawn:     { tint: 'from-amber-100 to-sky-100',    emoji: '🌄', text: '黎明' },
+    day:      { tint: 'from-sky-100 to-white',        emoji: '☀️', text: '白天' },
+    dusk:     { tint: 'from-orange-100 to-rose-50',   emoji: '🌇', text: '黄昏' },
+    twilight: { tint: 'from-violet-200 to-indigo-100',emoji: '🌆', text: '暮色' },
+    night:    { tint: 'from-indigo-200 to-slate-100', emoji: '🌙', text: '夜晚' },
+  } as const
+  const sky = SKY[phase]
+  const starry = phase === 'night' || phase === 'twilight' // 暮色与深夜都有星
   return (
     <div className="flex flex-1 flex-col items-center gap-0.5">
-      {/* 昼夜小天空:白天太阳轻浮 / 黄昏日落 / 夜晚月亮 + 眨眼星星 */}
+      {/* 昼夜小天空:黎明暖橙 / 白天太阳轻浮 / 黄昏日落 / 暮色深紫 / 深夜月亮 + 眨眼星星 + 偶尔流星 */}
       <span
-        className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b ${tint}`}
+        className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b ${sky.tint}`}
       >
-        {phase === 'night' && (
+        {starry && (
           <>
             <span className="deco-twinkle absolute left-1.5 top-1.5 h-0.5 w-0.5 rounded-full bg-white" />
             <span
@@ -126,9 +139,14 @@ function CityCol({
             />
           </>
         )}
-        <span className={`text-xl ${phase === 'day' ? 'deco-bob inline-block' : ''}`}>
-          {phase === 'day' ? '☀️' : phase === 'dusk' ? '🌇' : '🌙'}
-        </span>
+        {phase === 'night' && (
+          // 深夜偶尔划过一颗流星(低频 15s、单元素);用内联白色避免 dark 下 bg-white 被覆写
+          <span
+            className="city-shoot pointer-events-none absolute right-1 top-1 h-px w-2 rounded-full"
+            style={{ backgroundColor: '#fff', boxShadow: '0 0 2px #fff', animationDelay: mine ? '0s' : '7s' }}
+          />
+        )}
+        <span className={`text-xl ${phase === 'day' ? 'deco-bob inline-block' : ''}`}>{sky.emoji}</span>
       </span>
       <span className="max-w-full truncate text-sm font-medium text-gray-600">
         {name}
@@ -140,12 +158,8 @@ function CityCol({
           <>
             <span className="deco-bob inline-block">{weather.emoji}</span> {weather.temp}°
           </>
-        ) : phase === 'day' ? (
-          t('白天')
-        ) : phase === 'dusk' ? (
-          t('黄昏')
         ) : (
-          t('夜晚')
+          t(sky.text)
         )}
       </span>
     </div>
