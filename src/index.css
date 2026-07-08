@@ -1791,6 +1791,10 @@ html.dark .recv-paper {
 }
 .read-heart { display: inline-block; animation: read-heart 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* 聊天图片/表情包加载完成后的淡入(替代骨架→图片硬切) */
+.chat-img-fade { opacity: 0; transform: scale(0.98); transition: opacity 0.25s ease, transform 0.25s ease; }
+.chat-img-fade.is-loaded { opacity: 1; transform: scale(1); }
+
 /* 系统「减少动态效果」时,关掉气泡与挂件动画 */
 @media (prefers-reduced-motion: reduce) {
   .bubble-jelly,
@@ -1882,6 +1886,8 @@ html.dark .recv-paper {
     transform: none !important;
     opacity: 1 !important;
   }
+  /* 减少动态效果:图片直接可见,不做淡入 */
+  .chat-img-fade { opacity: 1 !important; transform: none !important; transition: none !important; }
   /* 减少动态效果时,关掉主题切换的柔和过渡(与 JS 侧双保险) */
   .theme-anim,
   .theme-anim *,

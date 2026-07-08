@@ -375,6 +375,7 @@ function ChatImage({
   const [url, setUrl] = useState<string | null>(item.previewUrl ?? null)
   const [errored, setErrored] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [loaded, setLoaded] = useState(false)
   const isSticker = item.type === 'sticker'
 
   useEffect(() => {
@@ -400,6 +401,7 @@ function ChatImage({
   const retry = () => {
     if (item.content) clearSignedUrl(isSticker ? 'stickers' : 'chat-images', item.content)
     setUrl(null)
+    setLoaded(false)
     setErrored(false)
     setReloadKey((k) => k + 1)
   }
@@ -425,13 +427,20 @@ function ChatImage({
     <img
       src={url}
       alt={isSticker ? t('表情包') : t('图片消息')}
-      className={
+      // 已缓存的图片可能在 React 挂上 onLoad 前就 complete,ref 里补判一次,防永久停在透明
+      ref={(el) => {
+        if (el && el.complete && el.naturalWidth > 0) setLoaded(true)
+      }}
+      className={`chat-img-fade${loaded ? ' is-loaded' : ''} ${
         isSticker
           ? 'h-24 w-24 rounded-lg object-contain'
           : 'max-h-64 max-w-full rounded-xl object-cover'
-      }
+      }`}
       onClick={() => onPreview(url)}
-      onLoad={onMediaLoad}
+      onLoad={() => {
+        setLoaded(true)
+        onMediaLoad?.()
+      }}
       onError={() => setErrored(true)}
     />
   )
