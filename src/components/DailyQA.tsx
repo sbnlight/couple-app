@@ -90,6 +90,7 @@ export default function DailyQA({
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [justAnswered, setJustAnswered] = useState(false) // 首次答完→播对方卡"揭开"过场
   const [err, setErr] = useState('')
   const [viewer, setViewer] = useState<string | null>(null)
   // 对方改动提醒 + 历史留言编辑
@@ -264,6 +265,7 @@ export default function DailyQA({
       imgs.forEach((im) => URL.revokeObjectURL(im.url))
       setImgs([])
       setKeptPaths([])
+      if (!editing) setJustAnswered(true) // 首次答完才播"揭开"(编辑保存不播)
       setEditing(false)
       await load() // 答完即可看到对方的答案
     } catch (e) {
@@ -355,12 +357,22 @@ export default function DailyQA({
                   {t('修改')}
                 </button>
               </div>
-              <div className="modal-pop mt-3 rounded-xl bg-gray-50 p-3">
+              <div className="modal-pop relative mt-3 overflow-hidden rounded-xl bg-gray-50 p-3">
                 <p className="text-xs text-gray-400">{t('{name}的回答', { name: partnerName })}</p>
                 {theirs ? (
                   renderAnswer(theirs)
                 ) : (
                   <p className="mt-1 text-sm text-gray-300">{t('TA 还没回答,耐心等等~')}</p>
+                )}
+                {/* 首次答完那一刻:盖一层遮罩再滑开淡出,露出 TA 的回答;动画结束复位 justAnswered */}
+                {justAnswered && theirs && (
+                  <span
+                    className="qa-reveal pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-gray-100 text-2xl"
+                    aria-hidden="true"
+                    onAnimationEnd={() => setJustAnswered(false)}
+                  >
+                    🙈
+                  </span>
                 )}
               </div>
             </>
@@ -438,6 +450,16 @@ export default function DailyQA({
                 {busy ? t('提交中…') : editing ? t('保存修改') : t('提交回答')}
               </button>
               {err && <p className="mt-2 text-center text-xs text-red-500">{err}</p>}
+              {/* 磨砂预告卡:仅首次作答(非编辑)时显示,制造"答完就能看到 TA"的期待 */}
+              {!editing && (
+                <div className="relative mt-3 overflow-hidden rounded-xl bg-gray-50 p-3">
+                  <p className="text-xs text-gray-400">{t('{name}的回答', { name: partnerName })}</p>
+                  <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-300">
+                    <span className="deco-bob inline-block">🙈</span>
+                    {theyAnswered ? t('TA 已经写好啦,答完就能看到') : t('答完就能看到 TA 的回答')}
+                  </div>
+                </div>
+              )}
             </form>
           )}
         </div>

@@ -1826,6 +1826,13 @@ html.dark .recv-paper {
 }
 .city-shoot { opacity: 0; animation: city-shoot 15s ease-in infinite; }
 
+/* 每日一问「揭开」:答完后对方答案卡上的遮罩上滑淡出,露出 TA 的回答 */
+@keyframes qa-reveal {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
+.qa-reveal { animation: qa-reveal 0.55s ease-out both; }
+
 /* 系统「减少动态效果」时,关掉气泡与挂件动画 */
 @media (prefers-reduced-motion: reduce) {
   .bubble-jelly,
@@ -1927,6 +1934,8 @@ html.dark .recv-paper {
   .press-pop:active:not(:disabled) { transform: none !important; }
   /* 减少动态效果:关掉双城深夜流星(基础 opacity:0,关掉后自然隐藏) */
   .city-shoot { animation: none !important; }
+  /* 减少动态效果:每日一问遮罩直接透明,否则动画被关会永久盖住答案 */
+  .qa-reveal { animation: none !important; opacity: 0 !important; }
   /* 减少动态效果时,关掉主题切换的柔和过渡(与 JS 侧双保险) */
   .theme-anim,
   .theme-anim *,

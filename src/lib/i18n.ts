@@ -385,6 +385,8 @@ const dict: Record<string, T2> = {
   '我的回答': ['My answer', '私の回答'],
   '{name}的回答': ["{name}'s answer", '{name}の回答'],
   'TA 还没回答,耐心等等~': ["They haven't answered yet — hang tight~", 'まだ回答していません'],
+  '答完就能看到 TA 的回答': ['Answer to unlock their reply', '答えると相手の回答が見られる'],
+  'TA 已经写好啦,答完就能看到': ['They already replied — answer to reveal', '相手はもう回答済み、答えると見られる'],
   '修改': ['Edit', '編集'],
   '写下你的回答…(也可以只发一张图)': ['Write your answer… (or just photos)', '回答を書く…(画像だけでもOK)'],
   '(保留原配图;选了新图则整组替换)': ['(Keeps old photos; new ones replace all)', '(新しい画像を選ぶと差し替え)'],

@@ -15,7 +15,7 @@
 | U9  | 批2 | CountUp 数字揭晓「高光一闪」 | Fx.tsx, index.css, Us.tsx, Ledger.tsx | 完成(build过) | 待推 |
 | U4  | 批2 | 记账「拔河」双段对比条 + 两端金额滚动 | Ledger.tsx, index.css | 完成(build过) | 待推 |
 | U5  | 批3 | 双城「小天空」昼夜天穹(晨昏细分+流星) | TwoCityCard.tsx, index.css, i18n.ts | 完成(build过) | 待推 |
-| U6  | 批3 | 每日一问「先蒙后揭」揭晓过场 | DailyQA.tsx, index.css | 待做 | - |
+| U6  | 批3 | 每日一问「先蒙后揭」揭晓过场 | DailyQA.tsx, index.css, i18n.ts | 完成(build过·reviewer无阻断) | 待推 |
 | U7  | 批3 | 纪念日/生日「就是今天」自动庆祝 | AnniversaryManager.tsx / Us.tsx | 待做 | - |
 | U1  | 批4 | 双人同步撒花(旗舰,需双端联调) | live.ts, GlobalLive.tsx, 触发点 | 待做 | - |
 
@@ -34,6 +34,7 @@
 ## 逐项日志
 (每项完成后在此追加:改了什么 / build 结果 / 真机验证要点)
 
+- **U6 每日一问先蒙后揭**(build过,reviewer 审无阻断):`DailyQA` 未答时表单加磨砂预告卡(🙈 答完就能看到);新 state `justAnswered` 首答置真,对方答案卡盖 `qa-reveal` 遮罩滑开露出(onAnimationEnd 复位;both+pointer-events-none 与 reduce opacity:0 双保险,答案绝不被永久挡);`index.css` 加 keyframe 进 reduced-motion;`i18n` 补两条三语。真机验证:未答见磨砂预告卡;首次答完对方答案卡遮罩滑开;编辑保存不播;减少动态下答案直显不被挡。
 - **U5 双城昼夜天穹**(build过,Lead 验证:边界0-23无缝/JIT产物确认/dark流星内联白/reduce已关):`TwoCityCard` CityCol 昼夜从 3 段扩 5 段(黎明5-7/白天7-17/黄昏17-19/暮色19-21/深夜),SKY 配置表(tint/emoji/text);暮色+深夜显星,深夜加 `city-shoot` 低频流星(15s单元素);`index.css` 加 keyframe 进 reduced-motion 关闭;`i18n` 补黎明/白天/黄昏/暮色/夜晚三语。真机验证:双城两地「小天空」随当地时刻晨昏渐变,深夜偶有流星划过。
 - **U3 聊天手感**(build过):`MessageBubble.startPress` 长按命中 `vibrate(15)`;`Chat.handleSubmit` 发送 `vibrate(8)`;发送键加 `press-pop` 按压回弹(:active scale.9);长按菜单拆内外两层——外层定位、内层 `menu-pop` 弹入(transformOrigin 随 below 取 top/bottom center,不与定位 transform 冲突),按钮原样;`index.css` 加 menu-pop/press-pop 并进 reduced-motion 关闭。真机验证:长按消息菜单从气泡方向弹出+轻震;点发送键有回弹+微震(iPhone 无震动正常)。
 - **U4 记账拔河条 + 金额滚动**(build过,reviewer 审无阻断):`Ledger.tsx` 双方支出对比条改成 `relative` 轨道 + 两个绝对定位 GrowBar(我 primary 靠左、TA gray-400 靠右,pct 和=100 在占比处相接);两端金额 + 分类占比金额换 `CountUp decimals=2 duration=700` 与条同步;TA 圆点同步 gray-400;`index.css` 补 `.bg-gray-400` dark 覆写(#5a5062)。真机验证:记账月度页看双方支出为左右两段拔河、两端金额滚动;深色模式两段可辨。
