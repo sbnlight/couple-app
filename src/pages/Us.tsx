@@ -451,7 +451,7 @@ export default function Us() {
               <div className="relative">
                 <p className="text-xs text-gray-400">{t('我们已经在一起')}</p>
                 <p className="mt-0.5 text-4xl font-bold text-primary-dark">
-                  <CountUp value={days} />{' '}
+                  <CountUp value={days} glowOnDone />{' '}
                   <span className="text-base font-normal">{t('天')} ❤️</span>
                 </p>
                 {nextMilestone && (

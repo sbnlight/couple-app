@@ -8,11 +8,11 @@
 
 | 序 | 批 | 升级 | 主要改动文件 | 状态 | commit |
 |---|---|---|---|---|---|
-| U8  | 批1 | 主题色/深浅切换柔和过渡 | index.css, prefs.ts, Us.tsx | 完成(build过) | 本批提交 |
-| U2  | 批1 | 「已读」柔入 + 小心跳 | MessageBubble.tsx, index.css | 完成(build过) | 本批提交 |
-| U10 | 批1 | 图片/表情包加载淡入 | MessageBubble.tsx, index.css | 完成(build过) | 本批提交 |
+| U8  | 批1 | 主题色/深浅切换柔和过渡 | index.css, prefs.ts, Us.tsx | 已上线master | 78479f8 |
+| U2  | 批1 | 「已读」柔入 + 小心跳 | MessageBubble.tsx, index.css | 已上线master | 78479f8 |
+| U10 | 批1 | 图片/表情包加载淡入 | MessageBubble.tsx, index.css | 已上线master | 78479f8 |
 | U3  | 批2 | 聊天高频动作手感(长按弹入+触觉、发送键回弹) | Chat.tsx, MessageBubble.tsx, index.css | 待做 | - |
-| U9  | 批2 | CountUp 数字揭晓「高光一闪」 | Fx.tsx, index.css | 待做 | - |
+| U9  | 批2 | CountUp 数字揭晓「高光一闪」 | Fx.tsx, index.css, Us.tsx, Ledger.tsx | 完成(build过) | 待推 |
 | U4  | 批2 | 记账「拔河」双段对比条 + 两端金额滚动 | Ledger.tsx | 待做 | - |
 | U5  | 批3 | 双城「小天空」昼夜天穹(晨昏细分+流星) | TwoCityCard.tsx, index.css | 待做 | - |
 | U6  | 批3 | 每日一问「先蒙后揭」揭晓过场 | DailyQA.tsx, index.css | 待做 | - |
@@ -34,6 +34,7 @@
 ## 逐项日志
 (每项完成后在此追加:改了什么 / build 结果 / 真机验证要点)
 
+- **U9 CountUp 数字高光**(build过):`Fx.tsx` CountUp 加可选 `glowOnDone`(默认 false 不影响现有调用,仍返回 Fragment;为真才包 inline-block span,滚到终点 setGlow 触发一次性 `countup-glow`:主题色 text-shadow + scale 1.06,0.7s);`index.css` 加 keyframe 并进 reduced-motion 关闭。已在**恋爱天数大卡(Us:454)**与**记账月度汇总总额(Ledger:498)**启用。真机验证:进「我们」页恋爱天数滚到终点闪一下微光;进记账页汇总总额滚完闪一下;切月金额重滚会重播。
 - **U10 图片/表情包加载淡入**(build过):`MessageBubble.tsx` ChatImage 加 `loaded` 状态(onLoad 置真 + ref `complete` 兜底防缓存图错过 onLoad 而永久透明),img 用 `chat-img-fade`/`is-loaded` 做 opacity+微 scale 淡入(0.25s);`onMediaLoad?.()` 保留(贴底滚动不坏);`index.css` 加 `.chat-img-fade`,reduced-motion 下强制 opacity:1 直显。真机验证:发/收图片时加载完淡入非硬切;失败仍可点重载;弱网重载后重新淡入。
 - **U2 已读柔入+小心跳**(build过):`MessageBubble.tsx:705` 的「已读」`<p>` 加 `read-in` 类,前置 `♡`(`read-heart` 一次性弹跳)。纯 CSS 入场(条件渲染挂载即播一次,无 JS state/timer);`index.css` 加 `read-in`/`read-heart` keyframes 并进 reduced-motion 关闭列表(关掉后静态可见)。真机验证:对方读到你最新消息时「♡ 已读」轻柔淡入+心跳一次,只播一次;开系统「减少动态」后应静态直接显示。
 - **U8 主题切换柔和过渡**(build过):`prefs.ts` 加 `flashThemeTransition()` 助手 + `applyTheme/applyThemeMode` 可选 `animate` 参数(手动切换才挂 260ms `.theme-anim`,冷启动 initPrefs 不传→不闪);`Us.tsx` 两处调用传 `true`;`index.css` 加 `.theme-anim *` 颜色过渡(0.22s)并在 reduced-motion 块置 none。仅过渡 background/border/color,无新依赖。真机验证:我们页点主题色圆板/切浅深色→界面柔和变色不硬闪;杀进程冷启动首屏无过渡闪动;开系统「减少动态」后手动切换应瞬时无过渡。

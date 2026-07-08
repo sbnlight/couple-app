@@ -15,6 +15,7 @@ export function CountUp({
   decimals = 0,
   prefix = '',
   suffix = '',
+  glowOnDone = false,
 }: {
   value: number
   run?: boolean
@@ -22,21 +23,27 @@ export function CountUp({
   decimals?: number
   prefix?: string
   suffix?: string
+  glowOnDone?: boolean
 }) {
   const [n, setN] = useState(run ? 0 : value)
+  const [glow, setGlow] = useState(false)
   useEffect(() => {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     if (!run || reduce) {
       setN(value)
       return
     }
+    setGlow(false) // 新一轮滚动先清掉高光,便于重滚时重播
     let raf = 0
     const start = performance.now()
     const tick = (now: number) => {
       const p = Math.min(1, (now - start) / duration)
       setN(value * (1 - Math.pow(1 - p, 3)))
       if (p < 1) raf = requestAnimationFrame(tick)
-      else setN(value)
+      else {
+        setN(value)
+        if (glowOnDone) setGlow(true) // 滚到终点触发一次性高光
+      }
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
@@ -45,13 +52,16 @@ export function CountUp({
     decimals > 0
       ? n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
       : Math.round(n).toLocaleString()
-  return (
+  const inner = (
     <>
       {prefix}
       {body}
       {suffix}
     </>
   )
+  // 只有 glowOnDone 时才包一层 span,其它调用保持零变化(仍是 Fragment)
+  if (!glowOnDone) return inner
+  return <span className={`countup-glow${glow ? ' is-glow' : ''}`}>{inner}</span>
 }
 
 /** 缓缓上浮的装饰层(爱心/星星/彩纸等);放在 relative 容器内当氛围底。 */

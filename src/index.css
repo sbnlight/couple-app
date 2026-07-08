@@ -1795,6 +1795,15 @@ html.dark .recv-paper {
 .chat-img-fade { opacity: 0; transform: scale(0.98); transition: opacity 0.25s ease, transform 0.25s ease; }
 .chat-img-fade.is-loaded { opacity: 1; transform: scale(1); }
 
+/* CountUp 数字滚到终点时的一次性高光(揭晓感);主题色微光 + 极轻放大 */
+@keyframes countup-glow {
+  0%   { transform: scale(1);    text-shadow: 0 0 0 transparent; }
+  40%  { transform: scale(1.06); text-shadow: 0 0 12px color-mix(in srgb, var(--c-primary) 55%, transparent); }
+  100% { transform: scale(1);    text-shadow: 0 0 0 transparent; }
+}
+.countup-glow { display: inline-block; }
+.countup-glow.is-glow { animation: countup-glow 0.7s ease-out; }
+
 /* 系统「减少动态效果」时,关掉气泡与挂件动画 */
 @media (prefers-reduced-motion: reduce) {
   .bubble-jelly,
@@ -1888,6 +1897,8 @@ html.dark .recv-paper {
   }
   /* 减少动态效果:图片直接可见,不做淡入 */
   .chat-img-fade { opacity: 1 !important; transform: none !important; transition: none !important; }
+  /* 减少动态效果:关掉数字高光(与 JS 侧 setGlow 早返回双保险) */
+  .countup-glow.is-glow { animation: none !important; }
   /* 减少动态效果时,关掉主题切换的柔和过渡(与 JS 侧双保险) */
   .theme-anim,
   .theme-anim *,

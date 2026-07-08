@@ -495,7 +495,7 @@ export default function Ledger() {
                         })()}
                       </p>
                       <p className="mt-1 text-2xl font-bold">
-                        <CountUp value={s.expense} decimals={2} prefix={sym} />
+                        <CountUp value={s.expense} decimals={2} prefix={sym} glowOnDone />
                       </p>
                     </div>
                     {s.income > 0 && (
