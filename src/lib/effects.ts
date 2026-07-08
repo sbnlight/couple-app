@@ -27,6 +27,11 @@ const KEYWORD_EFFECTS: { keys: string[]; emojis: string[] }[] = [
   { keys: ['节日快乐', '情人节快乐'], emojis: ['🌹', '💝', '✨'] },
 ]
 
+/** 按纪念日标题猜是否「生日」(用于挑庆祝表情;支持中/英/日关键词) */
+export function isBirthdayTitle(s: string): boolean {
+  return /生日|birthday|🎂|誕生日|お誕生|バースデー/i.test(s)
+}
+
 /** 文本命中关键词则返回对应特效表情组 */
 export function keywordEffect(text: string): string[] | null {
   const t = text.toLowerCase()

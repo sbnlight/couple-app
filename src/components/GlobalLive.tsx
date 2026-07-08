@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useAnniversaries } from '../hooks/useAnniversaries'
 import { onLive } from '../lib/live'
-import { fireEffect } from '../lib/effects'
+import { fireEffect, isBirthdayTitle } from '../lib/effects'
 import { isThumbkissOpen, openThumbkiss } from '../lib/thumbkissStore'
 import { daysUntil, todayInTz, recurringUntil } from '../lib/time'
 import { dayTzOf } from './FeatureToggles'
@@ -60,18 +60,24 @@ export default function GlobalLive() {
     if (localStorage.getItem(key)) return
 
     let title: string | null = null
+    let emojis: string[] = ['🎉', '🎊', '💕', '✨'] // 兜底(通用喜庆)
     if (couple?.next_meet_date && daysUntil(couple.next_meet_date, tz) === 0) {
       title = t('今天就要见面啦 ✈️')
+      emojis = ['✈️', '💕', '🎊', '💗'] // 见面日:飞机+爱心
     } else {
       const hit = anniversaries.find((a) =>
         a.recurring ? recurringUntil(a.anniv_date, tz).days === 0 : a.anniv_date === today,
       )
-      if (hit) title = t('今天是「{t}」🎉', { t: hit.title })
+      if (hit) {
+        title = t('今天是「{t}」🎉', { t: hit.title })
+        // 生日给蛋糕气球,其它周年给玫瑰礼物
+        emojis = isBirthdayTitle(hit.title) ? ['🎂', '🎉', '🎈', '✨'] : ['🌹', '💝', '✨', '💕']
+      }
     }
     if (title) {
       localStorage.setItem(key, '1')
       setTimeout(() => {
-        fireEffect(['🎉', '🎊', '💕', '✨'], 40)
+        fireEffect(emojis, 40)
         showToast(title!)
       }, 600)
     }

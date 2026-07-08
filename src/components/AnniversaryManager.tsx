@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { daysUntil, recurringUntil, todayInTz } from '../lib/time'
 import { dayTzOf } from './FeatureToggles'
 import { withRetry, friendlyWriteError } from '../lib/net'
+import { isBirthdayTitle } from '../lib/effects'
 import type { Anniversary, Couple } from '../types/db'
 import { t } from '../lib/i18n'
 
@@ -205,7 +206,7 @@ export default function AnniversaryManager({
                     {a.recurring ? t(' · 每年') : ''} ·{' '}
                     {isToday ? (
                       <span className="today-glow rounded-full bg-soft px-2 py-0.5 text-primary-dark">
-                        {fmtDays(a)}
+                        {isBirthdayTitle(a.title) ? '🎂' : '🎉'} {fmtDays(a)}
                       </span>
                     ) : (
                       fmtDays(a)
